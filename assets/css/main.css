@@ -2003,6 +2003,7 @@ input, select, textarea {
 		}
 			.features section > img {
 				padding-right: 5px;
+				height: 200px;
 			}
 
 			.features section:nth-child(-n + 2) {
