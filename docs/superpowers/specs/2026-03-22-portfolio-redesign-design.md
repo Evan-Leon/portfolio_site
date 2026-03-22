@@ -238,6 +238,9 @@ assets/evan-leon-resume.pdf         — Resume (moved from images/, renamed to r
 - `assets/css/fontawesome-all.min.css` — replaced by inline SVGs
 - `assets/webfonts/` — Font Awesome webfont files, no longer needed
 - `images/Evan Leon Resume Main.pdf` — moved to `assets/evan-leon-resume.pdf`
+- `images/evan_site.gif` — legacy site preview, no longer needed
+- `images/flux.gif` — legacy demo for removed project
+- `images/wherebnb.gif` — legacy demo for removed project
 - `assets/css/noscript.css` — old template fallback
 - `assets/js/jquery.min.js` — no longer needed
 - `assets/js/jquery.scrollex.min.js` — replaced by IntersectionObserver
