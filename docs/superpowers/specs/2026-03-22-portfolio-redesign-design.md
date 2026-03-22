@@ -44,8 +44,9 @@ projects/showrunner-digest.html     (ShowRunner Digest)
 - Fixed top bar on every page
 - Left: "Evan Leon" text logo (links to hub)
 - Right: About, Projects, Contact section links + highlighted "Resume" CTA button (links to PDF)
-- Glassmorphism effect: `backdrop-filter: blur(12px)` with translucent dark background
+- Glassmorphism effect: `backdrop-filter: blur(12px)` and `-webkit-backdrop-filter: blur(12px)` (Safari) with translucent dark background
 - On project detail pages: "← Back to Projects" replaces the logo
+- **Mobile (<768px)**: Hamburger menu button (right side). Toggles a full-screen overlay nav with vertical link list. JS toggle (~10 lines) with `aria-expanded` and `aria-controls` attributes on the button. Menu slides down with a CSS transition.
 
 ### Hero
 
@@ -134,6 +135,8 @@ All 8 project pages use the same template with different content. Layout flow:
 
 Traditional projects use the same template minus the AI badge.
 
+**Prev/Next project order** (wraps around): Leon's Budget → Nom Nom's → Leon's Mems → El Blackjack → The Classic → Media Cloud Web Tools → Media Cloud Vitals → ShowRunner Digest → (back to Leon's Budget). Agentic projects first, then traditional.
+
 ## Visual Theme
 
 ### Color Palette
@@ -168,7 +171,7 @@ Traditional projects use the same template minus the AI badge.
 - **Starfield**: CSS `@keyframes` twinkling (opacity 0.3↔1 over 2-4s, randomized delays) + subtle `translateY` drift. ~30-50 absolutely positioned small divs.
 - **Scroll fade-in**: Sections start with `opacity: 0; transform: translateY(20px)` and animate in when intersecting viewport. Implemented with `IntersectionObserver` (~15 lines vanilla JS).
 - **Card hover**: `box-shadow` glow transition + `transform: translateY(-4px)` over 0.2s.
-- **Nav glassmorphism**: `backdrop-filter: blur(12px)` with translucent `rgba` background.
+- **Nav glassmorphism**: `backdrop-filter: blur(12px)` and `-webkit-backdrop-filter: blur(12px)` (Safari prefix) with translucent `rgba` background.
 - **Nebula decorations**: Static radial gradients, not animated.
 - **Accessibility**: All animations wrapped in `@media (prefers-reduced-motion: no-preference)` — disabled by default for users who prefer reduced motion.
 
@@ -178,17 +181,19 @@ Traditional projects use the same template minus the AI badge.
 |------------|----------|
 | Desktop (≥1024px) | 3-column project grid, side-by-side about, full nav |
 | Tablet (768–1023px) | 2-column project grid, stacked about, horizontal nav |
-| Mobile (<768px) | Single column, hamburger or simplified nav, full-width cards |
+| Mobile (<768px) | Single column, hamburger menu, full-width cards |
 
 ## Technical Approach
 
 - **CSS**: Single stylesheet (`styles.css`) using CSS custom properties for the color palette. CSS Grid for all layouts. No preprocessor needed — modern CSS custom properties replace SCSS variables.
 - **JS**: Vanilla only. IntersectionObserver for scroll effects, no jQuery. Minimal footprint.
 - **Fonts**: Google Fonts (Inter + JetBrains Mono) loaded via `<link>` tags with `font-display: swap`.
-- **Icons**: Font Awesome (already in project) for social icons, or switch to inline SVGs to reduce requests.
-- **Images**: Optimized GIFs or WebP for project demos, lazy-loaded with `loading="lazy"`.
+- **Icons**: Inline SVGs for all icons (GitHub, LinkedIn, email, location, hamburger, arrows). Fewer external dependencies, no icon font FOUT, smaller payload for the handful of icons needed.
+- **Images**: Project demo assets must be optimized before deployment. Target: under 2MB per asset. Convert large GIFs to compressed MP4 `<video>` elements (with `autoplay muted loop playsinline` attributes) or optimized WebP. Existing GIFs in `images/` are 17-69MB each and must not ship as-is. All demo media lazy-loaded with `loading="lazy"`.
+- **Demo asset status**: Existing assets available for Media Cloud Web Tools (search.gif), Media Cloud Vitals (vitals.gif), ShowRunner Digest (ShowRunner.gif). New screenshots/recordings needed for: Leon's Budget, Nom Nom's, Leon's Mems, El Blackjack, The Classic. Use a styled placeholder card (project icon + "Demo coming soon") until assets are created.
 - **Shared nav/footer**: HTML duplicated per page. Acceptable for 9 pages and avoids JS templating complexity.
-- **SEO**: Open Graph tags, meta descriptions, semantic HTML (`<header>`, `<main>`, `<section>`, `<footer>`).
+- **SEO**: Open Graph tags (with a static PNG/JPG OG image, not a GIF), meta descriptions, semantic HTML (`<header>`, `<main>`, `<section>`, `<footer>`).
+- **Analytics**: Preserve existing Google Analytics gtag (`G-N6J50LX4EY`) on all pages.
 - **GitHub Pages**: `index.html` at project root, `CNAME` file for custom domain, no build step.
 
 ## Files to Create
@@ -207,11 +212,19 @@ assets/css/styles.css               — Main stylesheet
 assets/js/main.js                   — Scroll effects, starfield, interactions
 ```
 
+## Files to Create (additional)
+
+```
+assets/evan-leon-resume.pdf         — Resume (moved from images/, renamed to remove spaces)
+404.html                            — Custom 404 page matching space theme, links back to hub
+```
+
 ## Files to Keep
 
 - `CNAME` — custom domain config
-- `images/` — existing demo GIFs and assets (will add new ones as needed)
-- `images/Evan Leon Resume Main.pdf` — resume file
+- `images/` — existing demo GIFs and assets (will optimize and add new ones as needed)
+- `images/linkedin.jpeg` — profile photo
+- `images/favicon.png` — favicon (consider updating to match space theme later)
 - `.gitignore`
 
 ## Files to Remove
@@ -222,7 +235,9 @@ assets/js/main.js                   — Scroll effects, starfield, interactions
 - `LICENSE.txt` — template license (no longer using the template)
 - `assets/sass/` — SCSS source (replacing with plain CSS)
 - `assets/css/main.css` — old compiled CSS
-- `assets/css/fontawesome-all.min.css` — if switching to inline SVGs (keep if staying with Font Awesome)
+- `assets/css/fontawesome-all.min.css` — replaced by inline SVGs
+- `assets/webfonts/` — Font Awesome webfont files, no longer needed
+- `images/Evan Leon Resume Main.pdf` — moved to `assets/evan-leon-resume.pdf`
 - `assets/css/noscript.css` — old template fallback
 - `assets/js/jquery.min.js` — no longer needed
 - `assets/js/jquery.scrollex.min.js` — replaced by IntersectionObserver
@@ -237,5 +252,6 @@ assets/js/main.js                   — Scroll effects, starfield, interactions
 - Contact form
 - Blog or writing section
 - CMS or content management
-- Analytics (can be added later independently)
-- Project hosting/deployment (projects are demo'd via GIFs, not live)
+- Project hosting/deployment (projects are demo'd via GIFs/videos, not live)
+- Favicon redesign (keep existing, can update later)
+- Creating new demo recordings (use placeholders until assets are captured)
