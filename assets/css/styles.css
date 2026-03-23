@@ -28,6 +28,12 @@
   --blue-bg-subtle: rgba(59, 130, 246, 0.04);
   --blue-border-subtle: rgba(59, 130, 246, 0.15);
 
+  /* Footer */
+  --footer-bg: #060315;
+  --footer-text: #4a4a6a;
+  /* Blue pill text */
+  --blue-pill-text: #93c5fd;
+
   /* Typography */
   --font-primary: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
@@ -49,7 +55,6 @@
 }
 
 html {
-  scroll-behavior: smooth;
 }
 
 body {
@@ -111,6 +116,7 @@ h1, h2, h3, h4 {
   font-size: 0.95rem;
   color: var(--body-text);
   max-width: 500px;
+  margin: 0 auto;
 }
 
 .tech-pill {
@@ -130,7 +136,23 @@ h1, h2, h3, h4 {
 .tech-pill--blue {
   background: rgba(59, 130, 246, 0.12);
   border: 1px solid rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
+  color: var(--blue-pill-text);
+}
+
+/* ============================================
+   FOCUS STYLES (Keyboard Navigation)
+   ============================================ */
+.btn:focus-visible,
+.nav__link:focus-visible,
+.nav__logo:focus-visible,
+.nav__resume:focus-visible,
+.nav__hamburger:focus-visible,
+.contact__social-link:focus-visible,
+.footer__links a:focus-visible,
+.project-card:focus-visible {
+  outline: 2px solid var(--light-purple);
+  outline-offset: 3px;
+  border-radius: 4px;
 }
 
 /* ============================================
@@ -286,7 +308,7 @@ h1, h2, h3, h4 {
 .nav__mobile-menu.is-open {
   opacity: 1;
   transform: translateY(0);
-  pointer-events: all;
+  pointer-events: auto;
 }
 
 .nav__mobile-menu a {
@@ -706,7 +728,7 @@ h1, h2, h3, h4 {
    FOOTER
    ============================================ */
 .footer {
-  background: #060315;
+  background: var(--footer-bg);
   padding: 1.5rem 2rem;
 }
 
@@ -719,7 +741,7 @@ h1, h2, h3, h4 {
 }
 
 .footer__copyright {
-  color: #4a4a6a;
+  color: var(--footer-text);
   font-size: 0.8rem;
 }
 
@@ -730,7 +752,7 @@ h1, h2, h3, h4 {
 }
 
 .footer__links a {
-  color: #4a4a6a;
+  color: var(--footer-text);
   font-size: 0.8rem;
 }
 
@@ -929,22 +951,28 @@ h1, h2, h3, h4 {
 /* ============================================
    SCROLL ANIMATIONS
    ============================================ */
-.fade-in {
+
+/* Fade-in animations — only active when JS has initialized */
+.js-ready .fade-in {
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.6s ease-out, transform 0.6s ease-out;
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .fade-in.is-visible {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  .js-ready .fade-in.is-visible {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-/* If user prefers reduced motion, show everything immediately */
+/* If JS is ready but user prefers reduced motion, show immediately */
 @media (prefers-reduced-motion: reduce) {
-  .fade-in {
+  .js-ready .fade-in {
     opacity: 1;
     transform: none;
   }
