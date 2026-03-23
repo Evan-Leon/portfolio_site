@@ -37,6 +37,13 @@ function initFadeIn() {
   const elements = document.querySelectorAll('.fade-in');
   if (!elements.length) return;
 
+  // Feature check: fall back to making all elements visible if IntersectionObserver not available
+  if (!('IntersectionObserver' in window)) {
+    document.body.classList.add('js-ready');
+    elements.forEach((el) => el.classList.add('is-visible'));
+    return;
+  }
+
   // Gate CSS animations — content is visible until this class is added
   document.body.classList.add('js-ready');
 
@@ -63,9 +70,12 @@ function initMobileMenu() {
   const menu = document.querySelector('.nav__mobile-menu');
   if (!button || !menu) return;
 
+  // Defensive initialization
+  button.setAttribute('aria-expanded', 'false');
+
   button.addEventListener('click', () => {
     const isOpen = menu.classList.toggle('is-open');
-    button.setAttribute('aria-expanded', isOpen);
+    button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
 
   // Close menu when a link is clicked
@@ -74,6 +84,15 @@ function initMobileMenu() {
       menu.classList.remove('is-open');
       button.setAttribute('aria-expanded', 'false');
     });
+  });
+
+  // Close menu on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && menu.classList.contains('is-open')) {
+      menu.classList.remove('is-open');
+      button.setAttribute('aria-expanded', 'false');
+      button.focus();
+    }
   });
 }
 
