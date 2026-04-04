@@ -1,0 +1,6 @@
+.git
+.claude
+docs
+CNAME
+.dockerignore
+Dockerfile*
