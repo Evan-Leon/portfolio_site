@@ -70,8 +70,15 @@
 
     <!-- DEMO -->
     <div class="project-detail__demo">
-      <div class="project-detail__demo-placeholder">
-        <p>Demo coming soon</p>
+      <div class="slideshow">
+        <div class="slideshow__track">
+          <img class="slideshow__slide" src="../images/leons-mems/01.png" alt="Leon's Mems — screenshot 1" loading="eager">
+        </div>
+        <button class="slideshow__arrow slideshow__arrow--prev" aria-label="Previous">&#8249;</button>
+        <button class="slideshow__arrow slideshow__arrow--next" aria-label="Next">&#8250;</button>
+        <div class="slideshow__dots">
+          <button class="slideshow__dot slideshow__dot--active" aria-label="Photo 1"></button>
+        </div>
       </div>
     </div>
 
@@ -146,5 +153,6 @@
   </div>
 </footer>
 <script src="../assets/js/main.js"></script>
+<script src="../assets/js/slideshow.js"></script>
 </body>
 </html>
