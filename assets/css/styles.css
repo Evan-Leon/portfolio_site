@@ -577,13 +577,6 @@ h1, h2, h3, h4 {
   overflow: hidden;
 }
 
-.project-card__image img,
-.project-card__image video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .project-card__badge {
   position: absolute;
   top: 0.5rem;
@@ -1054,4 +1047,113 @@ h1, h2, h3, h4 {
     gap: 0.75rem;
     text-align: center;
   }
+}
+
+/* === SLIDESHOW === */
+
+/* Base: fills a fixed-height parent (used by .project-card__image on main page) */
+.slideshow {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+
+.slideshow__track {
+  display: flex;
+  height: 100%;
+  transition: transform 0.35s ease;
+  will-change: transform;
+}
+
+.slideshow__slide {
+  min-width: 100%;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/*
+ * Detail-page override: .project-detail__demo has no fixed height, so we let
+ * the image size the container naturally.
+ */
+.project-detail__demo .slideshow {
+  height: auto;
+}
+
+.project-detail__demo .slideshow__track {
+  height: auto;
+  align-items: flex-start;
+}
+
+.project-detail__demo .slideshow__slide {
+  height: auto;
+  object-fit: unset;
+}
+
+/* Arrows */
+.slideshow__arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: none;
+  color: #fff;
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  z-index: 2;
+}
+
+.slideshow__arrow:hover {
+  background: rgba(124, 58, 237, 0.7);
+}
+
+.slideshow__arrow--disabled {
+  opacity: 0.25;
+  pointer-events: none;
+}
+
+.slideshow__arrow--prev { left: 8px; }
+.slideshow__arrow--next { right: 8px; }
+
+/* Dots */
+.slideshow__dots {
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 5px;
+  z-index: 2;
+}
+
+.slideshow__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.35);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.slideshow__dot--active {
+  background: var(--purple-primary, #7c3aed);
+  transform: scale(1.25);
+}
+
+/* Hide controls when only 1 slide */
+.slideshow--single .slideshow__arrow,
+.slideshow--single .slideshow__dots {
+  display: none;
 }
