@@ -163,7 +163,7 @@ After adding real screenshots, update the `og:image` meta tag in each project pa
   }
 
   .slideshow__dot--active {
-    background: var(--purple-primary, #7c3aed);
+    background: var(--purple-accent, #7c3aed);
     transform: scale(1.25);
   }
 
