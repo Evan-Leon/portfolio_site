@@ -1061,7 +1061,7 @@ h1, h2, h3, h4 {
   background: var(--purple-accent, #7c3aed);
 }
 
-/* Project detail slideshow sizing */
+/* Project detail swiper sizing */
 .project-detail__demo .swiper {
   width: 100%;
 }
@@ -1072,7 +1072,7 @@ h1, h2, h3, h4 {
   display: block;
 }
 
-/* Card slideshow — fill fixed-height container (.project-card__image has fixed height) */
+/* Card swiper — fill fixed-height container (.project-card__image has fixed height) */
 .project-card__image .swiper,
 .project-card__image .swiper-slide {
   height: 100%;
