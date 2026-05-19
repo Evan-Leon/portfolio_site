@@ -13,6 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
   <link rel="stylesheet" href="../assets/css/styles.css">
   <link rel="icon" href="../images/favicon.png" type="image/png">
   <!-- Google Analytics -->
@@ -70,15 +71,17 @@
 
     <!-- DEMO -->
     <div class="project-detail__demo">
-      <div class="slideshow">
-        <div class="slideshow__track">
-          <img class="slideshow__slide" src="../images/classic-golf/01.png" alt="The Classic — screenshot 1" loading="eager">
+      <div class="swiper project-swiper">
+        <div class="swiper-wrapper">
+          <div class="swiper-slide"><img src="../images/classic-golf/01.png" alt="The Classic — screenshot 1" loading="eager"></div>
+          <div class="swiper-slide"><img src="../images/classic-golf/02.png" alt="The Classic — screenshot 2" loading="lazy"></div>
+          <div class="swiper-slide"><img src="../images/classic-golf/03.png" alt="The Classic — screenshot 3" loading="lazy"></div>
+          <div class="swiper-slide"><img src="../images/classic-golf/04.png" alt="The Classic — screenshot 4" loading="lazy"></div>
+          <div class="swiper-slide"><img src="../images/classic-golf/05.png" alt="The Classic — screenshot 5" loading="lazy"></div>
         </div>
-        <button class="slideshow__arrow slideshow__arrow--prev" aria-label="Previous">&#8249;</button>
-        <button class="slideshow__arrow slideshow__arrow--next" aria-label="Next">&#8250;</button>
-        <div class="slideshow__dots">
-          <button class="slideshow__dot slideshow__dot--active" aria-label="Photo 1"></button>
-        </div>
+        <div class="swiper-button-prev"></div>
+        <div class="swiper-button-next"></div>
+        <div class="swiper-pagination"></div>
       </div>
     </div>
 
@@ -153,6 +156,7 @@
   </div>
 </footer>
 <script src="../assets/js/main.js"></script>
-<script src="../assets/js/slideshow.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script src="../assets/js/swiper-init.js"></script>
 </body>
 </html>
