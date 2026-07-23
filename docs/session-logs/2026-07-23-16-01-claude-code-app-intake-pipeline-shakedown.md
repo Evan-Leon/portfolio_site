@@ -45,21 +45,34 @@ section; intro no longer "untested"; folded-in criteria now count a deliberate
 Attempted-but-not-done: nothing — every planned step landed.
 
 ## Commits
-None. (portfolio_site does not authorize agent commits; the whole pipeline's
-work was left uncommitted for the user to review as one coherent set.)
+The pipeline work was initially left uncommitted for review; the user then
+authorized committing it, all direct to `main` (ecosystem convention).
+
+portfolio_site (6):
+- `bff0a90` feat(deploy): onboard to evo-net with nginx static image
+- `d4743c7` style: prettier baseline reformat (html/css/js)
+- `fa7f3d1` build(hooks): add prettier pre-commit hook
+- `92322f4` chore(codex): add native skill adapters and repository guidance
+- `160b4ec` docs: session logs for app-intake pipeline shakedown
+- `6dcd01c` docs(codex): record headless skill-activation verification
+
+infra (1):
+- `586ff27` docs(domains): register portfolio-site
+
+docs (3):
+- `394d584` docs(onboard): static-site nginx pattern + force-recreate gotcha
+- `c437b45` docs(precommit-hook): portfolio_site rollout + LFS-hooks hazard
+- `08cddd5` docs(app-intake): fold in portfolio_site shakedown (first full run)
+
+The baseline reformat was kept in its own commit, separate from the hook, per
+the precommit meta-prompt. Hooks committed at mode `100755` (verified via
+`git ls-tree`) — not inert. Nothing pushed.
 
 ## Uncommitted work left behind
-Large working tree in portfolio_site from all five steps: `Dockerfile`,
-`nginx.conf`, `docker-compose.yml`, `.env`/`.env.example`, `package.json`,
-`pnpm-lock.yaml`, `.prettierignore`, `.githooks/*`, `.agents/skills/*`,
-`scripts/validate_codex_setup.py`, `docs/codex-setup.md`, 3 subagent session
-logs + this one, 13 reformatted site files, and edits to `.dockerignore` /
-`.gitignore` / `AGENTS.md` / `CLAUDE.md`. Deleted `Dockerfile.prod`. Left
-uncommitted intentionally; whoever commits must split the baseline reformat from
-the hook and re-run `git add --chmod=+x .githooks/*` after the split reset.
-Also modified in sibling repos: `infra/domain-registry.md`, `/home/evan/.bashrc`,
-and several `docs/meta-prompts/**` bookkeeping files. `images/chunk-norris/`
-remains untracked — pre-existing, not from this session.
+None from this session. `images/chunk-norris/` remains untracked — pre-existing,
+present at session start, deliberately not staged. `/home/evan/.bashrc` was
+edited (portfolio_site added to `_evo_services`) but is not version-controlled;
+it needs a `source ~/.bashrc` to take effect.
 
 ## Verification
 - Step 1: `docker compose build && up -d --force-recreate`; curl at
@@ -71,8 +84,19 @@ remains untracked — pre-existing, not from this session.
   `probe-git-hooks.sh portfolio_site` → exit 0; nginx site still serves after
   the change. PASS.
 - Step 6: `python3 scripts/validate_codex_setup.py` → PASS (2 wrappers, exit 0);
-  `git diff --check` clean. `/skills` discovery in a live Codex session — NOT
-  run (needs a manual fresh Codex session; documented in codex-setup.md).
+  `git diff --check` clean.
+- Codex skill activation, headless: `codex exec -s read-only -C <repo> '<the
+  codex-setup.md activation test>'` (codex-cli 0.144.6, ChatGPT auth) → PASS.
+  Both wrappers activated and cited
+  `.claude/skills/adding-project-screenshots/SKILL.md` (both swiper reference
+  points) and `.claude/skills/rebuild-restart/SKILL.md` (exact rebuild command);
+  no files modified. Confirms the `../../../.claude/skills/` wrapper paths
+  resolve. No feature flag gates skills in this CLI version.
+- `/skills` TUI listing — **NOT run**; it is interactive-only with no `codex
+  exec` equivalent. Still owed, though the activation test above is strictly
+  stronger evidence.
+- Commit-time hook proof: the reformat commit `d4743c7` triggered the real hook,
+  which reported `All matched files use Prettier code style! ✓ ok`.
 
 ## Blockers
 None.
@@ -107,11 +131,11 @@ None. (Repo deliberately has no rules-index.)
   "canonical resolves within this repo" model must adapt to `.claude/skills/`.
 
 ## Next steps
-- User: review the combined working tree and commit (baseline reformat and hook
-  as separate commits; re-run `git add --chmod=+x .githooks/*` after the split).
-- Run the `/skills` discovery + read-only activation test in a fresh Codex
-  session from the repo root (per `docs/codex-setup.md`).
-- Decide if/when to cut prod over to the containerized stack.
+- Run `/skills` once in an interactive Codex session from the repo root to close
+  the last verification gap (~30 seconds; activation is already proven).
+- `source ~/.bashrc` so the evo-net auto-start picks up portfolio_site.
+- Push the three repos when ready — nothing was pushed this session.
+- Decide if/when to cut prod (`evanleon.com`) over to the containerized stack.
 
 ## Pointers
 - Pipeline driver doc: `../docs/meta-prompts/app-intake/app-intake.md`
