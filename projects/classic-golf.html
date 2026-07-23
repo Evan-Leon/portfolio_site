@@ -1,161 +1,285 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>The Classic | Evan Leon</title>
-  <meta name="description" content="Golf tournament management and scoring app.">
-  <meta property="og:title" content="The Classic | Evan Leon">
-  <meta property="og:description" content="Golf tournament management and scoring app.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://evanleon.com/projects/classic-golf.html">
-  <meta property="og:image" content="https://evanleon.com/images/linkedin.jpeg">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
-  <link rel="stylesheet" href="../assets/css/styles.css">
-  <link rel="icon" href="../images/favicon.png" type="image/png">
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-N6J50LX4EY"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-N6J50LX4EY');
-  </script>
-</head>
-<body>
-
-<nav class="nav">
-  <div class="nav__inner">
-    <a href="../index.html#projects" class="nav__logo">← Back to Projects</a>
-    <ul class="nav__links">
-      <li><a href="../index.html#about" class="nav__link">About</a></li>
-      <li><a href="../index.html#projects" class="nav__link">Projects</a></li>
-      <li><a href="../index.html#contact" class="nav__link">Contact</a></li>
-      <li><a href="../assets/evan-leon-resume.pdf" class="nav__resume" target="_blank" rel="noopener">Resume</a></li>
-    </ul>
-    <button class="nav__hamburger" aria-expanded="false" aria-controls="mobile-menu" aria-label="Toggle menu">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
-  </div>
-</nav>
-<ul class="nav__mobile-menu" id="mobile-menu">
-  <li><a href="../index.html#about">About</a></li>
-  <li><a href="../index.html#projects">Projects</a></li>
-  <li><a href="../index.html#contact">Contact</a></li>
-  <li><a href="../assets/evan-leon-resume.pdf" target="_blank" rel="noopener">Resume</a></li>
-</ul>
-
-<main class="project-detail">
-  <div class="container">
-
-    <!-- HERO -->
-    <div class="project-detail__hero">
-      <div class="project-detail__badge-row">
-        <span class="project-detail__badge">AI-Built</span>
-        <span class="project-detail__badge-text">Built with Claude Code</span>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Classic | Evan Leon</title>
+    <meta
+      name="description"
+      content="Golf tournament management and scoring app."
+    />
+    <meta property="og:title" content="The Classic | Evan Leon" />
+    <meta
+      property="og:description"
+      content="Golf tournament management and scoring app."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://evanleon.com/projects/classic-golf.html"
+    />
+    <meta
+      property="og:image"
+      content="https://evanleon.com/images/linkedin.jpeg"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="icon" href="../images/favicon.png" type="image/png" />
+    <!-- Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-N6J50LX4EY"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-N6J50LX4EY");
+    </script>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="nav__inner">
+        <a href="../index.html#projects" class="nav__logo"
+          >← Back to Projects</a
+        >
+        <ul class="nav__links">
+          <li><a href="../index.html#about" class="nav__link">About</a></li>
+          <li>
+            <a href="../index.html#projects" class="nav__link">Projects</a>
+          </li>
+          <li><a href="../index.html#contact" class="nav__link">Contact</a></li>
+          <li>
+            <a
+              href="../assets/evan-leon-resume.pdf"
+              class="nav__resume"
+              target="_blank"
+              rel="noopener"
+              >Resume</a
+            >
+          </li>
+        </ul>
+        <button
+          class="nav__hamburger"
+          aria-expanded="false"
+          aria-controls="mobile-menu"
+          aria-label="Toggle menu"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
       </div>
-
-      <h1 class="project-detail__title">The Classic</h1>
-      <p class="project-detail__tagline">Golf tournament management and scoring app.</p>
-      <div class="project-detail__ctas">
-        <a href="https://github.com/Evan-Leon/classic-golf" class="btn btn--primary" target="_blank" rel="noopener">View on GitHub</a>
-      </div>
-    </div>
-
-    <!-- DEMO -->
-    <div class="project-detail__demo">
-      <div class="swiper project-swiper">
-        <div class="swiper-wrapper">
-          <div class="swiper-slide"><img src="../images/classic-golf/01.png" alt="The Classic — screenshot 1" loading="eager"></div>
-          <div class="swiper-slide"><img src="../images/classic-golf/02.png" alt="The Classic — screenshot 2" loading="lazy"></div>
-          <div class="swiper-slide"><img src="../images/classic-golf/03.png" alt="The Classic — screenshot 3" loading="lazy"></div>
-          <div class="swiper-slide"><img src="../images/classic-golf/04.png" alt="The Classic — screenshot 4" loading="lazy"></div>
-        </div>
-        <div class="swiper-button-prev"></div>
-        <div class="swiper-button-next"></div>
-        <div class="swiper-pagination"></div>
-      </div>
-    </div>
-
-    <!-- PROBLEM / SOLUTION -->
-    <div class="project-detail__ps">
-      <div>
-        <h2 class="project-detail__ps-label">Problem</h2>
-        <p class="project-detail__ps-text">Running a casual golf tournament means manually tracking scores on paper, calculating handicaps, and updating everyone on standings in real time.</p>
-      </div>
-      <div>
-        <h2 class="project-detail__ps-label">Solution</h2>
-        <p class="project-detail__ps-text">A tournament management app where organizers set up events and players enter scores from their phones — with live leaderboards and automatic handicap calculations.</p>
-      </div>
-    </div>
-
-    <!-- TECH STACK -->
-    <div class="project-detail__tech">
-      <h2 class="project-detail__tech-label">Tech Stack</h2>
-      <div class="project-detail__tech-pills">
-        <span class="tech-pill tech-pill--purple">Django</span>
-        <span class="tech-pill tech-pill--purple">React</span>
-        <span class="tech-pill tech-pill--purple">TypeScript</span>
-      </div>
-    </div>
-
-    <!-- KEY FEATURES -->
-    <div class="project-detail__features">
-      <h2 class="project-detail__features-label">Key Features</h2>
-      <div class="project-detail__features-grid">
-        <div class="project-detail__feature-card">
-          <h3>Tournament Management</h3>
-          <p>Create and configure tournaments with custom formats and rules</p>
-        </div>
-        <div class="project-detail__feature-card">
-          <h3>Live Scoring</h3>
-          <p>Players enter scores from mobile devices with instant leaderboard updates</p>
-        </div>
-        <div class="project-detail__feature-card">
-          <h3>Leaderboard</h3>
-          <p>Real-time standings with handicap adjustments and tiebreaker rules</p>
-        </div>
-        <div class="project-detail__feature-card">
-          <h3>Player Profiles</h3>
-          <p>Track player history, handicap index, and tournament results</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- PREV / NEXT -->
-    <nav class="project-detail__nav" aria-label="Project navigation">
-      <a href="el-blackjack.html" class="project-detail__nav-link">
-        <p class="project-detail__nav-direction">← Previous</p>
-        <p class="project-detail__nav-title">El Blackjack</p>
-      </a>
-      <a href="spead-read.html" class="project-detail__nav-link project-detail__nav-link--next">
-        <p class="project-detail__nav-direction">Next →</p>
-        <p class="project-detail__nav-title">Spead Read</p>
-      </a>
     </nav>
-
-  </div>
-</main>
-
-<footer class="footer">
-  <div class="footer__inner">
-    <p class="footer__copyright">© 2026 Evan Leon</p>
-    <ul class="footer__links">
-      <li><a href="https://github.com/Evan-Leon" target="_blank" rel="noopener">GitHub</a></li>
-      <li><a href="https://www.linkedin.com/in/evan-leon/" target="_blank" rel="noopener">LinkedIn</a></li>
-      <li><a href="../assets/evan-leon-resume.pdf" target="_blank" rel="noopener">Resume</a></li>
+    <ul class="nav__mobile-menu" id="mobile-menu">
+      <li><a href="../index.html#about">About</a></li>
+      <li><a href="../index.html#projects">Projects</a></li>
+      <li><a href="../index.html#contact">Contact</a></li>
+      <li>
+        <a href="../assets/evan-leon-resume.pdf" target="_blank" rel="noopener"
+          >Resume</a
+        >
+      </li>
     </ul>
-  </div>
-</footer>
-<script src="../assets/js/main.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-<script src="../assets/js/swiper-init.js"></script>
-</body>
+
+    <main class="project-detail">
+      <div class="container">
+        <!-- HERO -->
+        <div class="project-detail__hero">
+          <div class="project-detail__badge-row">
+            <span class="project-detail__badge">AI-Built</span>
+            <span class="project-detail__badge-text"
+              >Built with Claude Code</span
+            >
+          </div>
+
+          <h1 class="project-detail__title">The Classic</h1>
+          <p class="project-detail__tagline">
+            Golf tournament management and scoring app.
+          </p>
+          <div class="project-detail__ctas">
+            <a
+              href="https://github.com/Evan-Leon/classic-golf"
+              class="btn btn--primary"
+              target="_blank"
+              rel="noopener"
+              >View on GitHub</a
+            >
+          </div>
+        </div>
+
+        <!-- DEMO -->
+        <div class="project-detail__demo">
+          <div class="swiper project-swiper">
+            <div class="swiper-wrapper">
+              <div class="swiper-slide">
+                <img
+                  src="../images/classic-golf/01.png"
+                  alt="The Classic — screenshot 1"
+                  loading="eager"
+                />
+              </div>
+              <div class="swiper-slide">
+                <img
+                  src="../images/classic-golf/02.png"
+                  alt="The Classic — screenshot 2"
+                  loading="lazy"
+                />
+              </div>
+              <div class="swiper-slide">
+                <img
+                  src="../images/classic-golf/03.png"
+                  alt="The Classic — screenshot 3"
+                  loading="lazy"
+                />
+              </div>
+              <div class="swiper-slide">
+                <img
+                  src="../images/classic-golf/04.png"
+                  alt="The Classic — screenshot 4"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+            <div class="swiper-pagination"></div>
+          </div>
+        </div>
+
+        <!-- PROBLEM / SOLUTION -->
+        <div class="project-detail__ps">
+          <div>
+            <h2 class="project-detail__ps-label">Problem</h2>
+            <p class="project-detail__ps-text">
+              Running a casual golf tournament means manually tracking scores on
+              paper, calculating handicaps, and updating everyone on standings
+              in real time.
+            </p>
+          </div>
+          <div>
+            <h2 class="project-detail__ps-label">Solution</h2>
+            <p class="project-detail__ps-text">
+              A tournament management app where organizers set up events and
+              players enter scores from their phones — with live leaderboards
+              and automatic handicap calculations.
+            </p>
+          </div>
+        </div>
+
+        <!-- TECH STACK -->
+        <div class="project-detail__tech">
+          <h2 class="project-detail__tech-label">Tech Stack</h2>
+          <div class="project-detail__tech-pills">
+            <span class="tech-pill tech-pill--purple">Django</span>
+            <span class="tech-pill tech-pill--purple">React</span>
+            <span class="tech-pill tech-pill--purple">TypeScript</span>
+          </div>
+        </div>
+
+        <!-- KEY FEATURES -->
+        <div class="project-detail__features">
+          <h2 class="project-detail__features-label">Key Features</h2>
+          <div class="project-detail__features-grid">
+            <div class="project-detail__feature-card">
+              <h3>Tournament Management</h3>
+              <p>
+                Create and configure tournaments with custom formats and rules
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Live Scoring</h3>
+              <p>
+                Players enter scores from mobile devices with instant
+                leaderboard updates
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Leaderboard</h3>
+              <p>
+                Real-time standings with handicap adjustments and tiebreaker
+                rules
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Player Profiles</h3>
+              <p>
+                Track player history, handicap index, and tournament results
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- PREV / NEXT -->
+        <nav class="project-detail__nav" aria-label="Project navigation">
+          <a href="el-blackjack.html" class="project-detail__nav-link">
+            <p class="project-detail__nav-direction">← Previous</p>
+            <p class="project-detail__nav-title">El Blackjack</p>
+          </a>
+          <a
+            href="spead-read.html"
+            class="project-detail__nav-link project-detail__nav-link--next"
+          >
+            <p class="project-detail__nav-direction">Next →</p>
+            <p class="project-detail__nav-title">Spead Read</p>
+          </a>
+        </nav>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__inner">
+        <p class="footer__copyright">© 2026 Evan Leon</p>
+        <ul class="footer__links">
+          <li>
+            <a
+              href="https://github.com/Evan-Leon"
+              target="_blank"
+              rel="noopener"
+              >GitHub</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://www.linkedin.com/in/evan-leon/"
+              target="_blank"
+              rel="noopener"
+              >LinkedIn</a
+            >
+          </li>
+          <li>
+            <a
+              href="../assets/evan-leon-resume.pdf"
+              target="_blank"
+              rel="noopener"
+              >Resume</a
+            >
+          </li>
+        </ul>
+      </div>
+    </footer>
+    <script src="../assets/js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="../assets/js/swiper-init.js"></script>
+  </body>
 </html>

@@ -1,154 +1,262 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Media Cloud Vitals | Evan Leon</title>
-  <meta name="description" content="Performance monitoring dashboard for the Media Cloud platform.">
-  <meta property="og:title" content="Media Cloud Vitals | Evan Leon">
-  <meta property="og:description" content="Performance monitoring dashboard for the Media Cloud platform.">
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://evanleon.com/projects/media-cloud-vitals.html">
-  <meta property="og:image" content="https://evanleon.com/images/linkedin.jpeg">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
-  <link rel="stylesheet" href="../assets/css/styles.css">
-  <link rel="icon" href="../images/favicon.png" type="image/png">
-  <!-- Google Analytics -->
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-N6J50LX4EY"></script>
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-N6J50LX4EY');
-  </script>
-</head>
-<body>
-
-<nav class="nav">
-  <div class="nav__inner">
-    <a href="../index.html#projects" class="nav__logo">← Back to Projects</a>
-    <ul class="nav__links">
-      <li><a href="../index.html#about" class="nav__link">About</a></li>
-      <li><a href="../index.html#projects" class="nav__link">Projects</a></li>
-      <li><a href="../index.html#contact" class="nav__link">Contact</a></li>
-      <li><a href="../assets/evan-leon-resume.pdf" class="nav__resume" target="_blank" rel="noopener">Resume</a></li>
-    </ul>
-    <button class="nav__hamburger" aria-expanded="false" aria-controls="mobile-menu" aria-label="Toggle menu">
-      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="3" y1="6" x2="21" y2="6"/>
-        <line x1="3" y1="12" x2="21" y2="12"/>
-        <line x1="3" y1="18" x2="21" y2="18"/>
-      </svg>
-    </button>
-  </div>
-</nav>
-<ul class="nav__mobile-menu" id="mobile-menu">
-  <li><a href="../index.html#about">About</a></li>
-  <li><a href="../index.html#projects">Projects</a></li>
-  <li><a href="../index.html#contact">Contact</a></li>
-  <li><a href="../assets/evan-leon-resume.pdf" target="_blank" rel="noopener">Resume</a></li>
-</ul>
-
-<main class="project-detail">
-  <div class="container">
-
-    <!-- HERO -->
-    <div class="project-detail__hero">
-      <h1 class="project-detail__title">Media Cloud Vitals</h1>
-      <p class="project-detail__tagline">Performance monitoring dashboard for the Media Cloud platform.</p>
-      <div class="project-detail__ctas">
-        <a href="https://github.com/mitmedialab/MediaCloud-Vitals" class="btn btn--primary" target="_blank" rel="noopener">View on GitHub</a>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Media Cloud Vitals | Evan Leon</title>
+    <meta
+      name="description"
+      content="Performance monitoring dashboard for the Media Cloud platform."
+    />
+    <meta property="og:title" content="Media Cloud Vitals | Evan Leon" />
+    <meta
+      property="og:description"
+      content="Performance monitoring dashboard for the Media Cloud platform."
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://evanleon.com/projects/media-cloud-vitals.html"
+    />
+    <meta
+      property="og:image"
+      content="https://evanleon.com/images/linkedin.jpeg"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css"
+    />
+    <link rel="stylesheet" href="../assets/css/styles.css" />
+    <link rel="icon" href="../images/favicon.png" type="image/png" />
+    <!-- Google Analytics -->
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-N6J50LX4EY"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-N6J50LX4EY");
+    </script>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="nav__inner">
+        <a href="../index.html#projects" class="nav__logo"
+          >← Back to Projects</a
+        >
+        <ul class="nav__links">
+          <li><a href="../index.html#about" class="nav__link">About</a></li>
+          <li>
+            <a href="../index.html#projects" class="nav__link">Projects</a>
+          </li>
+          <li><a href="../index.html#contact" class="nav__link">Contact</a></li>
+          <li>
+            <a
+              href="../assets/evan-leon-resume.pdf"
+              class="nav__resume"
+              target="_blank"
+              rel="noopener"
+              >Resume</a
+            >
+          </li>
+        </ul>
+        <button
+          class="nav__hamburger"
+          aria-expanded="false"
+          aria-controls="mobile-menu"
+          aria-label="Toggle menu"
+        >
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
       </div>
-    </div>
-
-    <!-- DEMO -->
-    <div class="project-detail__demo">
-      <div class="swiper project-swiper">
-        <div class="swiper-wrapper">
-          <div class="swiper-slide"><img src="../images/media-cloud-vitals/01.png" alt="Media Cloud Vitals — screenshot 1" loading="eager"></div>
-          <div class="swiper-slide"><img src="../images/media-cloud-vitals/02.png" alt="Media Cloud Vitals — screenshot 2" loading="lazy"></div>
-        </div>
-        <div class="swiper-button-prev"></div>
-        <div class="swiper-button-next"></div>
-        <div class="swiper-pagination"></div>
-      </div>
-    </div>
-
-    <!-- PROBLEM / SOLUTION -->
-    <div class="project-detail__ps">
-      <div>
-        <h2 class="project-detail__ps-label">Problem</h2>
-        <p class="project-detail__ps-text">The Media Cloud platform had no internal visibility into system health, API performance, or usage patterns — making it hard to catch issues before users did.</p>
-      </div>
-      <div>
-        <h2 class="project-detail__ps-label">Solution</h2>
-        <p class="project-detail__ps-text">An internal performance dashboard pulling metrics from across the platform stack — with real-time health checks, API response time tracking, and usage analytics for the ops team.</p>
-      </div>
-    </div>
-
-    <!-- TECH STACK -->
-    <div class="project-detail__tech">
-      <h2 class="project-detail__tech-label">Tech Stack</h2>
-      <div class="project-detail__tech-pills">
-        <span class="tech-pill tech-pill--blue">Django</span>
-        <span class="tech-pill tech-pill--blue">React</span>
-        <span class="tech-pill tech-pill--blue">D3.js</span>
-      </div>
-    </div>
-
-    <!-- KEY FEATURES -->
-    <div class="project-detail__features">
-      <h2 class="project-detail__features-label">Key Features</h2>
-      <div class="project-detail__features-grid">
-        <div class="project-detail__feature-card">
-          <h3>Performance Metrics</h3>
-          <p>Real-time tracking of API response times and throughput</p>
-        </div>
-        <div class="project-detail__feature-card">
-          <h3>System Health Monitoring</h3>
-          <p>Uptime checks and service health indicators across the platform</p>
-        </div>
-        <div class="project-detail__feature-card">
-          <h3>Usage Analytics</h3>
-          <p>Track active users, query volumes, and popular features over time</p>
-        </div>
-        <div class="project-detail__feature-card">
-          <h3>Alerting</h3>
-          <p>Threshold-based alerts for degraded performance or error rate spikes</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- PREV / NEXT -->
-    <nav class="project-detail__nav" aria-label="Project navigation">
-      <a href="media-cloud-web-tools.html" class="project-detail__nav-link">
-        <p class="project-detail__nav-direction">← Previous</p>
-        <p class="project-detail__nav-title">Media Cloud Web Tools</p>
-      </a>
-      <a href="showrunner-digest.html" class="project-detail__nav-link project-detail__nav-link--next">
-        <p class="project-detail__nav-direction">Next →</p>
-        <p class="project-detail__nav-title">ShowRunner Digest</p>
-      </a>
     </nav>
-
-  </div>
-</main>
-
-<footer class="footer">
-  <div class="footer__inner">
-    <p class="footer__copyright">© 2026 Evan Leon</p>
-    <ul class="footer__links">
-      <li><a href="https://github.com/Evan-Leon" target="_blank" rel="noopener">GitHub</a></li>
-      <li><a href="https://www.linkedin.com/in/evan-leon/" target="_blank" rel="noopener">LinkedIn</a></li>
-      <li><a href="../assets/evan-leon-resume.pdf" target="_blank" rel="noopener">Resume</a></li>
+    <ul class="nav__mobile-menu" id="mobile-menu">
+      <li><a href="../index.html#about">About</a></li>
+      <li><a href="../index.html#projects">Projects</a></li>
+      <li><a href="../index.html#contact">Contact</a></li>
+      <li>
+        <a href="../assets/evan-leon-resume.pdf" target="_blank" rel="noopener"
+          >Resume</a
+        >
+      </li>
     </ul>
-  </div>
-</footer>
-<script src="../assets/js/main.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
-<script src="../assets/js/swiper-init.js"></script>
-</body>
+
+    <main class="project-detail">
+      <div class="container">
+        <!-- HERO -->
+        <div class="project-detail__hero">
+          <h1 class="project-detail__title">Media Cloud Vitals</h1>
+          <p class="project-detail__tagline">
+            Performance monitoring dashboard for the Media Cloud platform.
+          </p>
+          <div class="project-detail__ctas">
+            <a
+              href="https://github.com/mitmedialab/MediaCloud-Vitals"
+              class="btn btn--primary"
+              target="_blank"
+              rel="noopener"
+              >View on GitHub</a
+            >
+          </div>
+        </div>
+
+        <!-- DEMO -->
+        <div class="project-detail__demo">
+          <div class="swiper project-swiper">
+            <div class="swiper-wrapper">
+              <div class="swiper-slide">
+                <img
+                  src="../images/media-cloud-vitals/01.png"
+                  alt="Media Cloud Vitals — screenshot 1"
+                  loading="eager"
+                />
+              </div>
+              <div class="swiper-slide">
+                <img
+                  src="../images/media-cloud-vitals/02.png"
+                  alt="Media Cloud Vitals — screenshot 2"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+            <div class="swiper-button-prev"></div>
+            <div class="swiper-button-next"></div>
+            <div class="swiper-pagination"></div>
+          </div>
+        </div>
+
+        <!-- PROBLEM / SOLUTION -->
+        <div class="project-detail__ps">
+          <div>
+            <h2 class="project-detail__ps-label">Problem</h2>
+            <p class="project-detail__ps-text">
+              The Media Cloud platform had no internal visibility into system
+              health, API performance, or usage patterns — making it hard to
+              catch issues before users did.
+            </p>
+          </div>
+          <div>
+            <h2 class="project-detail__ps-label">Solution</h2>
+            <p class="project-detail__ps-text">
+              An internal performance dashboard pulling metrics from across the
+              platform stack — with real-time health checks, API response time
+              tracking, and usage analytics for the ops team.
+            </p>
+          </div>
+        </div>
+
+        <!-- TECH STACK -->
+        <div class="project-detail__tech">
+          <h2 class="project-detail__tech-label">Tech Stack</h2>
+          <div class="project-detail__tech-pills">
+            <span class="tech-pill tech-pill--blue">Django</span>
+            <span class="tech-pill tech-pill--blue">React</span>
+            <span class="tech-pill tech-pill--blue">D3.js</span>
+          </div>
+        </div>
+
+        <!-- KEY FEATURES -->
+        <div class="project-detail__features">
+          <h2 class="project-detail__features-label">Key Features</h2>
+          <div class="project-detail__features-grid">
+            <div class="project-detail__feature-card">
+              <h3>Performance Metrics</h3>
+              <p>Real-time tracking of API response times and throughput</p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>System Health Monitoring</h3>
+              <p>
+                Uptime checks and service health indicators across the platform
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Usage Analytics</h3>
+              <p>
+                Track active users, query volumes, and popular features over
+                time
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Alerting</h3>
+              <p>
+                Threshold-based alerts for degraded performance or error rate
+                spikes
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- PREV / NEXT -->
+        <nav class="project-detail__nav" aria-label="Project navigation">
+          <a href="media-cloud-web-tools.html" class="project-detail__nav-link">
+            <p class="project-detail__nav-direction">← Previous</p>
+            <p class="project-detail__nav-title">Media Cloud Web Tools</p>
+          </a>
+          <a
+            href="showrunner-digest.html"
+            class="project-detail__nav-link project-detail__nav-link--next"
+          >
+            <p class="project-detail__nav-direction">Next →</p>
+            <p class="project-detail__nav-title">ShowRunner Digest</p>
+          </a>
+        </nav>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer__inner">
+        <p class="footer__copyright">© 2026 Evan Leon</p>
+        <ul class="footer__links">
+          <li>
+            <a
+              href="https://github.com/Evan-Leon"
+              target="_blank"
+              rel="noopener"
+              >GitHub</a
+            >
+          </li>
+          <li>
+            <a
+              href="https://www.linkedin.com/in/evan-leon/"
+              target="_blank"
+              rel="noopener"
+              >LinkedIn</a
+            >
+          </li>
+          <li>
+            <a
+              href="../assets/evan-leon-resume.pdf"
+              target="_blank"
+              rel="noopener"
+              >Resume</a
+            >
+          </li>
+        </ul>
+      </div>
+    </footer>
+    <script src="../assets/js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+    <script src="../assets/js/swiper-init.js"></script>
+  </body>
 </html>
