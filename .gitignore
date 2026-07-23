@@ -15,6 +15,7 @@ Thumbs.db
 
 docs/*
 !docs/session-logs/
+!docs/codex-setup.md
 
 # Superpowers
 .superpowers/
@@ -23,6 +24,9 @@ docs/superpowers/
 
 # Docker
 docker-compose.override.yml
+
+# Local env (compose var substitution) — commit .env.example instead
+.env
 
 # Node (if any tooling is added)
 node_modules/

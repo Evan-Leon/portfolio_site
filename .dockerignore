@@ -1,6 +1,25 @@
+# Keep the nginx webroot clean — only ship the actual site assets
+# (index.html, 404.html, projects/, assets/, images/).
 .git
+.gitignore
+.gitattributes
 .claude
+.superpowers
+.worktrees
 docs
 CNAME
+.DS_Store
+*.md
+.env
+.env.example
 .dockerignore
 Dockerfile*
+docker-compose.yml
+
+# Dev tooling — Prettier + its git hook. None of this belongs in the served webroot.
+node_modules
+.githooks
+package.json
+pnpm-lock.yaml
+.prettierignore
+.prettierrc*

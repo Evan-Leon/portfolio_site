@@ -1,0 +1,23 @@
+networks:
+  evo-net:
+    external: true
+
+services:
+  portfolio-site:
+    # Prod-ready: on the droplet, `docker compose pull` uses this registry image;
+    # locally, `docker compose build` uses the source below. Image path is
+    # all-lowercase (ghcr.io rejects uppercase), even though the GH user is Evan-Leon.
+    image: ghcr.io/evan-leon/portfolio-site:latest
+    build: .
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # HTTP — the only entrypoint local Traefik has; also serves prod (redirects to https there).
+      - "traefik.http.routers.portfolio-site-web.rule=Host(`portfolio-site.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.portfolio-site-web.entrypoints=web"
+      # HTTPS — prod only. Local Traefik has no `websecure` entrypoint, so it ignores this router.
+      - "traefik.http.routers.portfolio-site-secure.rule=Host(`portfolio-site.${DOMAIN:-localhost}`)"
+      - "traefik.http.routers.portfolio-site-secure.entrypoints=websecure"
+      - "traefik.http.routers.portfolio-site-secure.tls.certresolver=le"
+      - "traefik.http.services.portfolio-site.loadbalancer.server.port=80"
+    networks: [evo-net]
