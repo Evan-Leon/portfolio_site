@@ -118,6 +118,24 @@ skill in `/skills`. Confirm that separately:
 3. Confirm both `adding-project-screenshots` and `rebuild-restart` appear.
 4. If a skill does not appear, restart Codex once and check again.
 
+`/skills` is TUI-only — there is no `codex exec` equivalent, so this listing step
+still requires an interactive session. **Status: not yet run.**
+
+### Non-interactive alternative (stronger, and scriptable)
+
+The activation test below can be run headlessly, which proves more than the
+listing does: discovery *and* activation *and* that the thin wrapper resolves to
+the canonical body. `-s read-only` makes writes impossible at the sandbox level:
+
+```bash
+codex exec -s read-only -C /home/evan/EVOsystem/portfolio_site '<the test prompt below>'
+```
+
+**Verified 2026-07-23** (codex-cli 0.144.6, ChatGPT auth): both skills activated
+and cited `.claude/skills/adding-project-screenshots/SKILL.md` and
+`.claude/skills/rebuild-restart/SKILL.md`; no files modified. Skills are native
+and stable in this CLI version — no feature flag gates them.
+
 ## Read-only skill activation test
 
 Run this in a fresh Codex session to confirm a wrapper activates and loads its
