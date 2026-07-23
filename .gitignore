@@ -31,5 +31,9 @@ docker-compose.override.yml
 # Node (if any tooling is added)
 node_modules/
 
+# Python bytecode (setup-validation script)
+__pycache__/
+*.pyc
+
 # Misc
 *.log
