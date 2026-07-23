@@ -9,10 +9,12 @@ Thumbs.db
 *.swo
 *~
 
-# Claude Code
-.claude
+# Claude Code — ignore local state but keep skills trackable
+.claude/*
+!.claude/skills/
 
-docs/
+docs/*
+!docs/session-logs/
 
 # Superpowers
 .superpowers/
