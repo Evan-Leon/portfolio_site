@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook — runs the same checks CI would, locally, before a commit.
+#
+# Tool-agnostic: fires for ANY `git commit`, whether run by you, a Claude session,
+# or a Codex session. Checks are scoped to what's staged. Tests are intentionally
+# excluded (this is a static site — there is no suite; there is nothing to run).
+#
+# The ONE check is Prettier --check over staged .html/.css/.js. Markdown/docs are
+# deliberately out of scope (see .prettierignore) — CLAUDE.md mandates a session log
+# every session, so a markdown-governing formatter would block every future commit.
+#
+# Install once per clone:
+#   git config core.hooksPath .githooks
+#
+# Emergency bypass (avoid): git commit --no-verify
+#
+set -uo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+staged="$(git diff --cached --name-only --diff-filter=ACMR)"
+fail=0
+
+# node-restore: node_modules/.bin/prettier is a #!/bin/sh shim that `exec node`s, so
+# node must be on PATH at hook time. fnm puts node on a volatile per-shell path under
+# /run/user/<uid>/fnm_multishells/... that git does NOT inherit — everything works from
+# your shell and dies `exec: node: not found` for a commit from a plain shell, cron, or a
+# GUI git client. Prepend fnm's STABLE default-alias dir when node is missing. (log §I/§K)
+if ! command -v node >/dev/null 2>&1; then
+  for d in "$HOME/.local/share/fnm/aliases/default/bin" "$HOME/.nvm/alias/default" \
+           "$HOME/.volta/bin" "$HOME/.asdf/shims"; do
+    [ -x "$d/node" ] && { PATH="$d:$PATH"; export PATH; break; }
+  done
+fi
+
+run() { # run <label> <dir> <cmd...>
+  local label="$1" dir="$2"
+  shift 2
+  echo "[pre-commit] $label"
+  if (cd "$repo_root/$dir" && "$@"); then
+    echo "  ✓ ok"
+  else
+    echo "  ✗ failed"
+    fail=1
+  fi
+}
+
+# --- Prettier: format-check staged html/css/js (single-root static site) --------
+# Scope by FILE TYPE, not a dir prefix: this repo is one project, and markdown/docs
+# commit on their own (a session log EVERY session per CLAUDE.md) — those commits must
+# pass with NO block firing, so an unconditional check is wrong here.
+#
+# Guard on the CHECKER BINARY (node_modules/.bin/prettier), and DELIBERATELY no pnpm
+# wrapper arm: `pnpm exec` installs nothing, so on a clone that never ran `pnpm install`
+# it fails with an opaque ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL instead of the install hint;
+# and fnm's alias dir (prepended above) puts pnpm on PATH even under `env -i`, hiding the
+# loud arm in every environment you can test. Go straight from "binary missing" -> loud
+# arm. (meta-prompt Step 1 WRAPPER vs BINARY; log §O)
+mapfile -t fmt_files < <(printf '%s\n' "$staged" | grep -E '\.(html|css|js)$' || true)
+if [ ${#fmt_files[@]} -gt 0 ]; then
+  if [ -x "$repo_root/node_modules/.bin/prettier" ]; then
+    run "format-check (prettier)" . "$repo_root/node_modules/.bin/prettier" --check "${fmt_files[@]}"
+  else
+    echo "[pre-commit] ✗ no prettier (node_modules/.bin/prettier missing — run 'pnpm install')"
+    fail=1
+  fi
+fi
+
+if [ "$fail" -ne 0 ]; then
+  echo ""
+  echo "[pre-commit] commit aborted — fix the above, then re-commit:"
+  echo "  format: pnpm format   (or: ./node_modules/.bin/prettier --write <files>)"
+  echo "  (emergency bypass: git commit --no-verify)"
+  exit 1
+fi

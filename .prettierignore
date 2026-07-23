@@ -1,0 +1,15 @@
+# Markdown is deliberately OUT of Prettier's scope — this is a CHOICE, not an oversight.
+# portfolio_site's CLAUDE.md mandates a session log in docs/session-logs/ EVERY session,
+# so a Prettier that governed markdown would turn every future log (and every plan/spec
+# under docs/) into a potential commit blocker over table-cell padding. Code only.
+# (Precedent: the-classic rollout, precommit-hook-rollout-log.md §O.)
+*.md
+docs/
+
+# Never format dependencies or the lockfile.
+node_modules/
+pnpm-lock.yaml
+
+# OS / repo cruft (not html/css/js, but keep Prettier from ever touching them).
+.git/
+CNAME
