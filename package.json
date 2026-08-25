@@ -10,6 +10,7 @@
     "theater:test": "pnpm -C theater test",
     "theater:typecheck": "pnpm -C theater typecheck",
     "theater:lint": "pnpm -C theater lint",
+    "theater:e2e": "pnpm -C theater test:e2e",
     "validate:codex": "python3 scripts/validate_codex_setup.py"
   },
   "devDependencies": {
