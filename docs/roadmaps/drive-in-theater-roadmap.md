@@ -1603,7 +1603,25 @@ is not for, and an engine the portfolio owns outright.
 
 | Phase | Decision | Chrome fps, median of 3 (flat / lot / overload / reduced) | Firefox fps (flat / lot / overload / reduced) | WebKit | Click + Tab | Date | Decided by |
 |---|---|---|---|---|---|---|---|
-| DTF | _not yet run_ | | | | | | |
+| DTF | GO | 118 / 227 / 176 / 228 | not measured (Firefox absent; Chrome-only verdict accepted by Evan) | not measured (no Mac) | click ✅ / Tab ✅ | 2026-08-25 | Evan |
+
+> **DTF instrument and deviations.** Numbers are the lowest fps over any contiguous
+> 1 s window, median of three 10 s runs, taken with the probe's automated in-page
+> rAF harness (`?variant=flat&measure=all&reset=1`) in Chrome 151 on Windows at
+> viewport 1201×882 / dpr 1.5 — **not** a hand-scrolled DevTools recording at
+> 1440×900, and **not** in Firefox. All three are deviations from the phase's
+> pre-registered protocol. They stand because `lot` cleared the 50 fps threshold
+> by 4.5×; no instrument error of that size is plausible. Firefox and low-end
+> hardware remain genuinely unmeasured — see the probe header,
+> "What the margin does and does not cover".
+>
+> **The finding behind the verdict:** the baseline is the *slowest* variant
+> (`flat` 118 < `lot` 227) because `flat` autoplays all eight clips while `lot`
+> plays one. Decode count, not the CSS 3D transform, is the dominant cost — so
+> DT4's play-iff-active rule is load-bearing rather than an optimisation. And
+> `reduced` (228) is indistinguishable from `lot` (227), so detaching `<source>`
+> buys nothing at eight screens: **DT4 takes the `GO` path** — all eight
+> `<source>`s attached from construction, `preload="none"` doing the deferral.
 
 | Phase | Decision | Public hostname of the theater | Date | Decided by |
 |---|---|---|---|---|

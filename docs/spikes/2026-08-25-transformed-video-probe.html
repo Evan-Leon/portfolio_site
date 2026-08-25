@@ -149,38 +149,83 @@
       (1, 2, 3, …) with a visible ring on each.
 
     ---------------------------------------------------------------------------
-    RESULTS — fill in after Manual Verification. Lowest fps over any contiguous
-    1 s window; three 10 s recordings, then the median.
+    RESULTS — measured 2026-08-25. Lowest fps over any contiguous 1 s window;
+    three 10 s runs, then the median. Taken with the automated in-page harness
+    (?measure=all) described above, NOT a hand-scrolled DevTools recording.
     ---------------------------------------------------------------------------
-    Chrome  version ______
+    Chrome 151.0.0.0 (Windows NT 10.0; Win64; x64)
+    viewport 1201x882, devicePixelRatio 1.5
 
       variant     run 1     run 2     run 3     MEDIAN
-      flat        ______    ______    ______    ______
-      lot         ______    ______    ______    ______
-      overload    ______    ______    ______    ______
-      reduced     ______    ______    ______    ______
+      flat          118       118       118       118
+      lot           227       227       229       227
+      overload      211       176       103       176
+      reduced       225       230       228       228
 
-    Firefox version ______
+    Firefox — NOT MEASURED. Firefox is not installed on the host; Evan's
+    decision (2026-08-25) was to accept a Chrome-only verdict. This is a
+    DEVIATION from the pre-registered bands, which are judged in both browsers.
+    See "What the margin does and does not cover" below.
 
-      variant     run 1     run 2     run 3     MEDIAN
-      flat        ______    ______    ______    ______
-      lot         ______    ______    ______    ______
-      overload    ______    ______    ______    ______
-      reduced     ______    ______    ______    ______
-
-    WebKit  ______________________  (or: not measured — no Mac available)
+    WebKit  not measured — no Mac available.
 
     Control check (EVO-UNI-120): overload median < lot median?
-      Chrome  ______      Firefox  ______
-      If either is "no", the meter is not moving — no verdict may be drawn;
-      hand the probe back to a session to add screens / enlarge surfaces.
+      Chrome  YES — 176 < 227. The meter moves, so lot's number is meaningful.
+      Firefox n/a (not measured).
 
-    Hit test (lot):
-      click SCREEN 3 → navigates?   Chrome ______   Firefox ______
-      Tab in DOM order, visible ring? Chrome ______  Firefox ______
+    Hit test (lot), Chrome:
+      click SCREEN 3 → navigates?      YES (confirmed in every variant)
+      Tab in DOM order, visible ring?  YES
 
-    DECISION: ____________  (GO / GO-REDUCED / NO-GO)
-    Date: ____________   Decided by: ____________
+    DECISION: GO
+    Date: 2026-08-25   Decided by: Evan
+
+    ---------------------------------------------------------------------------
+    WHAT THE NUMBERS ACTUALLY SAY — read this before citing them
+    ---------------------------------------------------------------------------
+    1. lot = 227 fps against a GO threshold of 50: a 4.5x margin. That margin is
+       the reason the deviations below do not change the verdict — no plausible
+       instrument or window-size error is worth a factor of four.
+
+    2. THE BASELINE IS THE SLOWEST VARIANT. flat (118) is roughly half of lot
+       (227). That inverts what EVO-UNI-021 expected of a baseline, and the
+       inversion is the most useful thing this probe produced: `flat` autoplays
+       all eight videos at once, `lot` plays exactly one. So the dominant cost
+       here is VIDEO DECODE, not the CSS 3D transform stack — the transform is
+       close to free, and what costs money is how many clips run concurrently.
+       DT4's activation rule (play iff active) is therefore load-bearing, not an
+       optimisation. If a future change ever plays more than one screen at once,
+       this number is the one that moves.
+
+    3. reduced (228) is indistinguishable from lot (227). At eight screens,
+       detaching the <source> buys nothing measurable, which is why the verdict
+       is plain GO and not GO-REDUCED: DT4 attaches all eight <source>s from
+       construction and keeps the simpler code path.
+
+    4. overload (176) is the noisiest row — 211 / 176 / 103. That is expected:
+       32 screens cycle 4x through the eight clips, and the run-to-run spread
+       is decoder scheduling. It still lands clearly below lot, which is all the
+       control has to establish.
+
+    ---------------------------------------------------------------------------
+    WHAT THE MARGIN DOES AND DOES NOT COVER
+    ---------------------------------------------------------------------------
+    Covered by 4.5x headroom, and therefore not a threat to the verdict:
+      - the rAF-timestamp instrument vs a DevTools FPS-track read;
+      - the page-driven scroll vs a hand on a wheel;
+      - viewport 1201x882 @ dpr 1.5 instead of the specified 1440x900 @ 100%
+        (that is 1801x1323 device pixels — harsher than the protocol asked for,
+        not softer).
+
+    NOT covered, and left open deliberately:
+      - FIREFOX. A different compositor and a different media stack. A 4.5x
+        Chrome margin makes a Firefox NO-GO unlikely, but "unlikely" is not
+        "measured", and this probe does not claim otherwise.
+      - WEAKER HARDWARE. 227 fps implies a high-refresh display and a capable
+        GPU; rAF cannot report above the display's refresh rate, so on a 60 Hz
+        machine a healthy result would read ~60, not 227. This probe says
+        nothing about a low-end visitor. The right place to catch that is a
+        real-device pass once /theater/ is deployed, not here.
     Copy this row into the roadmap's "Decision records" table.
 
     ---------------------------------------------------------------------------
