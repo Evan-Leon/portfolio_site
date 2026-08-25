@@ -1003,6 +1003,10 @@ h4 {
     opacity: 1;
     transform: none;
   }
+
+  .hero__cta--theater {
+    display: none;
+  }
 }
 
 /* ============================================
@@ -1058,6 +1062,10 @@ h4 {
   .hero__ctas {
     flex-direction: column;
     align-items: center;
+  }
+
+  .hero__cta--theater {
+    display: none;
   }
 
   .project-grid {
