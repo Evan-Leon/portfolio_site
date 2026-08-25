@@ -31,9 +31,19 @@ the roadmap meta-prompt, in one session:
   before the first commit (caught two over-broad greps). Two cold **Sonnet**
   evaluators (code-truth, structure) returned 16 findings: 15 accepted, 1
   rescoped, 0 rejected; corrective commit landed.
-- **Part 3 — prompt prepared and handed to Evan** for Codex
-  (`docs/roadmaps/drive-in-theater-part3-prompt.md`, launcher one-liner
-  included, roadmap frozen at `647f093`). Not run in-session by design.
+- **Part 3 — done.** Prompt prepared (`docs/roadmaps/drive-in-theater-part3-prompt.md`),
+  Evan ran Codex and pasted the review back the same session: 1 CRITICAL + 5
+  MAJOR + 2 MINOR → 7 accepted, 1 rescoped, 0 rejected. The CRITICAL: the
+  roadmap had no path to production — `evanleon.com` is served from the
+  droplet root, not this container, and no workflow exists (both re-verified).
+  Fixed structurally with a new **DT10** (deploy workflow, `IMAGE_TAG`
+  rollback, recovery doc, asset audit, `CUTOVER: GO/NO-GO` gate). Also: DTF
+  now reproduces the production rendering path with a measured `reduced`
+  variant and a defined sampling protocol; `images/el-blackjack/01.png` found
+  to be a 1×1 PNG → poster-dimension gate; `LotSnapshot` observes rendered
+  state; DT6 sweeps all eight screens with one breakage per spec; DT0 deletes
+  the canvas describe block. Receipt committed. Roadmap final at `4324fe1`,
+  twelve phases.
 - **Repo hygiene — done.** Removed the blanket `docs/*` gitignore (added
   2026-07-23 with the session-log adoption) that had silently kept the
   2026-05-19 swiper-migration spec/plan and `docs/helpers/` out of git; those
@@ -50,8 +60,12 @@ portfolio_site:
 - `0a23820` docs(roadmap): drive-in theater roadmap — DTF, DT0–DT9 (Part 2)
 - `647f093` docs(roadmap): Part 2 evaluation — 16 findings, 15 accepted, 1 rescoped
 - `fcf5e2f` docs(roadmap): Part 3 review prompt for Codex, pinned to 647f093
+- `df0a8d9` docs: session log (first write)
+- `2e937a8` docs(roadmap): Part 3 (Codex) triage — 8 findings, 7 accepted, 1 rescoped, 0 rejected
+- `4324fe1` docs(roadmap): two stragglers from the Part 3 triage
 
-docs: `8d14c31` docs(roadmap-runlog): portfolio_site drive-in-theater row.
+docs: `8d14c31` runlog row (Parts 1–2, Part 3 handed off); `db476c2` appends
+the Part 3 outcome to that row.
 
 ## Uncommitted work left behind
 `images/chunk-norris/` (pre-existing, untracked, not mine — no project page
@@ -71,16 +85,23 @@ exists for it; noted as `[FYI]` in the spec). Nothing else.
 - Headless Playwright renders of both wireframes at 1440×900 and 390×844 — pass
   (after fixes).
 - Pre-commit Prettier hook ran on the wireframe commits — pass.
-- Not run: anything in `theater/` (does not exist yet); Docker builds; the
-  Part 3 Codex review (handed off).
+- Part 3 triage re-probes: `file images/*/01.png` (el-blackjack 1×1 confirmed,
+  seven real), `curl https://evanleon.com/theater/` → 404 and `infra/domain-registry.md`
+  (prod not on this container) — both findings confirmed. New DT6 breakage
+  commands fixture-tested (reveal regex removes exactly one entry;
+  `activeScreen`/`lotZ` sed renames + stubs). DT10's audit-must-fail target
+  confirmed 404 today.
+- Not run: anything in `theater/` (does not exist yet); Docker builds.
 
 ## Blockers
-None. DTF's measurement is Evan's (real browsers), which is why DT0 waits on it.
+None. Two prerequisites are Evan's before phases run: replace
+`images/el-blackjack/01.png` (1×1 placeholder) before DT3, and DTF's browser
+measurement before DT0.
 
 ## Open flags
-- How the multi-stage image reaches ghcr.io / the droplet is unchanged and
-  undocumented in the roadmap (pre-existing manual push path); flagged in the
-  Part 3 prompt's lens 1.
+- (Resolved by Part 3 → DT10.) The image path to production did not exist at
+  all; `evanleon.com` is not on the container. DT10's cutover is Evan's
+  decision and is recorded as a gate.
 - `scripts/validate_codex_setup.py` `EXPECTED_HIGH_VALUE` names skills this
   repo never had (incl. retired `phase-status`); left alone (out of scope).
 - Root `pnpm-lock.yaml`/`node_modules` will grow substantially in DT0 (Vite,
@@ -102,22 +123,30 @@ None. (Repo has no rules-index — deliberate opt-out recorded 2026-07-23.)
 - Same doc, Part 3 "Who runs it": worked as written; the `awk` fence extractor
   needs the prompt file to contain exactly one four-backtick fence — worth
   stating next to the launcher.
+- Same doc, "Aiming it": add a bullet — *the roadmap's deliverable must reach a
+  user; ask who delivers it and whether that path exists.* Both Part 2 agents
+  verified a Dockerfile that builds locally and neither asked how the image
+  reaches production; the Decision Record's "unchanged mechanism" was an
+  assumption the writing session never checked against `infra/domain-registry.md`.
+- Same doc, Part 1 Step 1: "every file exists" is not "every file is valid" —
+  a checked-in 1×1 placeholder satisfied `test -f`. Propose: when a phase
+  depends on existing content assets, inspect them (`file`, dimensions, bytes),
+  not just their presence.
 - `superpowers:brainstorming`: the architectural path's terminal state is
   `writing-plans`; when the user names the roadmap meta-prompt instead, the
   handoff ("Part 1 follows a brainstorming session … skip Steps 1/3/4") worked
   cleanly. No edit needed.
 
 ## Next steps
-1. Evan: run the Part 3 Codex review with the launcher in
-   `docs/roadmaps/drive-in-theater-part3-prompt.md`; paste the result back into
-   a session for triage → second corrective commit → runlog update.
-2. Then DTF: a session builds the probe; Evan measures in Chrome + Firefox and
-   records the decision row.
-3. DT0 onward, one phase per session, in ToC order.
+1. Evan: replace `images/el-blackjack/01.png` with a real screenshot
+   (`adding-project-screenshots`); it is a 68-byte 1×1 today.
+2. DTF: a session builds the four-variant probe; Evan measures in Chrome +
+   Firefox per the protocol and records the decision row.
+3. DT0 onward, one phase per session, in ToC order (DT10 sits after DT7).
 
 ## Pointers
 - Spec: `docs/superpowers/specs/2026-08-25-drive-in-theater-design.md`
 - Roadmap: `docs/roadmaps/drive-in-theater-roadmap.md` (Changelog row 2026-08-25; DTF decision record table)
-- Part 3 prompt: `docs/roadmaps/drive-in-theater-part3-prompt.md`
+- Part 3 prompt: `docs/roadmaps/drive-in-theater-part3-prompt.md`; receipt: `docs/roadmaps/drive-in-theater-part3-codex-review.md`
 - Wireframes: `docs/wireframes/theater.html`, `docs/wireframes/index-hero-cta.html`
 - Runlog: `/home/evan/EVOsystem/docs/meta-prompts/roadmap/roadmap-runlog.md` (2026-08-25 portfolio_site row)
