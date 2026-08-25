@@ -1,6 +1,6 @@
 ---
 name: rebuild-restart
-description: Use after changing portfolio_site's site files (index.html, projects/*.html, assets/, images/, 404.html), the Dockerfile, nginx.conf, or docker-compose.yml — rebuild the nginx image and recreate the container on evo-net so the change is served.
+description: Use after changing portfolio_site's site files (index.html, projects/*.html, assets/, images/, theater/**, 404.html), the Dockerfile, nginx.conf, or docker-compose.yml — rebuild the nginx image and recreate the container on evo-net so the change is served.
 ---
 
 # Rebuild and Restart Portfolio Site
@@ -11,9 +11,13 @@ This site is a plain static site (HTML/CSS/JS) baked into an nginx image at buil
 time — there are **no bind mounts and no hot reload**. Every change to anything the
 image contains needs a rebuild:
 
-- Site content: `index.html`, `projects/*.html`, `404.html`, `assets/**`, `images/**`
+- Site content: `index.html`, `projects/*.html`, `404.html`, `assets/**`, `images/**`, `theater/**`
 - Serving config: `Dockerfile`, `nginx.conf`
 - `docker-compose.yml`
+
+The theater is compiled during the image build. A theater type error therefore
+fails `docker compose build`, and every theater change needs this rebuild before
+nginx can serve it.
 
 ## Commands
 

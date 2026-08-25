@@ -18,8 +18,10 @@ docker-compose.yml
 
 # Dev tooling — Prettier + its git hook. None of this belongs in the served webroot.
 node_modules
+theater/node_modules
+theater/dist
+theater/test-results
+theater/playwright-report
 .githooks
-package.json
-pnpm-lock.yaml
 .prettierignore
 .prettierrc*
