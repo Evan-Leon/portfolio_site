@@ -171,9 +171,10 @@ card grid remain exactly as they are and stay the fallback path.
 - **Missing clip = poster, not error.** The `<video>` `error` event hides the
   video element and leaves the poster lit. The theater is complete before any
   clip exists and upgrades one screen at a time as clips land.
-- **Loading gate:** the eight posters are declared to the asset loader as
-  `image` assets on the lot factory's `assets` manifest and the lot adapter is
-  `eager`, so the ring's number is honest and the reveal shows every screen
+- **Loading gate:** the eight posters are declared to `sharedAssetLoader` from
+  the lot adapter's `load()` and the adapter is `eager`, so the ring's number is
+  honest (no `factory.assets` manifest — the engine only warms manifests of
+  non-eager scenes, and the lot is the sole, eager scene) and the reveal shows every screen
   with a picture on it. **Videos are deliberately outside the loader** — a
   recorded departure from `SDS-006`: a stream is never "loaded",
   `preload="none"` means nothing is fetched until a screen goes active, and
@@ -210,7 +211,7 @@ card grid remain exactly as they are and stay the fallback path.
 click/focus-hit-testable in current Chromium, Firefox and WebKit.**
 
 **Never measured.** Step 1b search (2026-08-25) across `/home/evan/EVOsystem`:
-`docs/evals/` does not exist; no gate scorecard or roadmap Changelog row
+no relevant hit in any repo's `docs/evals/`; no gate scorecard or roadmap Changelog row
 mentions transformed video; the only "CSS 3D" hits fleet-wide are
 el-blackjack-pwa's single hole-card flip (`docs/roadmap.md:72`,
 `docs/superpowers/specs/2026-05-18-pwa-conversion-design.md:196`) — one
@@ -258,7 +259,7 @@ scopes cannot collide with anything). Rows are in execution order.
 | DT1 | Multi-stage Dockerfile, serve `/theater/` | infra | S | DT0 |
 | DT2 | Tokens re-palette + theater page shell (wireframe first) | frontend | M | DT1 |
 | DT3 | `projects.ts` + lot geometry + lot adapter + conformance test | frontend | M | DT2 |
-| DT4 | Video activation band, poster fallback, eager posters in the loader | frontend | S | DT3 |
+| DT4 | Video activation band, poster fallback | frontend | S | DT3 |
 | DT5 | Keyboard drive-by-focus, `reducedMotionSteps`, narrow layout | frontend | S | DT4 |
 | DT6 | Playwright e2e suite for the theater | tests | S | DT5 |
 | DT7 | Hero CTA on `index.html` + hide rules | site | XS | DT6 |
@@ -292,7 +293,7 @@ scopes cannot collide with anything). Rows are in execution order.
   `lot/lot-scene.ts` with `observe()`; contract test; registry entry. Unlocks:
   driving past eight lit posters.
 - **DT4** — Video elements, activation band on `seek`, `error` → poster
-  fallback, posters on the factory `assets` manifest, `eager: true`. Unlocks:
+  fallback. Unlocks:
   screens that play when a clip exists.
 - **DT5** — `focusin` scroll-to-screen; `reducedMotionSteps` engine option and
   theater value; reduced-motion video suppression; `< 768px` single-file
@@ -411,7 +412,7 @@ scopes cannot collide with anything). Rows are in execution order.
   Prettier via the pre-commit hook.
 - **DT8:** the wrapper/canonical split the validator enforces
   (`scripts/validate_codex_setup.py:26-27`, `references_canonical` at
-  `:78-80` — the wrapper body must contain `.claude/skills/<name>/SKILL.md`).
+  `:78-81` — the wrapper body must contain `.claude/skills/<name>/SKILL.md`).
 - **DT9:** `[MANUAL]`; `EVO-UNI-090` commit each clip the moment it is
   captured — a file that exists only in the working tree is not delivered.
 
@@ -434,7 +435,7 @@ scopes cannot collide with anything). Rows are in execution order.
   against the skeleton are semantic only. No `theater/.prettierrc`.
 - `[FYI]` `scripts/validate_codex_setup.py` enforces only the wrapper →
   canonical relationship (`WRAPPERS_DIR`/`CANONICAL_DIR` at lines 26-27,
-  `references_canonical` at 78-80). Its `EXPECTED_HIGH_VALUE` tuple (line 36:
+  `references_canonical` at 78-81). Its `EXPECTED_HIGH_VALUE` tuple (line 36:
   `rules-index`, `backend`, `frontend`, `phase-status`) names skills this repo
   has never had, including the retired `phase-status`; DT8 adds the new
   wrapper and leaves that tuple alone — cleaning it is unrelated scope.
