@@ -13,14 +13,13 @@ Thumbs.db
 .claude/*
 !.claude/skills/
 
-docs/*
-!docs/session-logs/
-!docs/codex-setup.md
+# docs/ is tracked in full (session logs, specs, plans, roadmaps, wireframes —
+# see AGENTS.md). A blanket `docs/*` ignore lived here 2026-07-23 → 2026-08-25
+# and silently kept the swiper-migration spec/plan out of git; do not reinstate.
 
 # Superpowers
 .superpowers/
 .worktrees/
-docs/superpowers/
 
 # Docker
 docker-compose.override.yml
