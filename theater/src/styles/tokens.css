@@ -1,0 +1,200 @@
+/*
+ * Scroll-Driven Skeleton — design tokens
+ * ---------------------------------------------------------------------------
+ * Single source of truth. The app imports this; the wireframes in
+ * docs/wireframes/ link to this same file, so an approved wireframe and the
+ * built page cannot drift apart.
+ *
+ * Every token is prefixed --sds- deliberately. When this ships as a Wix custom
+ * element the styles are injected into a page we do not control, and an
+ * unprefixed --bg or --accent would collide with the host page's own variables.
+ *
+ * This is a brand-neutral placeholder palette. It is meant to be replaced:
+ * the animation is the identity of this page, and the shell should recede.
+ * Swap the values in the PALETTE block; leave the semantic layer alone.
+ *
+ * WHY EVERY BLOCK IS `:host, :root` AND NOT JUST `:root`
+ * -----------------------------------------------------
+ * `:root` matches the document's root element (`<html>`) and does NOT match a
+ * ShadowRoot. The Wix build mounts this whole experience inside a shadow root
+ * and injects this stylesheet into it — where a `:root`-only rule matches
+ * nothing, every `var(--sds-*)` resolves to invalid, and the page renders
+ * completely unstyled with no error. The host page cannot supply the tokens
+ * either, because the single-file bundle is the only thing loaded.
+ * `:host` is the shadow-tree equivalent. Listing both makes one stylesheet
+ * correct in both targets. Do not "simplify" this back to `:root`.
+ */
+
+:host,
+:root {
+  /* ---- Palette primitives -------------------------------------------------
+   * Raw values. Never reference these directly outside this file — use the
+   * semantic tokens below, so a rebrand touches one block.
+   */
+  --sds-ink-950: #08090b;
+  --sds-ink-900: #0e1013;
+  --sds-ink-800: #16191e;
+  --sds-ink-700: #22262d;
+  --sds-ink-600: #343a44;
+  --sds-ink-400: #6b7280;
+  --sds-ink-200: #a8b0bb;
+  --sds-ink-100: #d6dae1;
+  --sds-ink-050: #f2f4f7;
+  --sds-ink-000: #ffffff;
+
+  --sds-signal-500: #4f7cff;
+  --sds-signal-400: #7a9bff;
+  --sds-signal-300: #a6bcff;
+
+  --sds-warn-500: #e0a03a;
+
+  /* ---- Semantic colour -----------------------------------------------------
+   * Dark by default: this genre of page is almost always dark, and a dark
+   * canvas is the most forgiving backdrop for arbitrary animation content.
+   */
+  --sds-bg: var(--sds-ink-950);
+  --sds-bg-raised: var(--sds-ink-900);
+  --sds-bg-inset: var(--sds-ink-800);
+
+  --sds-text: var(--sds-ink-050);
+  --sds-text-muted: var(--sds-ink-200);
+  --sds-text-subtle: var(--sds-ink-400);
+
+  --sds-border: var(--sds-ink-700);
+  --sds-border-strong: var(--sds-ink-600);
+
+  --sds-accent: var(--sds-signal-500);
+  --sds-accent-soft: var(--sds-signal-300);
+  --sds-warn: var(--sds-warn-500);
+
+  --sds-focus-ring: var(--sds-signal-400);
+
+  /* Loader-specific roles. Named by job, not appearance, so restyling the
+   * ring does not mean hunting through component CSS. */
+  --sds-loader-track: var(--sds-ink-700);
+  --sds-loader-indicator: var(--sds-accent);
+  --sds-loader-backdrop: var(--sds-ink-950);
+
+  /* ---- Spacing -------------------------------------------------------------
+   * 4px base, doubling at the top end. Named by size, not by usage.
+   */
+  --sds-space-1: 0.25rem;
+  --sds-space-2: 0.5rem;
+  --sds-space-3: 0.75rem;
+  --sds-space-4: 1rem;
+  --sds-space-6: 1.5rem;
+  --sds-space-8: 2rem;
+  --sds-space-12: 3rem;
+  --sds-space-16: 4rem;
+  --sds-space-24: 6rem;
+  --sds-space-32: 8rem;
+
+  /* ---- Typography ----------------------------------------------------------
+   * System stack only. No webfont: a Wix custom element runs under a host CSP
+   * we do not control, and a blocked font request would shift layout after the
+   * loader has already dismissed.
+   */
+  --sds-font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --sds-font-mono:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+
+  /* Fluid where it earns it: display scales with viewport, body does not. */
+  --sds-text-display: clamp(2.5rem, 7vw, 5.5rem);
+  --sds-text-title: clamp(1.75rem, 3.5vw, 2.75rem);
+  --sds-text-lead: clamp(1.05rem, 1.6vw, 1.375rem);
+  --sds-text-body: 1rem;
+  --sds-text-small: 0.875rem;
+  --sds-text-micro: 0.75rem;
+
+  --sds-leading-tight: 1.1;
+  --sds-leading-snug: 1.3;
+  --sds-leading-normal: 1.6;
+
+  --sds-tracking-tight: -0.02em;
+  --sds-tracking-normal: 0;
+  --sds-tracking-wide: 0.08em;
+
+  --sds-weight-regular: 400;
+  --sds-weight-medium: 500;
+  --sds-weight-bold: 700;
+
+  /* ---- Radii and borders --------------------------------------------------- */
+  --sds-radius-sm: 4px;
+  --sds-radius-md: 8px;
+  --sds-radius-lg: 16px;
+  --sds-radius-full: 9999px;
+
+  --sds-border-width: 1px;
+
+  /* ---- Motion --------------------------------------------------------------
+   * Durations for discrete UI transitions only. Scroll-scrubbed animation has
+   * no duration by definition — its clock is the scroll position.
+   */
+  --sds-duration-fast: 150ms;
+  --sds-duration-base: 280ms;
+  --sds-duration-slow: 600ms;
+  --sds-duration-reveal: 900ms;
+
+  --sds-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --sds-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Minimum time the loader stays up even on a warm cache, so a fast load
+   * reads as a deliberate reveal rather than a flash. Consumed by JS as well
+   * as CSS — read it with getComputedStyle rather than duplicating the number. */
+  --sds-loader-min-visible: 400ms;
+
+  /* ---- Layering ------------------------------------------------------------
+   * One place to reason about what covers what.
+   */
+  --sds-z-scene: 0;
+  --sds-z-content: 10;
+  --sds-z-persistent: 20;
+  --sds-z-chrome: 30;
+  --sds-z-loader: 100;
+  --sds-z-skip-link: 200;
+
+  /* ---- Layout -------------------------------------------------------------- */
+  --sds-measure: 62ch;
+  --sds-content-max: 72rem;
+  --sds-gutter: clamp(1rem, 5vw, 4rem);
+}
+
+/*
+ * Light theme. Opt-in via [data-theme="light"] rather than a bare
+ * prefers-color-scheme block: when embedded in a host page, the host's scheme
+ * preference is not a reliable signal about the surface this page sits on.
+ */
+:host([data-theme="light"]),
+:root[data-theme="light"] {
+  --sds-bg: var(--sds-ink-000);
+  --sds-bg-raised: var(--sds-ink-050);
+  --sds-bg-inset: var(--sds-ink-100);
+
+  --sds-text: var(--sds-ink-900);
+  --sds-text-muted: var(--sds-ink-600);
+  --sds-text-subtle: var(--sds-ink-400);
+
+  --sds-border: var(--sds-ink-100);
+  --sds-border-strong: var(--sds-ink-200);
+
+  --sds-loader-track: var(--sds-ink-100);
+  --sds-loader-backdrop: var(--sds-ink-000);
+}
+
+/*
+ * Reduced motion. The scroll engine reads this via matchMedia and switches
+ * scenes from continuous scrubbing to discrete keyframe states; these rules
+ * cover the CSS-only surfaces (loader spin, reveal transitions).
+ */
+@media (prefers-reduced-motion: reduce) {
+  :host,
+  :root {
+    --sds-duration-fast: 1ms;
+    --sds-duration-base: 1ms;
+    --sds-duration-slow: 1ms;
+    --sds-duration-reveal: 1ms;
+  }
+}

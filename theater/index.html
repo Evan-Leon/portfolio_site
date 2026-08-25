@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portfolio Theater</title>
+    <meta
+      name="description"
+      content="A scroll-driven drive-in theater experience."
+    />
+  </head>
+  <body>
+    <div id="app">
+      <a class="sds-skip" href="#content">Skip animation, go to content</a>
+
+      <div
+        class="sds-chrome__bar"
+        data-sds-progress-bar
+        aria-hidden="true"
+      ></div>
+      <header class="sds-chrome">
+        <span class="sds-chrome__mark">Portfolio Theater</span>
+        <span class="sds-chrome__mark" data-sds-progress-percent>0%</span>
+      </header>
+
+      <main>
+        <section class="sds-section sds-section--hero">
+          <p class="sds-eyebrow">Drive-In Theater</p>
+          <h1>The shell recedes. The animation is the page.</h1>
+          <p>
+            This placeholder preserves the vendored engine wiring while the
+            theater experience is built in later phases.
+          </p>
+          <p class="sds-hint">↓ Scroll</p>
+        </section>
+
+        <div data-scene-slot="lot"></div>
+
+        <section class="sds-section" id="content" tabindex="-1">
+          <p class="sds-eyebrow">Interleaved content</p>
+          <h2>The lot is ready for its scene.</h2>
+          <p>
+            The first phase provides the tested engine and a single placeholder
+            scene. Later phases replace its content without changing the seam.
+          </p>
+        </section>
+      </main>
+
+      <footer class="sds-footer">
+        <div>Portfolio Theater — engine scaffold.</div>
+      </footer>
+
+      <div
+        class="sds-persistent"
+        data-sds-persistent
+        title="Persistent layer — receives global page progress"
+        aria-hidden="true"
+      >
+        0%
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

@@ -56,7 +56,7 @@ run() { # run <label> <dir> <cmd...>
 # and fnm's alias dir (prepended above) puts pnpm on PATH even under `env -i`, hiding the
 # loud arm in every environment you can test. Go straight from "binary missing" -> loud
 # arm. (meta-prompt Step 1 WRAPPER vs BINARY; log §O)
-mapfile -t fmt_files < <(printf '%s\n' "$staged" | grep -E '\.(html|css|js)$' || true)
+mapfile -t fmt_files < <(printf '%s\n' "$staged" | grep -E '\.(html|css|js|ts)$' || true)
 if [ ${#fmt_files[@]} -gt 0 ]; then
   if [ -x "$repo_root/node_modules/.bin/prettier" ]; then
     run "format-check (prettier)" . "$repo_root/node_modules/.bin/prettier" --check "${fmt_files[@]}"

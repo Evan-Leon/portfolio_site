@@ -29,6 +29,10 @@ docker-compose.override.yml
 
 # Node (if any tooling is added)
 node_modules/
+theater/dist/
+theater/test-results/
+theater/playwright-report/
+theater/.vite/
 
 # Python bytecode (setup-validation script)
 __pycache__/

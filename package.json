@@ -4,8 +4,12 @@
   "private": true,
   "description": "Static portfolio site (nginx). Prettier is the sole format check enforced by .githooks/pre-commit.",
   "scripts": {
-    "format": "prettier --write \"**/*.{html,css,js}\"",
-    "format:check": "prettier --check \"**/*.{html,css,js}\"",
+    "format": "prettier --write \"**/*.{html,css,js,ts}\"",
+    "format:check": "prettier --check \"**/*.{html,css,js,ts}\"",
+    "theater:build": "pnpm -C theater build",
+    "theater:test": "pnpm -C theater test",
+    "theater:typecheck": "pnpm -C theater typecheck",
+    "theater:lint": "pnpm -C theater lint",
     "validate:codex": "python3 scripts/validate_codex_setup.py"
   },
   "devDependencies": {

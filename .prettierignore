@@ -9,6 +9,8 @@ docs/
 # Never format dependencies or the lockfile.
 node_modules/
 pnpm-lock.yaml
+theater/dist/
+theater/node_modules/
 
 # OS / repo cruft (not html/css/js, but keep Prettier from ever touching them).
 .git/

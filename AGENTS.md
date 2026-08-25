@@ -10,6 +10,8 @@ itself and no application test suite — the content *is* the source files.
 - `projects/<slug>.html` — per-project detail pages (project-swiper).
 - `assets/` — `css/`, `js/` (Swiper init, main).
 - `images/<slug>/` — per-project screenshots (`01.png`, `02.png`, …).
+- `theater/` — self-contained Vite + TypeScript drive-in theater workspace;
+  `theater/dist/` is a generated build artefact and is never committed.
 - `404.html`, `nginx.conf`, `Dockerfile`, `docker-compose.yml`, `.dockerignore`
   — serving config baked into the image at build time (no bind mounts, no hot
   reload; a rebuild is required for any change to be served).
@@ -31,7 +33,9 @@ Run from the repository root (`/home/evan/EVOsystem/portfolio_site`).
   `node_modules/.bin/prettier`.
 - Enable the pre-commit hook (once per clone): `git config core.hooksPath .githooks`.
 - Format: `pnpm format` (write) / `pnpm format:check` (check) — Prettier over
-  `**/*.{html,css,js}`. This is the only enforced check; there is no test suite.
+  `**/*.{html,css,js,ts}`.
+- Theater checks: `pnpm theater:typecheck`, `pnpm theater:lint`, and
+  `pnpm theater:test`; build with `pnpm theater:build`.
 - Validate the Codex setup: `python3 scripts/validate_codex_setup.py`
   (or `pnpm validate:codex`).
 - Serve a change (rebuild the image + recreate the container): use the
@@ -39,9 +43,10 @@ Run from the repository root (`/home/evan/EVOsystem/portfolio_site`).
   `docker compose build && docker compose up -d --force-recreate`.
 
 Dependency policy: pnpm is the package manager (`packageManager` is pinned in
-`package.json`); do not add runtime dependencies for the static site, and do not
-add third-party packages to the Codex validator (standard library only). Do not
-weaken or bypass the format check or the pre-commit hook to make a task pass.
+`package.json`) and the root lockfile covers the `theater/` workspace; do not add
+runtime dependencies for the static site, and do not add third-party packages
+to the Codex validator (standard library only). Do not weaken or bypass the
+format check or the pre-commit hook to make a task pass.
 
 ## Session logs
 
