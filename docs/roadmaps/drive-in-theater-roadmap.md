@@ -147,12 +147,12 @@ Read these files before writing any code:
 <build_order>
 
 ### 1. Probe page
-- [ ] Generate `docs/spikes/probe-clip-0..7.mp4` with ffmpeg (6 s, 960×600, `testsrc2` with a distinct seed/label per file, libx264, `-an`, `-movflags +faststart`).
-- [ ] Write `docs/spikes/2026-08-25-transformed-video-probe.html` with the four variants; the lot/overload/reduced variants drive a GSAP timeline (world `translateZ` + per-screen brightness/marquee tweens) from a Lenis-ticked rAF loop, per `<constraints>`.
-- [ ] Add a header comment stating what is measured, the four variants, the sampling protocol, and the pre-registered bands, with empty slots for the numbers.
+- [x] Generate `docs/spikes/probe-clip-0..7.mp4` with ffmpeg (6 s, 960×600, `testsrc2` with a distinct seed/label per file, libx264, `-an`, `-movflags +faststart`).
+- [x] Write `docs/spikes/2026-08-25-transformed-video-probe.html` with the four variants; the lot/overload/reduced variants drive a GSAP timeline (world `translateZ` + per-screen brightness/marquee tweens) from a Lenis-ticked rAF loop, per `<constraints>`.
+- [x] Add a header comment stating what is measured, the four variants, the sampling protocol, and the pre-registered bands, with empty slots for the numbers.
 
 ### 2. Hand over
-- [ ] Commit the probe and the clip (the `<commit>` below). The measurement itself is a human step — see **Manual Verification** — so the session's work ends here; the decision line is written by whoever measures.
+- [x] Commit the probe and the clip (the `<commit>` below). The measurement itself is a human step — see **Manual Verification** — so the session's work ends here; the decision line is written by whoever measures.
 
 </build_order>
 

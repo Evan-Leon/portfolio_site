@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spike — DTF transformed-video falsifier probe</title>
+
+    <!--
+    ===========================================================================
+    DTF — FALSIFIER: do CSS-3D-transformed <video> elements scrub smoothly and
+    stay clickable / focusable?
+    ===========================================================================
+
+    Roadmap: docs/roadmaps/drive-in-theater-roadmap.md, phase DTF.
+    Spec:    docs/superpowers/specs/2026-08-25-drive-in-theater-design.md,
+             "Core assumption".
+
+    This file SHIPS NOTHING. It is a throwaway measurement rig, kept as the
+    receipt for one decision line. Open it directly over file://:
+
+        file:///home/evan/EVOsystem/portfolio_site/docs/spikes/2026-08-25-transformed-video-probe.html?variant=lot
+
+    ---------------------------------------------------------------------------
+    WHAT IS MEASURED
+    ---------------------------------------------------------------------------
+    The whole drive-in roadmap rests on one never-measured assumption: that
+    eight <video> elements, placed on a `perspective`/`preserve-3d` stage and
+    scrubbed by scroll, (a) hold a usable frame rate and (b) still hit-test for
+    mouse and keyboard. If they do not, vendoring an engine to drive them is
+    wasted work, so this runs BEFORE any code is vendored.
+
+    The metric is the LOWEST fps over any contiguous 1 s window of a 10 s
+    DevTools Performance recording. Lowest-window, not mean, on purpose: in the
+    `lot` variant the cost grows as the drive proceeds (each screen that enters
+    its band is play()ed and then paused, so the number of resident decoders
+    climbs from 0 to 8 over the scroll). A mean would hide that ramp behind the
+    cheap first half.
+
+    ---------------------------------------------------------------------------
+    THE FOUR VARIANTS  (?variant=… , or set VARIANT_OVERRIDE below)
+    ---------------------------------------------------------------------------
+    flat      BASELINE (EVO-UNI-021). Eight videos in a plain grid, no
+              transforms, no GSAP, no Lenis, native scrolling, all `autoplay`.
+              This is the floor: what eight simultaneously-decoding videos cost
+              with nothing else going on.
+
+    lot       THE PRODUCTION PATH, not a sketch of it. The wireframe's exact
+              transform stack (docs/wireframes/theater.html): perspective 900px
+              / perspective-origin 50% 42% → a `preserve-3d` world → eight
+              <a class="screen"> at translate3d(±480px, 0, −(i+1)·800px)
+              rotateY(±18°), each a 520px-wide 16:10 surface with marquee and
+              posts. Driven exactly as the vendored engine will drive it
+              (scroll-driven-skeleton/src/engine/engine.ts +
+              src/adapters/gsap-timeline.ts):
+                • one gsap.timeline({ paused: true });
+                • ONE tween moving the world's translateZ 0 → 7200px;
+                • per-screen "lit" tweens over each screen's band, driving
+                  `filter: brightness()` 0.35 → 1 → 0.35 and the marquee's
+                  background + box-shadow glow in and out;
+                • `new Lenis({ autoRaf: false })`, ticked from our own rAF loop;
+                • the frame does `lenis.raf(t)` FIRST (Lenis moves the page
+                  during that call), then ONE `window.scrollY` read, then an
+                  absolute `timeline.progress(scrollY / range, true)`.
+                  Nothing in the frame path measures layout — `range` is
+                  measured on load and on resize, as in the engine.
+              All eight <source>s are attached from construction with
+              `preload="none"`; only the screen whose band contains the camera
+              is told to play(), the rest pause(). That is DT4's rule, and the
+              switch is idempotent (a repeat of the same index does nothing).
+
+    overload  THE FAILING CONTROL (EVO-UNI-120). `lot` with 32 screens instead
+              of 8. A metric that cannot report a bad number is not a
+              measurement: if `overload` does NOT read lower than `lot`, the
+              meter is not moving and no verdict may be drawn from this probe.
+
+    reduced   DT4's GO-REDUCED mitigation, measured rather than hoped for: the
+              `lot` variant where a screen's <source> is attached only while it
+              is active and removed (followed by `load()`, which releases the
+              decoder) when it leaves the band. A GO-REDUCED verdict rests on
+              this number.
+
+    ---------------------------------------------------------------------------
+    THE EIGHT CLIPS
+    ---------------------------------------------------------------------------
+    No project demo clips exist yet (DT9 produces them). These eight are
+    synthetic and DISTINCT — one file repeated eight times would let the browser
+    share a single decoder and understate the cost. Generated once, in-repo, by:
+
+        FONT=/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf
+        LABELS=(ALPHA BRAVO CHARLIE DELTA ECHO FOXTROT GOLF HOTEL)
+        for i in 0 1 2 3 4 5 6 7; do
+          ffmpeg -y -f lavfi -i "testsrc2=size=960x600:rate=30:duration=6" \
+            -vf "hue=h=$((i*45)),\
+        drawtext=fontfile=${FONT}:text='CLIP ${i} ${LABELS[$i]}':fontsize=64:fontcolor=white:borderw=4:bordercolor=black:x=(w-text_w)/2:y=h-140,\
+        drawtext=fontfile=${FONT}:text='%{frame_num}':fontsize=40:fontcolor=yellow:borderw=3:bordercolor=black:x=40:y=40,\
+        format=yuv420p" \
+            -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p -an \
+            -movflags +faststart "docs/spikes/probe-clip-${i}.mp4"
+        done
+
+    (ffmpeg 6.1.1's `testsrc2` has no `seed` option — the roadmap's
+    "different seed/overlay text per file" is satisfied by a per-file hue
+    rotation plus per-file overlay text. Eight distinct md5s, verified.)
+    `overload`'s 32 screens cycle the same eight files, 4 uses each; a control
+    is allowed to be cheaper per screen than the real thing, it only has to be
+    heavier overall.
+
+    ---------------------------------------------------------------------------
+    SAMPLING PROTOCOL — follow it exactly; it is what makes the bands mean
+    anything
+    ---------------------------------------------------------------------------
+    • Real browsers on the host: Chrome AND Firefox. WebKit only if a Mac is
+      available; otherwise record "not measured".
+    • 1440×900 window, 100% zoom, laptop on mains power, no other tab playing
+      media.
+    • DevTools → Performance → record 10 s of CONTINUOUS wheel scrolling at a
+      natural reading pace, top to bottom.
+    • Read the lowest fps over any contiguous 1 s window in that recording.
+    • THREE recordings per variant per browser; take the MEDIAN.
+    • A result straddling a band boundary across the three runs is resolved by
+      the median — never by re-running until it passes.
+
+    ---------------------------------------------------------------------------
+    PRE-REGISTERED DECISION BANDS (EVO-UNI-091) — written before any number was
+    taken. Judged on the `lot` variant's median-of-three in BOTH Chrome and
+    Firefox.
+    ---------------------------------------------------------------------------
+    GO           lot ≥ 50 fps in both browsers, AND overload reads lower than
+                 lot (the meter moves), AND click + Tab both succeed.
+                 → DT4 attaches all eight <source>s from construction.
+
+    GO-REDUCED   lot lands in 30–49 fps in either browser, AND the `reduced`
+                 variant is ≥ 50 fps in BOTH, AND click + Tab both succeed.
+                 → DT4 attaches a <source> only to the active screen.
+
+    NO-GO        lot < 30 fps in either browser, OR reduced < 50 fps while lot
+                 is in the 30–49 band, OR click/Tab fails.
+                 → STOP. The fallback (cross-fading the existing PNGs on
+                   untransformed screens, or dropping the lit-state filters) is
+                   a spec change and Evan's call, not this phase's.
+
+    ---------------------------------------------------------------------------
+    HIT-TESTING (lot variant, both browsers)
+    ---------------------------------------------------------------------------
+    • Scroll until SCREEN 3 (yawed away from the camera, left side) is lit;
+      click its surface. Its <a href> must navigate to
+      ../../projects/el-blackjack.html.
+    • Tab from the top of the page. Focus must land on the screens in DOM order
+      (1, 2, 3, …) with a visible ring on each.
+
+    ---------------------------------------------------------------------------
+    RESULTS — fill in after Manual Verification. Lowest fps over any contiguous
+    1 s window; three 10 s recordings, then the median.
+    ---------------------------------------------------------------------------
+    Chrome  version ______
+
+      variant     run 1     run 2     run 3     MEDIAN
+      flat        ______    ______    ______    ______
+      lot         ______    ______    ______    ______
+      overload    ______    ______    ______    ______
+      reduced     ______    ______    ______    ______
+
+    Firefox version ______
+
+      variant     run 1     run 2     run 3     MEDIAN
+      flat        ______    ______    ______    ______
+      lot         ______    ______    ______    ______
+      overload    ______    ______    ______    ______
+      reduced     ______    ______    ______    ______
+
+    WebKit  ______________________  (or: not measured — no Mac available)
+
+    Control check (EVO-UNI-120): overload median < lot median?
+      Chrome  ______      Firefox  ______
+      If either is "no", the meter is not moving — no verdict may be drawn;
+      hand the probe back to a session to add screens / enlarge surfaces.
+
+    Hit test (lot):
+      click SCREEN 3 → navigates?   Chrome ______   Firefox ______
+      Tab in DOM order, visible ring? Chrome ______  Firefox ______
+
+    DECISION: ____________  (GO / GO-REDUCED / NO-GO)
+    Date: ____________   Decided by: ____________
+    Copy this row into the roadmap's "Decision records" table.
+
+    ---------------------------------------------------------------------------
+    KNOWN LIMITS OF THIS RIG — read before interpreting the difference
+    ---------------------------------------------------------------------------
+    1. `flat` deliberately uses NO GSAP and NO Lenis (the roadmap defines it as
+       "eight videos in a plain grid, no transforms, all autoplay"). So
+       (lot − flat) is the combined cost of the transform stack AND the engine
+       loop, not of the transform alone. It is a floor, not a controlled A/B.
+    2. `flat`'s grid is `position: fixed` and the page scrolls a spacer of the
+       same height as every other variant. Two reasons: identical scroll range
+       across variants makes the four numbers comparable, and an off-screen
+       <video> is throttled by both browsers — a baseline that quietly stopped
+       decoding halfway down would be exactly the metric-that-cannot-report-a-
+       bad-number EVO-UNI-120 warns about.
+    3. GSAP's own rAF ticker runs in lot/overload/reduced (importing gsap wakes
+       it). That is also true in production, and it is constant across those
+       three variants, so it does not distort their comparison.
+    4. `reduced` has no poster image (the probe has no posters, only clips), so
+       an inactive screen there is a black surface rather than a still frame.
+       The decoder accounting — the thing being measured — is unaffected.
+    5. gsap and lenis are pinned to the versions the vendored engine will use
+       (gsap 3.15.0, lenis 1.3.26, per scroll-driven-skeleton/package.json).
+       They load from jsdelivr; with no network the probe refuses to run rather
+       than silently measuring a static page.
+    6. The screen z values here are -(i+1)*800 -- screen 3 sits at -2400px, not
+       the -2200px docs/wireframes/theater.html shows. They have not diverged:
+       the wireframe is a single static frame with the camera already ~200px
+       into the lot, so it bakes lotZ into each nth-of-type rule. Here that
+       offset lives where it belongs, in the world's animated translateZ.
+
+    ---------------------------------------------------------------------------
+    RIG SELF-CHECK -- already done, so the manual pass is only about fps
+    ---------------------------------------------------------------------------
+    Before hand-off this file was driven in headless Chromium (Playwright) and
+    every structural claim above was asserted green: eight autoplaying
+    untransformed videos in `flat`; eight screens at the stated transforms with
+    perspective 900px, all eight <source>s attached, preload="none" in `lot`;
+    the world transform moving with scroll; exactly one screen lit
+    (filter: brightness(1)) and exactly one video playing at any progress, and
+    it is the right one; the active marquee reaching rgb(212,168,98); 32 screens
+    in `overload`; and in `reduced`, zero <source>s at rest, exactly one on the
+    active screen, and it following the band. Hit-testing passed there too --
+    document.elementFromPoint at screen 3's centre resolves inside its <a>, a
+    real click navigated to /projects/el-blackjack.html, and Tab walked screens
+    0..7 in DOM order with a 4px ring. None of that substitutes for the real
+    browsers: headless Chromium is not the compositor or the decoder Chrome and
+    Firefox use, and fps is not measurable this way. It only means the rig is
+    known-good, so a bad number below is a finding about the approach rather
+    than a bug in the probe.
+    ===========================================================================
+    -->
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+
+    <style>
+      /* Lenis owns the scroll; a smooth scroll-behavior would fight it. The
+         engine deliberately does not import Lenis's stylesheet, so this rule
+         stands in for the one line of it that matters. */
+      html {
+        scroll-behavior: auto;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: #0a0520;
+        color: #a0a8c8;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      /* --- the scroll range. Identical for every variant, so the four
+             recordings cover the same distance at the same wheel pace. ------ */
+      .spacer {
+        height: 1060vh;
+      }
+
+      /* --- rig chrome. Static: nothing here updates per frame. ------------- */
+      .hud {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 60;
+        padding: 6px 10px;
+        font: 11px/1.5 ui-monospace, monospace;
+        color: #7c8aff;
+        background: rgba(0, 0, 0, 0.75);
+        border-bottom-right-radius: 4px;
+      }
+      .hud a {
+        color: #6b7280;
+        margin-left: 8px;
+      }
+      .hud a[aria-current="true"] {
+        color: #f0f0ff;
+        font-weight: 700;
+      }
+      .fatal {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+        background: #0a0520;
+        color: #fde68a;
+        font: 14px/1.7 ui-monospace, monospace;
+      }
+
+      /* --- flat: the baseline grid ---------------------------------------- */
+      .grid {
+        position: fixed;
+        inset: 0;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 12px;
+        padding: 40px 12px 12px;
+      }
+      .grid video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        background: #000;
+        display: block;
+      }
+
+      /* --- the lot. Transform stack copied from docs/wireframes/theater.html.
+             `.lot` is `fixed` here because the built page pins the scene. ---- */
+      .lot {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        perspective: 900px;
+        perspective-origin: 50% 42%;
+        background: linear-gradient(180deg, #0a0520 0%, #0d1033 45%, #120a2e 100%);
+      }
+      .lot__world {
+        position: absolute;
+        inset: 0;
+        transform-style: preserve-3d;
+        /* The ONE tween: translateZ(lotZ(progress)). GSAP overwrites this. */
+        transform: translateZ(0);
+      }
+      .lot__ground {
+        position: absolute;
+        left: 50%;
+        top: 58%;
+        width: 4000px;
+        height: 4800px;
+        margin-left: -2000px;
+        transform-origin: 50% 0;
+        transform: rotateX(-90deg) translateZ(0);
+        transform-style: preserve-3d;
+        background:
+          repeating-linear-gradient(
+            180deg,
+            transparent 0 780px,
+            rgba(240, 240, 255, 0.05) 780px 784px
+          ),
+          linear-gradient(180deg, #14102b 0%, #0a0520 70%);
+      }
+      .screen {
+        position: absolute;
+        left: 50%;
+        bottom: 42%;
+        width: 520px;
+        margin-left: -260px;
+        transform-style: preserve-3d;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .screen__surface {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        background: #000;
+        border: 6px solid #1a1633;
+        border-radius: 4px;
+        box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+        overflow: hidden;
+        /* Dim by default; the timeline's per-screen tween drives this inline.
+           No CSS transition — a transition would fight a per-frame tween. */
+        filter: brightness(0.35);
+      }
+      .screen__surface video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top;
+        display: block;
+      }
+      .screen__base {
+        position: relative;
+        width: 100%;
+        height: 96px;
+      }
+      .screen__post {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 14px;
+        background: linear-gradient(90deg, #26203f, #100c22);
+      }
+      .screen__post--l {
+        left: 70px;
+      }
+      .screen__post--r {
+        right: 70px;
+      }
+      .screen__marquee {
+        position: absolute;
+        left: 50%;
+        top: 14px;
+        transform: translateX(-50%);
+        width: 320px;
+        padding: 0.5rem 1rem;
+        text-align: center;
+        font-weight: 700;
+        font-size: 1.125rem;
+        color: #2b1d05;
+        background: #6b5a2a;
+        border: 3px solid #3b2f12;
+        border-radius: 6px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      /* The Tab half of the hit test: focus must be visible on a screen that is
+         dim and far away, so the ring is deliberately loud. */
+      .screen:focus-visible {
+        outline: 4px solid #f0f0ff;
+        outline-offset: 8px;
+      }
+      .screen:focus-visible .screen__surface {
+        box-shadow:
+          0 0 0 4px #f0f0ff,
+          0 0 40px #d4a862;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="hud">
+      <span id="hud-label">variant</span>
+      <a href="?variant=flat" data-v="flat">flat</a>
+      <a href="?variant=lot" data-v="lot">lot</a>
+      <a href="?variant=overload" data-v="overload">overload</a>
+      <a href="?variant=reduced" data-v="reduced">reduced</a>
+    </div>
+
+    <div id="stage"></div>
+    <div class="spacer"></div>
+
+    <script>
+      /* -------------------------------------------------------------------
+       * Set this to 'flat' | 'lot' | 'overload' | 'reduced' to pin a variant
+       * regardless of the query string. null = use ?variant= (default 'lot').
+       * ----------------------------------------------------------------- */
+      const VARIANT_OVERRIDE = null;
+
+      const VARIANTS = ["flat", "lot", "overload", "reduced"];
+      const requested = new URLSearchParams(location.search).get("variant");
+      const VARIANT =
+        VARIANT_OVERRIDE || (VARIANTS.includes(requested) ? requested : "lot");
+
+      /* Geometry — the wireframe's numbers, verbatim. */
+      const SPACING = 800; // px of Z between screens
+      const OFFSET = 480; // px of X, alternating sides
+      const YAW = 18; // degrees, alternating sign
+      const CLIP_COUNT = 8; // distinct source files on disk
+
+      /* Drive order, from the spec's projects.ts. The href is what the click
+         half of the hit test proves. */
+      const PROJECTS = [
+        ["budget-app", "Leon's Budget"],
+        ["nom-noms", "Nom Nom's"],
+        ["el-blackjack", "El Blackjack"],
+        ["classic-golf", "The Classic"],
+        ["spead-read", "Spead Read"],
+        ["media-cloud-web-tools", "Media Cloud"],
+        ["media-cloud-vitals", "MC Vitals"],
+        ["showrunner-digest", "ShowRunner"],
+      ];
+
+      const SCREEN_COUNT = VARIANT === "overload" ? 32 : 8;
+      /* The world travels one extra SPACING past the last screen, so screen i
+         sits at the camera plane at progress (i+1)/(n+1) and every band is the
+         same width. lot: 9 x 800 = 7200px, exactly the roadmap's figure. */
+      const TRAVEL = (SCREEN_COUNT + 1) * SPACING;
+      const BAND = 1 / (SCREEN_COUNT + 1);
+
+      const stage = document.getElementById("stage");
+      document.getElementById("hud-label").textContent = VARIANT.toUpperCase();
+      for (const a of document.querySelectorAll(".hud a")) {
+        if (a.dataset.v === VARIANT) a.setAttribute("aria-current", "true");
+      }
+
+      const clipSrc = (i) => `probe-clip-${i % CLIP_COUNT}.mp4`;
+
+      function fatal(message) {
+        const el = document.createElement("div");
+        el.className = "fatal";
+        el.textContent = message;
+        document.body.appendChild(el);
+      }
+
+      /* ===================================================================
+       * flat — the baseline (EVO-UNI-021)
+       * =================================================================== */
+      function buildFlat() {
+        const grid = document.createElement("div");
+        grid.className = "grid";
+        for (let i = 0; i < 8; i++) {
+          const video = document.createElement("video");
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.autoplay = true;
+          const source = document.createElement("source");
+          source.src = clipSrc(i);
+          source.type = "video/mp4";
+          video.appendChild(source);
+          grid.appendChild(video);
+        }
+        stage.appendChild(grid);
+      }
+
+      /* ===================================================================
+       * lot / overload / reduced — the production rendering path
+       * =================================================================== */
+      function buildLot() {
+        const lot = document.createElement("div");
+        lot.className = "lot";
+        const world = document.createElement("div");
+        world.className = "lot__world";
+        const ground = document.createElement("div");
+        ground.className = "lot__ground";
+        world.appendChild(ground);
+
+        const screens = [];
+        for (let i = 0; i < SCREEN_COUNT; i++) {
+          const [slug, name] = PROJECTS[i % PROJECTS.length];
+          const left = i % 2 === 0;
+
+          const screen = document.createElement("a");
+          screen.className = "screen";
+          screen.href = `../../projects/${slug}.html`;
+          screen.style.transform =
+            `translate3d(${left ? -OFFSET : OFFSET}px, 0, ${-(i + 1) * SPACING}px)` +
+            ` rotateY(${left ? YAW : -YAW}deg)`;
+
+          const surface = document.createElement("span");
+          surface.className = "screen__surface";
+          const video = document.createElement("video");
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          /* preload="none" matches what DT4 ships: the <source> is present but
+             nothing is fetched until the screen is first played. */
+          video.preload = "none";
+          if (VARIANT !== "reduced") attachSource(video, clipSrc(i));
+          surface.appendChild(video);
+
+          const base = document.createElement("span");
+          base.className = "screen__base";
+          const postL = document.createElement("span");
+          postL.className = "screen__post screen__post--l";
+          const postR = document.createElement("span");
+          postR.className = "screen__post screen__post--r";
+          const marquee = document.createElement("span");
+          marquee.className = "screen__marquee";
+          marquee.textContent = `${i + 1} · ${name}`;
+          base.append(postL, postR, marquee);
+
+          screen.append(surface, base);
+          world.appendChild(screen);
+          screens.push({ video, surface, marquee, src: clipSrc(i) });
+        }
+
+        lot.appendChild(world);
+        stage.appendChild(lot);
+        return { world, screens };
+      }
+
+      function attachSource(video, src) {
+        const source = document.createElement("source");
+        source.src = src;
+        source.type = "video/mp4";
+        video.appendChild(source);
+      }
+
+      /* ===================================================================
+       * The timeline: one world tween + per-screen lit tweens.
+       * Built paused; the loop below is the only thing that advances it.
+       * =================================================================== */
+      function buildTimeline(world, screens) {
+        const tl = gsap.timeline({ paused: true });
+
+        /* THE one tween. ease 'none' so Z is linear in progress. */
+        tl.fromTo(
+          world,
+          { z: 0 },
+          { z: TRAVEL, duration: 1, ease: "none" },
+          0,
+        );
+
+        /* Per-screen lit state, in and out over that screen's band. Rendering
+           the timeline at any progress therefore reproduces the exact lit /
+           unlit composition the wireframe shows statically. */
+        const half = BAND / 2;
+        screens.forEach((s, i) => {
+          const start = (i + 0.5) * BAND;
+          tl.fromTo(
+            s.surface,
+            { filter: "brightness(0.35)" },
+            { filter: "brightness(1)", duration: half, ease: "none" },
+            start,
+          );
+          tl.to(
+            s.surface,
+            { filter: "brightness(0.35)", duration: half, ease: "none" },
+            start + half,
+          );
+          tl.fromTo(
+            s.marquee,
+            {
+              backgroundColor: "#6b5a2a",
+              boxShadow: "0 0 0px rgba(212, 168, 98, 0)",
+            },
+            {
+              backgroundColor: "#d4a862",
+              boxShadow: "0 0 14px rgba(212, 168, 98, 0.6)",
+              duration: half,
+              ease: "none",
+            },
+            start,
+          );
+          tl.to(
+            s.marquee,
+            {
+              backgroundColor: "#6b5a2a",
+              boxShadow: "0 0 0px rgba(212, 168, 98, 0)",
+              duration: half,
+              ease: "none",
+            },
+            start + half,
+          );
+        });
+
+        return tl;
+      }
+
+      /* ===================================================================
+       * Playback: playing iff active. A pure function of progress, and the
+       * side effect is idempotent — re-asserting the same index does nothing
+       * (DT4's rule; a naive toggle would restart playback every frame).
+       * =================================================================== */
+      function activeIndex(progress) {
+        const i = Math.round(progress * (SCREEN_COUNT + 1)) - 1;
+        return i < 0 || i >= SCREEN_COUNT ? -1 : i;
+      }
+
+      function makePlayback(screens) {
+        let playing = -1;
+        return function setActive(next) {
+          if (next === playing) return;
+
+          if (playing >= 0) {
+            const s = screens[playing];
+            s.video.pause();
+            if (VARIANT === "reduced") {
+              /* GO-REDUCED's mitigation: drop the source and load() so the
+                 decoder is released while the screen is off-band. */
+              const source = s.video.querySelector("source");
+              if (source) source.remove();
+              s.video.load();
+            }
+          }
+
+          playing = next;
+
+          if (next >= 0) {
+            const s = screens[next];
+            if (VARIANT === "reduced" && !s.video.querySelector("source")) {
+              attachSource(s.video, s.src);
+              s.video.load();
+            }
+            /* Rejection is not an error here: autoplay policy or a source the
+               browser cannot open both land in the same place. */
+            const played = s.video.play();
+            if (played && played.catch) played.catch(() => {});
+          }
+        };
+      }
+
+      /* ===================================================================
+       * The frame loop. Same shape as scroll-driven-skeleton's engine.ts:
+       * tick Lenis, ONE scroll read, one absolute seek. Nothing in here
+       * measures layout — `range` is measured on load and on resize.
+       * =================================================================== */
+      function run(tl, setActive) {
+        const lenis = new Lenis({ autoRaf: false });
+
+        let range = 1;
+        const measure = () => {
+          range = Math.max(
+            1,
+            document.documentElement.scrollHeight - window.innerHeight,
+          );
+        };
+        measure();
+        window.addEventListener("resize", measure);
+
+        function frame(time) {
+          /* Before the scroll read, not after: Lenis moves the page during
+             this call, and reading first would drive the scene from last
+             frame's position. */
+          lenis.raf(time);
+
+          const scrollY = window.scrollY;
+          const progress = Math.min(1, Math.max(0, scrollY / range));
+
+          /* Absolute seek. The second argument is suppressEvents — a
+             scroll-driven timeline should only ever be a pure render. */
+          tl.progress(progress, true);
+          setActive(activeIndex(progress));
+
+          requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      }
+
+      /* =================================================================== */
+      if (VARIANT === "flat") {
+        buildFlat();
+      } else if (!window.gsap || !window.Lenis) {
+        /* Refuse rather than measure a static page: a probe that silently
+           reported a great fps because its libraries failed to load is a
+           metric that cannot report a bad number (EVO-UNI-120). */
+        fatal(
+          "gsap and/or lenis failed to load from jsdelivr. This probe needs " +
+            "network access for the lot / overload / reduced variants. Do not " +
+            "record a measurement from this page.",
+        );
+      } else {
+        const { world, screens } = buildLot();
+        run(buildTimeline(world, screens), makePlayback(screens));
+      }
+    </script>
+  </body>
+</html>
