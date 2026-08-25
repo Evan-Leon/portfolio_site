@@ -230,7 +230,7 @@ page that reproduces the production rendering path (the wireframe's transform
 stack, a GSAP timeline with the brightness/marquee lit tweens, a Lenis-ticked
 rAF seek), eight distinct videos, a defined sampling protocol (median of three
 10 s recordings, lowest 1 s window), a failing control, and a `reduced` variant
-that a GO-REDUCED verdict must clear — before any vendoring happens. Its decision line (`GO`/`NO-GO`) is
+that a GO-REDUCED verdict must clear — before any vendoring happens. Its decision line (`GO`/`GO-REDUCED`/`NO-GO`) is
 recorded in the roadmap.
 
 ## What already exists

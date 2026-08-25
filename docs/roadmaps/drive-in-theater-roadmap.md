@@ -175,7 +175,7 @@ grep -c '<video\|createElement(.video.)' docs/spikes/2026-08-25-transformed-vide
 grep -n 'gsap.timeline\|timeline.progress(' docs/spikes/2026-08-25-transformed-video-probe.html   # the lot variant seeks a GSAP timeline absolutely
 grep -n 'brightness(' docs/spikes/2026-08-25-transformed-video-probe.html   # the lit-state filter is in the probe
 grep -E '^\| DTF \| (GO|GO-REDUCED|NO-GO) \|' docs/roadmaps/drive-in-theater-roadmap.md
-# expected: exactly one matching row in the DTF decision record table
+# expected: exactly one matching row in the Decision records table
 ```
 
 Expected, for the session that builds the probe: eight distinct h264 960×600 clips; the probe seeks a GSAP timeline and carries the brightness filter; the decision-record grep prints **nothing yet** (the row is still `_not yet run_`). Expected, after Manual Verification: the grep prints exactly one row, and the medians for all four variants are in the probe file's header with overload lower than lot in both browsers.
