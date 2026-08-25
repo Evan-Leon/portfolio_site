@@ -1,7 +1,7 @@
 # Drive-In Theater — Design Spec
 
 **Date:** 2026-08-25
-**Status:** Approved (brainstorm); pending roadmap meta-prompt Part 1 enhancement
+**Status:** Approved (brainstorm 2026-08-25); enhanced in place by roadmap meta-prompt Part 1 (2026-08-25)
 
 ---
 
@@ -207,12 +207,30 @@ card grid remain exactly as they are and stay the fallback path.
 ## Core assumption
 
 **CSS-3D-transformed `<video>` elements play smoothly and remain
-click/focus-hit-testable in current Chromium, Firefox and WebKit.** Nothing in
-either repo has measured this. It is tested first, cheaply, by phase DTF
-(below): a throwaway page with eight transformed videos, fps read from
-DevTools, and a click/Tab check — before any vendoring happens.
+click/focus-hit-testable in current Chromium, Firefox and WebKit.**
+
+**Never measured.** Step 1b search (2026-08-25) across `/home/evan/EVOsystem`:
+`docs/evals/` does not exist; no gate scorecard or roadmap Changelog row
+mentions transformed video; the only "CSS 3D" hits fleet-wide are
+el-blackjack-pwa's single hole-card flip (`docs/roadmap.md:72`,
+`docs/superpowers/specs/2026-05-18-pwa-conversion-design.md:196`) — one
+`rotateY` on a static element via Framer Motion, no `<video>`, no perspective
+stage, no eight concurrent planes; it says nothing about decode + composite
+cost under a scrubbed 3D transform. The skeleton's own GSAP scene
+(`scroll-driven-skeleton/src/scenes/registry.ts:85-118`) transforms five
+plain `<div>`s — same engine path, but no media element. No transfer argument
+is available, so a cheap falsifier runs first: phase DTF (below) — a throwaway
+page with eight transformed videos, fps read from DevTools, and a click/Tab
+check — before any vendoring happens. Its decision line (`GO`/`NO-GO`) is
+recorded in the roadmap.
 
 ## What already exists
+
+Prior-art search (Step 1, 2026-08-25): `grep -rniE 'theater|drive-in|video|scroll-driven|gif' docs/session-logs/`
+→ no hits; nothing in this repo has touched the feature. The cross-repo
+dependency (Step 5b) is the skeleton's source, read directly — every citation
+below names a file and line in `/home/evan/EVOsystem/scroll-driven-skeleton`.
+No external service is involved (Step 5 N/A).
 
 | File | Layer | Status |
 |---|---|---|
@@ -306,14 +324,96 @@ scopes cannot collide with anything). Rows are in execution order.
 
 ## Applicable rules
 
-*To be filled by roadmap meta-prompt Part 1 Step 2 (rules index).* The
-skeleton's `SDS-*` invariants that transfer with the vendored code:
-`SDS-001` (idempotent `seek`), `SDS-002` (adapter stays in its container),
-`SDS-003` (adapter contract), `SDS-004` (no layout reads in `seek`),
-`SDS-005` (one scroll read per frame), `SDS-006` (declared assets — with the
-video departure recorded above), `SDS-009` (`:host, :root`), `SDS-010`
-(`withPinVisibility`). `SDS-007` and `SDS-008` (frame budget, Wix single-file)
-do not transfer — nothing they govern is vendored.
+`portfolio_site` has no local rules index. Two rule sources apply:
+
+1. **Shared EVOsystem tier** — `/home/evan/EVOsystem/infra/skills/rules-index/references/{universal,tooling,react-frontend}.md`
+   (`EVO-UNI-*`, `EVO-TOOL-*`, `EVO-FE-*`; the FE file's Vitest/jsdom/Playwright
+   rows apply even though the theater is framework-free vanilla TS).
+2. **The skeleton's project law** — `/home/evan/EVOsystem/scroll-driven-skeleton/skills/rules-index/SKILL.md`
+   (`SDS-*`). These transfer with the vendored code and DT0 copies that file
+   into `theater/skills/rules-index/SKILL.md` (minus `SDS-007`/`SDS-008`, whose
+   subjects — frame budget, Wix single-file — are not vendored; their IDs get
+   tombstone rows, never reuse) so a fresh session executing a later phase can
+   cite them at a path inside this repo.
+
+**All phases:**
+- `EVO-UNI-011` no out-of-scope features; `EVO-UNI-012` no unapproved
+  dependencies (the theater's dependency list is exactly the skeleton's minus
+  `lottie-web` and `vitest-canvas-mock`); `EVO-UNI-014` grep consumers before
+  changing a shared signature (`EngineOptions`, `AdapterFactory`);
+  `EVO-UNI-057` import a constant from its canonical home, never re-`const` it
+  (`VH_PER_SCREEN`, `SPACING`, `OFFSET` live in `lot/geometry.ts` only).
+- `EVO-UNI-026`, `EVO-UNI-037`, `EVO-UNI-038` session discipline (rules index
+  second, session-log tail first, session log at the end — via
+  `writing-session-logs`); `EVO-UNI-072` and `EVO-UNI-119` check whether the
+  phase already landed and diff the `<context>` block against the tree.
+- `EVO-TOOL-023` absolute paths / `git -C`; `EVO-TOOL-024` prove changes with
+  `git diff --numstat`, not `git status`.
+- `SDS-001`, `SDS-002`, `SDS-004`, `SDS-005`, `SDS-009` for any phase touching
+  `theater/src`.
+
+**Per phase:**
+- **DTF:** `EVO-UNI-091` enumerate reachable outcomes and the decision each
+  changes before measuring; `EVO-UNI-120` a metric must be able to report a
+  bad number — include a failing control (e.g. 8× the video count) so the fps
+  read is known to move; `EVO-UNI-021` baseline (flat, untransformed videos)
+  before the transformed case.
+- **DT0:** `EVO-TOOL-002` pnpm; `EVO-TOOL-005` Vitest `include` under `src/`;
+  `EVO-TOOL-047` and `EVO-TOOL-057` — the skeleton's recorded departures
+  (`.ts`-only glob, `passWithNoTests` unset) carry over with their reasoning
+  into the vendored rules index; `EVO-TOOL-068` pin `vitest` to a version
+  whose peer `vite` range covers Vite 8 (the skeleton's `vitest@^4.1.10` does —
+  keep both versions); `EVO-TOOL-076` exactly one Vite config file;
+  `EVO-TOOL-080` `defineConfig` from `'vitest/config'`; `EVO-TOOL-081`
+  `noEmit` + tests excluded in `tsconfig`; `EVO-TOOL-010` pnpm blocks native
+  build scripts — Vite 8's rolldown binding is a prebuilt optional dependency,
+  not a build script, but confirm `pnpm install` emits no "ignored build
+  scripts" warning and allowlist if it does; `EVO-TOOL-110` `core.hooksPath`
+  stays repo-relative; `EVO-FE-067` `jsdom` installed explicitly;
+  `EVO-FE-220` no Vitest globals — every test imports from `'vitest'`
+  (the skeleton already does); `SDS-003` every vendored adapter still passes
+  the contract.
+- **DT1:** `EVO-TOOL-061` the install layer `COPY`s `pnpm-workspace.yaml`
+  alongside `package.json`/`pnpm-lock.yaml`; `EVO-TOOL-107` corepack needs the
+  committed `packageManager` pin (root `package.json` already pins
+  `pnpm@11.15.1` — the build stage must run against that file);
+  `EVO-TOOL-058` `.dockerignore` must not exclude anything `theater/tsconfig.json`
+  `include`s; `EVO-TOOL-111` no bind mount → every served change needs
+  `rebuild-restart`; `EVO-TOOL-130` probe from inside `evo-net` before
+  debugging the app; `EVO-TOOL-167` `Up (healthy)` says nothing about the
+  published route — curl through Traefik.
+- **DT2:** `EVO-UNI-001`, `EVO-UNI-002`, `EVO-UNI-003`, `EVO-UNI-030` token
+  discipline (re-palette by editing `tokens.css`'s PALETTE block, no `var(--x, #hex)`
+  fallbacks); `EVO-FE-239` tokens imported before global CSS; `EVO-FE-223`
+  CSS imported from `main.ts`, not a `<link>`; `EVO-UNI-048` the built page
+  must carry everything the approved wireframe shows; `SDS-009`.
+- **DT3:** `SDS-001`–`SDS-004`; `EVO-UNI-017`/`EVO-UNI-018` behaviour tests
+  with committed expected values; `EVO-UNI-109` a geometry test must not
+  derive its expected value from the constant under test (assert literal
+  placements for a fixed `SPACING`/`OFFSET`, not `-(i+1)*SPACING` recomputed
+  in the test).
+- **DT4:** `EVO-FE-064` mock `HTMLMediaElement.prototype.play/pause` in jsdom
+  (`play()` returns `undefined` there and the real one returns a Promise);
+  `SDS-006` with the recorded video departure; `EVO-UNI-053` the missing-clip
+  state is explicit and honest (lit poster), never a blank screen.
+- **DT5:** `EVO-TOOL-121` the `EngineOptions.reducedMotionSteps` change and
+  its consumers land in one commit (`tsc --noEmit` gates the build);
+  `EVO-FE-219` mock `Element.prototype.scrollIntoView` if the focus handler
+  uses it; `EVO-FE-279` jsdom's `scrollHeight` is `0` — test the focus→scroll
+  mapping through `createFakeScrollSource`, not layout; `EVO-UNI-014`.
+- **DT6:** `EVO-TOOL-071` wait for outcomes, never `waitForTimeout` (the
+  vendored `e2e/helpers/app.ts` `scrollTo` already does this — reuse it);
+  `EVO-TOOL-082` `trace: 'on-first-failure'` when `retries: 0`;
+  `EVO-TOOL-070` the project's own Playwright; `EVO-TOOL-056`, `EVO-TOOL-086`,
+  `EVO-TOOL-087` Chromium install/cache gotchas on this host; `EVO-UNI-061`
+  every spec must be shown to fail against a broken input once.
+- **DT7:** `EVO-UNI-001` (CTA uses existing `.btn` classes and tokens);
+  Prettier via the pre-commit hook.
+- **DT8:** the wrapper/canonical split the validator enforces
+  (`scripts/validate_codex_setup.py:26-27`, `references_canonical` at
+  `:78-80` — the wrapper body must contain `.claude/skills/<name>/SKILL.md`).
+- **DT9:** `[MANUAL]`; `EVO-UNI-090` commit each clip the moment it is
+  captured — a file that exists only in the working tree is not delivered.
 
 ## Prerequisites
 
@@ -326,13 +426,18 @@ do not transfer — nothing they govern is vendored.
 
 ## Open questions
 
-- `[FYI]` The skeleton's `.prettierrc.json` (single quotes, no semicolons) and
-  the portfolio's Prettier defaults (double quotes, semicolons) differ. The
-  vendored code is reformatted to the portfolio's config in DT0 — one
-  mechanical commit, so later diffs against the skeleton are semantic only.
-- `[FYI]` `scripts/validate_codex_setup.py` has an `EXPECTED_HIGH_VALUE`
-  tuple naming skills this repo does not have; DT8 registers the new skill
-  without changing that list unless Part 1 finds it load-bearing.
+- `[FYI]` The skeleton's `.prettierrc.json` (`semi: false`, `singleQuote`,
+  `printWidth: 100`, `trailingComma: all`) and the portfolio's Prettier
+  defaults (no `.prettierrc`: semicolons, double quotes, width 80) differ.
+  **Decision:** one config per repo — the vendored code is reformatted to the
+  portfolio's defaults in DT0 as part of the vendoring commit, so later diffs
+  against the skeleton are semantic only. No `theater/.prettierrc`.
+- `[FYI]` `scripts/validate_codex_setup.py` enforces only the wrapper →
+  canonical relationship (`WRAPPERS_DIR`/`CANONICAL_DIR` at lines 26-27,
+  `references_canonical` at 78-80). Its `EXPECTED_HIGH_VALUE` tuple (line 36:
+  `rules-index`, `backend`, `frontend`, `phase-status`) names skills this repo
+  has never had, including the retired `phase-status`; DT8 adds the new
+  wrapper and leaves that tuple alone — cleaning it is unrelated scope.
 - `[FYI]` `images/chunk-norris/` is untracked with no project page. It is not
   in the eight; adding it is a separate change (page + card + registry entry).
 - `[FYI]` Whether `vite dev` proxies `/images/` and `/projects/` from the repo
