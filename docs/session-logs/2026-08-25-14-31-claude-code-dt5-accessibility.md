@@ -36,9 +36,12 @@ Done — all four build-order steps of DT5.
 
 Attempted and abandoned: nothing.
 
-Not done (out of scope, DT6): the Playwright suite. The three manual browser
-behaviours in the phase's verification block were **not** performed — no browser
-was driven this session. What was checked instead is listed under Verification.
+Also done, after the DT5 commit: the phase's three manual browser behaviours,
+driven in a real headless Chromium via an ad-hoc Playwright script (scratch
+only — the committed suite is DT6's deliverable, and nothing was added to
+`theater/e2e/`). All three hold; numbers under Verification.
+
+Not done (out of scope, DT6): the committed Playwright suite.
 
 ## Commits
 
@@ -75,6 +78,30 @@ All run from the repo root, all passing unless noted.
   phase named, avoided by the chosen name.
 - `grep -n scrollIntoView theater/src/main.ts theater/src/lot/*.ts` — no hits
   (exit 1), so `EVO-FE-219` never applies.
+- **The three manual browser behaviours**, headless Chromium against
+  `vite preview` on 4173 (the production `dist/`, with the repo's
+  `vite-site-assets` plugin serving the site's real posters). Lot spacer
+  top 800, length 7680 at a 1280×800 viewport.
+  - *Keyboard.* Tab 1 → `.sds-skip`, Tab 2 → `.sds-chrome__logo`, Tab 3 →
+    screen 0 (page drives to scrollY 952 against a computed target of 954,
+    `--sds-screen-lit` = 1), Tab 4 → screen 1 (1805 against 1807, lit = 1).
+    The 2px gap is Lenis settling, and is a quarter of a percent of an 853px
+    band. Note the phase text says "Tab → skip link, Tab → screen 1"; there is
+    a chrome logo link between them, so it is three presses, not two.
+  - *Reduced motion.* 61 scroll samples across the drive produce exactly **10**
+    distinct world-Z positions — `0, 800, …, 7200`, one per screen plus the
+    exit, which is `reducedMotionSteps: 9` doing precisely what it was set to
+    do. The control at `reducedMotion: 'no-preference'` produces 61 distinct
+    positions from the same samples (`EVO-UNI-061`).
+  - *Reduced motion, video.* Because no clips exist on disk until DT9, the run
+    fulfils `**/demo.mp4` from a real ffmpeg-generated H.264 file, so "nothing
+    plays" is a statement about behaviour rather than about a 404. Under
+    `reduce`: 8 video elements on the page, `play` fired for **zero** screens.
+    Under `no-preference`, same sweep: `play` fired for screens 1–7.
+  - *Narrow.* At a 375px viewport every screen computes to `x = 0`, no Y
+    rotation, `width: 300px`, and `z = -(i + 1) × 800` — single file down the
+    lane, with the drive untouched. The page still drives: scrolling to the
+    middle of the lot moves world-Z 0 → 3600 and the chrome readout to 50%.
 - **Mutation check** (`EVO-UNI-061`): reverting the frame loop to
   `REDUCED_MOTION_STEPS` and deleting the reduced-motion guard in `lot-scene.ts`
   fails exactly the three new behaviour tests and nothing else (3 failed / 292
@@ -86,6 +113,21 @@ None.
 
 ## Open flags
 
+- **DT4 defect found by DT5's browser run: screen 0's clip never plays on the
+  first approach.** Probed and confirmed — driving into screen 0, then 1, then
+  2 fires `play` for 1 and 2 only; driving back to 1 and then 0 fires both, so
+  screen 0 plays only on a *return* visit. Mechanism: `buildLot` runs inside the
+  GSAP timeline builder, which cannot run until `load()` has dynamically
+  imported GSAP — but the engine's `updateAll()` during `start()` seeks the
+  adapter before that resolves. At scrollY 0 the clamped progress is 0, so
+  `activeScreen` is 0 and `#active` is set to 0 while `#video(0)` is still
+  `null`. By the time the DOM exists, `#active` is already 0, so no activation
+  ever fires on the way in. Invisible to `lot-scene.test.ts`, which awaits
+  `load()` before its first `seek`. Not introduced by DT5 (the reduced-motion
+  early return is below the pause and the probe ran at `no-preference`) and not
+  fixed here — it is DT4's contract. The likely fix is re-firing the activation
+  for the current `#active` once `load()` has built the DOM, with a test that
+  seeks *before* `load()` resolves.
 - **The `focusin` handler has no automated test.** It lives in `main.ts`, which
   no unit test imports, and DT5 scopes its tests to the engine and the adapter.
   Its logic — `:focus-visible`, the index parse, `BAND_SETTLE` — is proven only
@@ -130,10 +172,13 @@ None.
 
 ## Next steps
 
-- Phase DT6: the Playwright suite, which is where the three manual behaviours in
-  DT5's verification block (Tab drives screen to screen; reduced motion snaps to
-  nine positions with no video; `< 768px` lines the lot up single-file) get
-  proven in a real Chromium. They remain unverified until then.
+- Fix the screen-0 first-approach clip bug under Open flags, with a regression
+  test that seeks before `load()` resolves. It is a small change to
+  `lot-scene.ts` and wants its own commit against DT4's contract.
+- Phase DT6: the committed Playwright suite. The three behaviours are already
+  proven ad-hoc (see Verification); DT6 turns that into a standing net, and the
+  ten-position reduced-motion assertion and the served-clip route are both worth
+  carrying over.
 
 ## Pointers
 
