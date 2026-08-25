@@ -45,6 +45,19 @@
  * cannot work at all here: the adapter scrubs with `suppressEvents`, so no
  * `onUpdate` ever fires.
  *
+ * WHY PLACEMENT IS THREE CUSTOM PROPERTIES AND NOT A TRANSFORM
+ * ------------------------------------------------------------
+ * `screenPlacement(i)` is the source of truth for where a screen stands, and
+ * this file is the only place that can apply it — the numbers are per-index, so
+ * they cannot be written as a static rule. Writing them as an inline
+ * `transform` made them unreachable from the stylesheet, which is fine until
+ * the layout has to change at a breakpoint: the narrow lot lines the screens up
+ * single-file down the lane, and a media query cannot rewrite one component of
+ * a transform. So the arithmetic lands in `--sds-screen-x`, `--sds-screen-z` and
+ * `--sds-screen-yaw`, the `transform` that reads them lives in
+ * `styles/global.css`, and the breakpoint stays entirely in CSS — this file
+ * never learns what 768px means.
+ *
  * WHY THE POSTER ELEMENT IS NOT CREATED HERE
  * ------------------------------------------
  * A `<img src="…">` built in this file would be a fetch the asset loader knows
@@ -88,6 +101,19 @@ export const SCREEN_INDEX_ATTRIBUTE = "data-screen-index";
  * nobody writes (`EVO-UNI-057`).
  */
 export const SCREEN_LIT_PROPERTY = "--sds-screen-lit";
+
+/**
+ * Where a screen stands, as the three custom properties `styles/global.css`
+ * composes into its `transform`. See the header.
+ *
+ * Named here for the same reason {@link SCREEN_LIT_PROPERTY} is: the writer and
+ * the stylesheet have to spell them identically, and a mismatch is silent —
+ * every screen falls back to `0px`/`0deg` and the whole lot stacks in the middle
+ * of the lane at the camera's own depth (`EVO-UNI-057`).
+ */
+export const SCREEN_X_PROPERTY = "--sds-screen-x";
+export const SCREEN_Z_PROPERTY = "--sds-screen-z";
+export const SCREEN_YAW_PROPERTY = "--sds-screen-yaw";
 
 /**
  * Whether the surface got its poster.
@@ -233,7 +259,10 @@ function buildScreen(project: TheaterProject, i: number): HTMLAnchorElement {
   screen.className = SCREEN_CLASS;
   screen.href = project.href;
   screen.setAttribute(SCREEN_INDEX_ATTRIBUTE, String(i));
-  screen.style.transform = `translate3d(${x}px, 0px, ${z}px) rotateY(${yaw}deg)`;
+  /* Not a `transform` — see the header. The stylesheet composes these three. */
+  screen.style.setProperty(SCREEN_X_PROPERTY, `${x}px`);
+  screen.style.setProperty(SCREEN_Z_PROPERTY, `${z}px`);
+  screen.style.setProperty(SCREEN_YAW_PROPERTY, `${yaw}deg`);
   /* The tween's `from` value is stated on the element as well, so a screen that
    * has never been rendered is dark rather than unstyled. */
   screen.style.setProperty(SCREEN_LIT_PROPERTY, "0");

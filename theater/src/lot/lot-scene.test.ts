@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { REDUCED_MOTION_QUERY } from "../engine/engine";
 import { projects } from "../projects";
+import { setMediaQuery } from "../test-setup";
 import { createFakeImages } from "../test-helpers/fake-image";
 import {
   CLIP_STATE_ATTRIBUTE,
@@ -107,6 +109,57 @@ describe("lotScene — clip lifecycle", () => {
 
     expect(screen?.getAttribute(CLIP_STATE_ATTRIBUTE)).toBe("missing");
     expect(screen?.querySelector("video")).toBe(null);
+  });
+
+  it("holds the poster under prefers-reduced-motion — pauses, never plays", () => {
+    /*
+     * A looping clip is motion the visitor never asked to start and cannot
+     * stop. Quantising the drive does nothing about it: the clip has its own
+     * clock, so a stepped camera would sit still at a keyframe with a video
+     * running in front of it.
+     *
+     * The pause half matters as much as the play half. Turning the preference
+     * on mid-drive has to stop whatever is already running, and the next band
+     * crossing is where that happens — so screen 0 plays before the query is
+     * set, and is paused by the crossing that declines to start screen 1.
+     */
+    const calls: string[] = [];
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(function (
+      this: HTMLMediaElement,
+    ) {
+      calls.push(`play ${screenIndex(this)}`);
+      return Promise.resolve();
+    });
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(function (
+      this: HTMLMediaElement,
+    ) {
+      calls.push(`pause ${screenIndex(this)}`);
+    });
+
+    adapter.seek(midBand(0));
+    setMediaQuery(REDUCED_MOTION_QUERY, true);
+    adapter.seek(midBand(1));
+    adapter.seek(midBand(2));
+
+    expect(calls).toEqual(["play 0", "pause 0", "pause 1"]);
+    expect(adapter.snapshot().playing).toBe(null);
+  });
+
+  it("plays again once the preference is turned back off", () => {
+    // Read per activation, not captured at construction (`EVO-UNI-061`): the
+    // test above passes just as well against an adapter that never plays at
+    // all, and only this one separates the two.
+    setMediaQuery(REDUCED_MOTION_QUERY, true);
+    const play = vi.spyOn(HTMLMediaElement.prototype, "play");
+
+    adapter.seek(midBand(0));
+    expect(play).not.toHaveBeenCalled();
+
+    setMediaQuery(REDUCED_MOTION_QUERY, false);
+    adapter.seek(midBand(1));
+
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(adapter.snapshot().playing).toBe(1);
   });
 
   it("pauses and detaches every remaining clip before teardown", () => {

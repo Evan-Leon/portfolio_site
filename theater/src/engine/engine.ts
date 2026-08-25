@@ -15,11 +15,15 @@
  * where it runs on mount and on resize instead of sixty times a second.
  *
  * A note on `scroll-source.ts`'s claim to be the only file under `src/engine/`
- * that touches the window: this file registers a `resize` listener and drives
- * `requestAnimationFrame`, both of which live on that same global object and
- * are written unprefixed here. The claim is about *measurement* — scroll
- * position, viewport height and document height are read only through
- * `ScrollSource`, and layout only through `mount.ts`.
+ * that touches the window: this file registers a `resize` listener, drives
+ * `requestAnimationFrame`, and — from `scrollToScene`, never from the frame
+ * path — calls `scrollTo`. All three live on that same global object and are
+ * written unprefixed here. The claim is about *measurement* — scroll position,
+ * viewport height and document height are read only through `ScrollSource`,
+ * and layout only through `mount.ts`. Writing a scroll position is a different
+ * act from measuring one and `SDS-005` does not speak to it; what matters is
+ * that the write goes through Lenis when Lenis is on, so one component stays in
+ * charge of the motion instead of two fighting over it.
  *
  * REDUCED MOTION IS ONE NUMBER, NOT A SECOND CODE PATH
  * -----------------------------------------------------
@@ -90,9 +94,13 @@ export const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
  *
  * Few enough that the result reads as a slideshow of states rather than a
  * stutter of a continuous animation, which is what the preference asks for.
- * A scene needing its own step count is not a thing any phase specifies — the
- * page-wide number is deliberate, because a visitor who asked for less motion
- * asked it of the whole page.
+ *
+ * This is the **default**, and {@link EngineOptions.reducedMotionSteps} is how a
+ * page states a different one. It is still page-wide rather than per-scene,
+ * because a visitor who asked for less motion asked it of the whole page — what
+ * DT5 added is that the right number depends on what the page *is*, and the
+ * theater's one scene is a drive past eight screens whose natural keyframes are
+ * the eight screens plus the exit.
  */
 export const REDUCED_MOTION_STEPS = 4;
 
@@ -134,6 +142,23 @@ export interface EngineOptions {
   loadingRing?: LoadingRing;
 
   /**
+   * How many intervals a scene is stepped through under
+   * `prefers-reduced-motion: reduce`. Defaults to {@link REDUCED_MOTION_STEPS}.
+   *
+   * `n` steps means `n + 1` keyframes, `0` and `1` included — so a page whose
+   * scene has a natural set of resting states passes their count and gets each
+   * one exactly, rather than the default four landing between them. The theater
+   * passes `projects.length + 1`, which is one keyframe per screen plus the
+   * spacing past the last one: `screenProgress(i, count)` is exactly `i / (count
+   * + 1)`, so every screen's band start survives quantisation unmoved and the
+   * stepped drive parks level with a screen instead of between two.
+   *
+   * A value below 1 passes progress through unquantised — see
+   * `quantiseProgress`, which is where that guard lives.
+   */
+  reducedMotionSteps?: number;
+
+  /**
    * Run Lenis for smooth scroll normalization. Defaults to `true`.
    *
    * Reduced motion is Lenis's own business: `respectReducedMotion` defaults to
@@ -156,6 +181,21 @@ export interface Engine {
   stop(): void;
   /** Halt, destroy every live adapter, and take the scenes off the page. */
   destroy(): void;
+  /**
+   * Scroll the page to `progress` through the mounted scene with this id, and
+   * report whether there was such a scene to scroll to.
+   *
+   * The inverse of the frame path's `sceneProgress`: the target is `top +
+   * clamp01(progress) * length` from the scene's **cached** metrics
+   * (`SDS-004` — nothing is measured here, and this must never grow a layout
+   * read). `false`, with nothing scrolled, means either that `start()` has not
+   * run yet or that no mounted scene carries that id.
+   *
+   * Callers write a scroll position rather than listening for one (`SDS-005`
+   * is about reads). DT5's use is keyboard focus: tabbing onto a screen drives
+   * the page to it.
+   */
+  scrollToScene(sceneId: string, progress: number): boolean;
 }
 
 /** One scene's live state: its elements, its adapter if any, its last seek. */
@@ -181,6 +221,7 @@ interface SceneState {
 export function createEngine(options: EngineOptions): Engine {
   const { host, scenes, persistentLayer, loadingRing } = options;
   const useLenis = options.lenis ?? true;
+  const reducedMotionSteps = options.reducedMotionSteps ?? REDUCED_MOTION_STEPS;
 
   const source: ScrollSource = host.scrollSource();
 
@@ -369,7 +410,7 @@ export function createEngine(options: EngineOptions): Engine {
          * the scroll crosses it.
          */
         const progress = stepped
-          ? quantiseProgress(clamp01(raw), REDUCED_MOTION_STEPS)
+          ? quantiseProgress(clamp01(raw), reducedMotionSteps)
           : clamp01(raw);
         if (
           state.lastSeek !== null &&
@@ -604,6 +645,34 @@ export function createEngine(options: EngineOptions): Engine {
     }
   }
 
+  /**
+   * See {@link Engine.scrollToScene}.
+   *
+   * Through Lenis when Lenis is on, because two components moving the page at
+   * once is the one way to break smooth scroll: a native `scrollTo` under a
+   * running Lenis is a position Lenis did not agree to, and it eases back from
+   * it on the next frame — the page lurches to the target and slides away
+   * again. Lenis handles the preference itself (`lerp` forced to `1`, so a
+   * programmatic scroll is instant), which is why there is no reduced-motion
+   * branch on this side; the native path states `behavior: 'auto'` for the
+   * same reason, since `'smooth'` would animate exactly what the preference
+   * asks not to be animated.
+   */
+  function scrollToScene(sceneId: string, progress: number): boolean {
+    const state = (states ?? []).find(
+      (candidate) => candidate.scene.def.id === sceneId,
+    );
+    if (!state) return false;
+
+    const { top, length } = state.scene.metrics;
+    const target = top + clamp01(progress) * length;
+
+    if (smoothScroll) smoothScroll.scrollTo(target);
+    else scrollTo({ top: target, behavior: "auto" });
+
+    return true;
+  }
+
   function onResize(): void {
     if (resizeTimer !== null) clearTimeout(resizeTimer);
     resizeTimer = setTimeout(remeasure, RESIZE_DEBOUNCE_MS);
@@ -628,5 +697,5 @@ export function createEngine(options: EngineOptions): Engine {
     }
   }
 
-  return { start, stop, destroy };
+  return { start, stop, destroy, scrollToScene };
 }

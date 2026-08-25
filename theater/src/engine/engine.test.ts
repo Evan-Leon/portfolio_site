@@ -10,6 +10,7 @@
  * and nothing runs on its own. Fake timers are used only for the debounced
  * resize, and are cleaned up in `afterEach` (`EVO-FE-057`).
  */
+import Lenis from "lenis";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { AdapterFactory, AnimationAdapter } from "../adapters/types";
@@ -631,6 +632,30 @@ describe("createEngine — reduced motion", () => {
     expect(current(log).seeks).toEqual([0.25, 0.5]);
   });
 
+  it("steps at the count the caller asked for, not the default", () => {
+    /*
+     * The control for this one is the default test at the top of this block,
+     * which sweeps the identical 51 positions and gets five keyframes
+     * (`EVO-UNI-061`): without it, an engine that ignored the option entirely
+     * would still have to produce *some* set of steps here, and only the pair
+     * shows that the option is what chose them.
+     *
+     * Nine steps means ten keyframes, `k / 9` for `k` in `0..9`. The sweep
+     * moves 0.02 of progress per frame, so every one of them is crossed and
+     * each differs from the last by 1/9 — far above `SEEK_EPSILON`, so the
+     * guard suppresses repeats within a keyframe and nothing else.
+     */
+    setMediaQuery(REDUCED_MOTION_QUERY, true);
+    const { log } = startEngine({ reducedMotionSteps: 9 });
+
+    sweepIntro();
+
+    expect(current(log).seeks).toEqual(
+      [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((keyframe) => keyframe / 9),
+    );
+    expect(REDUCED_MOTION_STEPS).toBe(4);
+  });
+
   it("still steps every scene on the page, not just the first", () => {
     const intro = recordingAdapter();
     const product = recordingAdapter();
@@ -759,6 +784,78 @@ describe("createEngine — stop and destroy", () => {
     vi.advanceTimersByTime(RESIZE_DEBOUNCE_MS);
 
     expect(destroyed.resizes).toHaveLength(1);
+  });
+});
+
+describe("createEngine — scrollToScene", () => {
+  /*
+   * `INTRO_LAYOUT` is top 800, height 2400, on an 800px viewport — so a pinned
+   * length of 1600 and a target of `800 + progress * 1600`. Every expectation
+   * below is that number written out, not recomputed from the constants
+   * (`EVO-UNI-018`).
+   */
+  let scrolls: ScrollToOptions[];
+
+  beforeEach(() => {
+    scrolls = [];
+    vi.stubGlobal("scrollTo", (options: ScrollToOptions): void => {
+      scrolls.push(options);
+    });
+  });
+
+  it("scrolls the window to top + progress × length", () => {
+    const { engine } = startEngine();
+
+    expect(engine.scrollToScene("intro", 0.25)).toBe(true);
+    expect(scrolls).toEqual([{ top: 1200, behavior: "auto" }]);
+  });
+
+  it("clamps progress rather than scrolling off either end of the scene", () => {
+    const { engine } = startEngine();
+
+    engine.scrollToScene("intro", -3);
+    engine.scrollToScene("intro", 4);
+
+    expect(scrolls).toEqual([
+      { top: 800, behavior: "auto" },
+      { top: 2400, behavior: "auto" },
+    ]);
+  });
+
+  it("returns false and scrolls nothing before start() has mounted anything", () => {
+    // The metrics it would read are measured by `mountScenes`, so there is
+    // nothing to compute a target from — and scrolling to 0 "because that is
+    // what an unmeasured scene says" would jump the page to the top.
+    const { factory } = recordingAdapter();
+    const engine = createEngine({
+      host: hostWith(),
+      lenis: false,
+      scenes: [{ id: "intro", vh: 300, adapter: factory }],
+    });
+
+    expect(engine.scrollToScene("intro", 0.25)).toBe(false);
+    expect(scrolls).toHaveLength(0);
+  });
+
+  it("returns false and scrolls nothing for an id no scene carries", () => {
+    const { engine } = startEngine();
+
+    expect(engine.scrollToScene("nope", 0.25)).toBe(false);
+    expect(scrolls).toHaveLength(0);
+  });
+
+  it("drives Lenis instead of the window when Lenis is on", () => {
+    // Two components moving the page at once is the failure: a native
+    // `scrollTo` under a running Lenis is a position it did not agree to, and
+    // it eases back off it on the next frame.
+    const scrollTo = vi.spyOn(Lenis.prototype, "scrollTo");
+    const { engine } = startEngine({ lenis: undefined });
+
+    expect(engine.scrollToScene("intro", 0.25)).toBe(true);
+    expect(scrollTo).toHaveBeenCalledWith(1200);
+    expect(scrolls).toHaveLength(0);
+
+    engine.destroy();
   });
 });
 

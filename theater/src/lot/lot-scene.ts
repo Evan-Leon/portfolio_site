@@ -38,6 +38,7 @@
 import type { AdapterFactory, AnimationAdapter } from "../adapters/types";
 import { gsapTimeline } from "../adapters/gsap-timeline";
 import type { GsapTimelineAdapter } from "../adapters/gsap-timeline";
+import { REDUCED_MOTION_QUERY } from "../engine/engine";
 import { clamp01 } from "../engine/progress";
 import { sharedAssetLoader } from "../loader/asset-loader";
 import type { TheaterProject } from "../projects";
@@ -310,6 +311,30 @@ class LotScene implements LotAdapter {
 
     this.#playing = null;
     if (next === null) return;
+
+    /*
+     * Reduced motion: the poster holds and nothing plays.
+     *
+     * A looping clip is motion the visitor never asked to start and cannot
+     * stop, which is the case WCAG 2.2.2 is about — and unlike the drive, it is
+     * not something they are steering. Quantising the *drive* does nothing to
+     * it: the clip has its own clock, so under `reducedMotionSteps` the camera
+     * would sit still at a keyframe with a video looping in front of it, which
+     * is the preference being honoured everywhere except the one place motion
+     * is actually continuous.
+     *
+     * Read per activation rather than captured in the constructor, for the same
+     * reason the engine reads its own per frame: the preference can change
+     * mid-session, and a screen approached after the change must honour it with
+     * nothing reconstructed. The query string is imported rather than written
+     * out, because a typo matches nothing and reads as "reduced motion is off"
+     * forever (`EVO-UNI-057`).
+     *
+     * The pause above is deliberately *not* inside this guard: turning the
+     * preference on while a clip is playing has to stop that clip, and the next
+     * band crossing is where that happens.
+     */
+    if (matchMedia(REDUCED_MOTION_QUERY).matches) return;
 
     const video = this.#video(next);
     if (!video) return;

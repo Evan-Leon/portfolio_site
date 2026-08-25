@@ -29,6 +29,9 @@ import {
   SCREEN_MARQUEE_CLASS,
   SCREEN_POSTER_CLASS,
   SCREEN_SURFACE_CLASS,
+  SCREEN_X_PROPERTY,
+  SCREEN_YAW_PROPERTY,
+  SCREEN_Z_PROPERTY,
 } from "./build-lot";
 import { lotScene, type LotAdapter } from "./lot-scene";
 
@@ -126,21 +129,45 @@ describe("buildLot — the DOM the lot is made of", () => {
   });
 
   it("places the screens where the geometry says, alternating sides", async () => {
+    /*
+     * Three custom properties rather than one `transform`, so the narrow
+     * breakpoint in `styles/global.css` can restate x and yaw without knowing
+     * the arithmetic. The stylesheet composes them — see `.sds-screen` there,
+     * and the header of `build-lot.ts` for why.
+     */
     await mountLot();
 
-    const transforms = [
+    const placements = [
       ...container.querySelectorAll<HTMLElement>(`.${SCREEN_CLASS}`),
-    ].map((screen) => screen.style.transform);
+    ].map((screen) => ({
+      x: screen.style.getPropertyValue(SCREEN_X_PROPERTY),
+      z: screen.style.getPropertyValue(SCREEN_Z_PROPERTY),
+      yaw: screen.style.getPropertyValue(SCREEN_YAW_PROPERTY),
+    }));
 
-    expect(transforms[0]).toBe(
-      "translate3d(-480px, 0px, -800px) rotateY(18deg)",
-    );
-    expect(transforms[1]).toBe(
-      "translate3d(480px, 0px, -1600px) rotateY(-18deg)",
-    );
-    expect(transforms[7]).toBe(
-      "translate3d(480px, 0px, -6400px) rotateY(-18deg)",
-    );
+    expect(placements[0]).toEqual({ x: "-480px", z: "-800px", yaw: "18deg" });
+    expect(placements[1]).toEqual({ x: "480px", z: "-1600px", yaw: "-18deg" });
+    expect(placements[7]).toEqual({ x: "480px", z: "-6400px", yaw: "-18deg" });
+
+    /*
+     * And no screen carries an inline `transform` — not after construction and
+     * not after scrubbing, which is the half that could regress without anyone
+     * touching this file. The timeline tweens `--sds-screen-lit` on these same
+     * elements; a tween that also wrote a transform (or a future one that did)
+     * would outrank the narrow breakpoint's `!important` placement, because an
+     * inline `transform` and a stylesheet `transform` are the same property and
+     * the inline one wins. The lot would then keep its wide slalom on a phone,
+     * silently, with every other test still green.
+     */
+    expect(placements).toHaveLength(8);
+    adapter.seek(midBand(3));
+    adapter.seek(midBand(0));
+
+    expect(
+      [...container.querySelectorAll<HTMLElement>(`.${SCREEN_CLASS}`)].map(
+        (screen) => screen.style.transform,
+      ),
+    ).toEqual(Array.from({ length: 8 }, () => ""));
   });
 
   it("hands the stylesheet the horizon the placement was computed against", async () => {
