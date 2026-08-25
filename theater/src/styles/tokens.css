@@ -53,6 +53,21 @@
   --sds-asphalt-far: #0a0520;
   --sds-gradient-accent: linear-gradient(135deg, #7c3aed, #3b82f6);
 
+  /* The drive-in lot, transcribed from docs/wireframes/theater.html. Raw
+   * values, like everything else in this block — the roles that use them are
+   * in the semantic layer below. */
+  --sds-lot-sky-mid: #0d1033;
+  --sds-lot-sky-low: #120a2e;
+  --sds-lot-star-cool: #93c5fd;
+  --sds-lot-screen-off: #000000;
+  --sds-lot-bezel: #1a1633;
+  --sds-lot-post-near: #26203f;
+  --sds-lot-post-far: #100c22;
+  --sds-lot-marquee-dim: #6b5a2a;
+  --sds-lot-marquee-ink: #2b1d05;
+  --sds-lot-marquee-edge: #3b2f12;
+  --sds-lot-marquee-edge-lit: #8a6a35;
+
   /* ---- Semantic colour -----------------------------------------------------
    * Dark by default: this genre of page is almost always dark, and a dark
    * canvas is the most forgiving backdrop for arbitrary animation content.
@@ -73,6 +88,32 @@
   --sds-warn: var(--sds-warn-500);
 
   --sds-focus-ring: var(--sds-signal-400);
+
+  /* Drive-in roles. The lot is a night scene by construction — it is a sky, a
+   * ground plane and lit signage — so these are not re-stated in the light
+   * theme below: what changes there is the page around it. */
+  --sds-sky: linear-gradient(
+    180deg,
+    var(--sds-bg) 0%,
+    var(--sds-lot-sky-mid) 45%,
+    var(--sds-lot-sky-low) 100%
+  );
+  --sds-star: var(--sds-ink-050);
+  --sds-star-warm: var(--sds-ink-100);
+  --sds-star-cool: var(--sds-lot-star-cool);
+
+  --sds-screen-dark: var(--sds-lot-screen-off);
+  --sds-screen-bezel: var(--sds-lot-bezel);
+  --sds-screen-post: linear-gradient(
+    90deg,
+    var(--sds-lot-post-near),
+    var(--sds-lot-post-far)
+  );
+
+  --sds-marquee-dim: var(--sds-lot-marquee-dim);
+  --sds-marquee-ink: var(--sds-lot-marquee-ink);
+  --sds-marquee-edge: var(--sds-lot-marquee-edge);
+  --sds-marquee-edge-lit: var(--sds-lot-marquee-edge-lit);
 
   /* Loader-specific roles. Named by job, not appearance, so restyling the
    * ring does not mean hunting through component CSS. */

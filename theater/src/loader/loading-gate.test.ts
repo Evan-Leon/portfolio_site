@@ -36,6 +36,7 @@ import {
 import type { Host } from "../host/types";
 import type { SceneDef } from "../scenes/types";
 import type { AssetLoader } from "./asset-loader";
+import { createFakeImages, type FakeImages } from "../test-helpers/fake-image";
 import {
   createLoadingRing,
   LOADING_RING_CLASS,
@@ -55,30 +56,13 @@ const OUTRO_LAYOUT = { top: 4000, height: 2400, pinWidth: 640, pinHeight: 360 };
  * A controllable image (jsdom fetches nothing)
  * ------------------------------------------------------------------ */
 
-/** Every image the loader has constructed in the current test, oldest first. */
-let images: FakeImage[];
-
-class FakeImage extends EventTarget {
-  crossOrigin: string | null = null;
-  src = "";
-
-  constructor() {
-    super();
-    images.push(this);
-  }
-}
-
 /**
- * Make the image the loader built for `url` report `error`.
+ * Every image the loader has built in the current test.
  *
- * Reaches through the fake constructor rather than the loader, because the
- * loader deliberately exposes no handle on the element it is decoding.
+ * Reached through the fake rather than through the loader, because the loader
+ * deliberately exposes no handle on the element it is decoding.
  */
-function failRequest(url: string): void {
-  const image = images.find((candidate) => candidate.src === url);
-  if (!image) throw new Error(`No image was requested for ${url}`);
-  image.dispatchEvent(new Event("error"));
-}
+let fake: FakeImages;
 
 /* ------------------------------------------------------------------ *
  * Harness
@@ -116,7 +100,7 @@ beforeEach(async () => {
   root = document.createElement("div");
   document.body.append(root);
   pendingFrame = null;
-  images = [];
+  fake = createFakeImages();
 
   /*
    * Fake only what the gate uses. Vitest's default `toFake` list includes
@@ -125,7 +109,7 @@ beforeEach(async () => {
    * several assertions away from the cause.
    */
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "Date"] });
-  vi.stubGlobal("Image", FakeImage);
+  vi.stubGlobal("Image", fake.Image);
   vi.stubGlobal(
     "requestAnimationFrame",
     (callback: FrameRequestCallback): number => {
@@ -265,7 +249,7 @@ describe("the loading gate — the page always reveals", () => {
 
     // The failure is known immediately: the element the loader built for this
     // URL reports `error`, and that settles it as unsuccessful.
-    failRequest("/missing.png");
+    fake.for("/missing.png").fail();
 
     await vi.advanceTimersByTimeAsync(MIN_VISIBLE_MS);
 
@@ -326,14 +310,16 @@ describe("the loading gate — the page always reveals", () => {
     startGatedEngine(scenes);
 
     // The asset was requested at all — the gate built scene 1 to ask.
-    expect(images.map((image) => image.src)).toEqual(["/below-the-fold.png"]);
+    expect(fake.all().map((image) => image.src)).toEqual([
+      "/below-the-fold.png",
+    ]);
 
     // And the page is genuinely held on it: well past the minimum-visible floor,
     // with the request still in flight, nothing has been revealed.
     await vi.advanceTimersByTimeAsync(MIN_VISIBLE_MS + 1);
     expect(revealed()).toBe(false);
 
-    failRequest("/below-the-fold.png");
+    fake.for("/below-the-fold.png").fail();
     await vi.advanceTimersByTimeAsync(0);
     expect(revealed()).toBe(true);
   });

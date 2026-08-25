@@ -1,0 +1,330 @@
+/*
+ * The lot as a scene: the GSAP adapter, wrapped in the eight posters it waits
+ * for.
+ *
+ * `buildLot` owns the DOM and the choreography; this file owns everything that
+ * is a *scene* — declaring assets, gating the reveal on them, degrading when
+ * one is missing, and exposing the snapshot the conformance kit reads. The
+ * inner adapter is `gsapTimeline(buildLot(projects))` and every lifecycle call
+ * forwards to it, so there is exactly one timeline and one place that scrubs it
+ * (`SDS-001`).
+ *
+ * WHY THE POSTERS GO THROUGH THE LOADER AND NOT INTO `src`
+ * --------------------------------------------------------
+ * `sharedAssetLoader.add()` is what makes the loading ring's number true
+ * (`SDS-006`). Eight `<img src>` assignments in `buildLot` would fetch the same
+ * bytes invisibly: the ring would reach 100% and dismiss over a lot of black
+ * rectangles, and only on a slow connection. So the loader builds and decodes
+ * the elements, and this file puts the ones that arrived into their surfaces.
+ *
+ * WHY A POSTER THAT LOADED CAN STILL BE WRONG
+ * -------------------------------------------
+ * Until 2026-08-25 `images/el-blackjack/01.png` was a 68-byte 1×1 placeholder.
+ * It fetched, it decoded, and the loader counted it — correctly, by its own
+ * rules — as loaded. On screen it was a blank screen behind a full ring. So a
+ * poster is checked for *size* here as well as arrival: anything that decodes
+ * smaller than {@link MIN_POSTER_PX} square is treated exactly like one that
+ * never arrived, and the screen shows a dark surface with its marquee lit as
+ * normal rather than a hole in the lot (`EVO-UNI-053`).
+ *
+ * WHY THERE IS NO `assets` MANIFEST ON THE FACTORY
+ * ------------------------------------------------
+ * `AdapterFactory.assets` exists so the engine can warm a scene's bytes without
+ * constructing its adapter — and `warmDeferredAssets` skips every scene whose
+ * adapter is `eager`. This one is eager and it is the page's only scene, so a
+ * manifest here would never be read by anything. The posters gate the reveal
+ * through `load()`, which is the path that actually runs.
+ */
+import type { AdapterFactory, AnimationAdapter } from "../adapters/types";
+import { gsapTimeline } from "../adapters/gsap-timeline";
+import type { GsapTimelineAdapter } from "../adapters/gsap-timeline";
+import { clamp01 } from "../engine/progress";
+import { sharedAssetLoader } from "../loader/asset-loader";
+import type { TheaterProject } from "../projects";
+import {
+  buildLot,
+  LOT_WORLD_CLASS,
+  POSTER_STATE_ATTRIBUTE,
+  SCREEN_CLASS,
+  SCREEN_INDEX_ATTRIBUTE,
+  SCREEN_LIT_PROPERTY,
+  SCREEN_POSTER_CLASS,
+  SCREEN_SURFACE_CLASS,
+} from "./build-lot";
+import { activeScreen, lotZ } from "./geometry";
+
+/**
+ * The smallest a decoded poster may be before it is treated as missing.
+ *
+ * 64 square is far below any real screenshot and far above the 1×1 placeholder
+ * this exists to catch, so it needs no tuning to stay useful.
+ */
+export const MIN_POSTER_PX = 64;
+
+/** What the lot is currently showing. */
+export interface LotSnapshot {
+  /** The clamped progress of the last `seek`. */
+  progress: number;
+  /** How far into the lot the camera has driven, in world pixels. */
+  lotZ: number;
+  /** The screen being approached, or `null` past the last one. */
+  activeScreen: number | null;
+  /** The inner timeline's own progress, or `null` before it is built. */
+  timelineProgress: number | null;
+  /** How many posters arrived and were big enough to use. */
+  loadedPosters: number;
+  /**
+   * The world element's **inline** transform, exactly as GSAP wrote it.
+   *
+   * Read back from the DOM rather than recomputed, so the conformance kit sees
+   * what was rendered rather than what was intended: a drive tween aimed at the
+   * wrong element still produces perfect `lotZ` numbers, and only this catches
+   * it. Not a layout read (`SDS-004`) — it is the inline style the timeline
+   * itself set.
+   */
+  worldTransform: string;
+  /**
+   * Each screen's inline `--sds-screen-lit`, in drive order, to 2 decimals.
+   *
+   * Same reasoning: a misspelled custom property tweens something nothing
+   * styles, and every pure number in this snapshot stays right while the lot
+   * stays dark.
+   */
+  lit: number[];
+}
+
+/** The lot's public shape — {@link AnimationAdapter} plus the kit's observer. */
+export interface LotAdapter extends AnimationAdapter {
+  snapshot(): LotSnapshot;
+}
+
+/**
+ * Called when the approached screen changes, with the screen that was active
+ * and the one that now is (either may be `null` past the last screen).
+ *
+ * **This is DT4's seam.** The clip that plays on the active screen is a side
+ * effect with a lifetime — start on entry, stop and rewind on exit — and it has
+ * to hang off the one place that knows a band boundary was crossed. It is a
+ * notification, never a source of visual state: everything the lot *looks* like
+ * is still a pure function of progress, so a `seek` that skips several bands at
+ * once (a jump, a reload part-way down) renders correctly whatever this does.
+ */
+export type ActiveScreenListener = (
+  previous: number | null,
+  next: number | null,
+) => void;
+
+/** Options for {@link lotScene}. */
+export interface LotSceneOptions {
+  /** See {@link ActiveScreenListener}. */
+  onActiveScreenChange?: ActiveScreenListener;
+}
+
+/**
+ * Build the lot scene's factory.
+ *
+ * ```ts
+ * { id: 'lot', vh: 100 + VH_PER_SCREEN * projects.length, adapter: lotScene(projects) }
+ * ```
+ *
+ * A single call, as every factory is — `adapter: lotScene(projects)`, never
+ * `adapter: () => lotScene(projects)`.
+ */
+export function lotScene(
+  projects: readonly TheaterProject[],
+  options: LotSceneOptions = {},
+): AdapterFactory {
+  // No `assets` manifest, deliberately. See the header.
+  return (container: HTMLElement): AnimationAdapter =>
+    new LotScene(container, projects, options);
+}
+
+class LotScene implements LotAdapter {
+  readonly eager = true;
+
+  readonly #container: HTMLElement;
+  readonly #projects: readonly TheaterProject[];
+  readonly #options: LotSceneOptions;
+  readonly #inner: GsapTimelineAdapter;
+
+  #progress = 0;
+  #active: number | null;
+  #loadedPosters = 0;
+  #destroyed = false;
+
+  constructor(
+    container: HTMLElement,
+    projects: readonly TheaterProject[],
+    options: LotSceneOptions,
+  ) {
+    this.#container = container;
+    this.#projects = projects;
+    this.#options = options;
+    this.#active = activeScreen(0, projects.length);
+    this.#inner = gsapTimeline(buildLot(projects))(
+      container,
+    ) as GsapTimelineAdapter;
+  }
+
+  /**
+   * Declare the posters, build the timeline, then hang the posters that arrived.
+   *
+   * Progress is the two halves combined — eight posters and the inner adapter's
+   * own load — over their count, so the ring moves as the images land rather
+   * than jumping from 0 to 1 when the last one does.
+   *
+   * Resolves however badly it goes. A poster that 404s settles as unsuccessful
+   * inside the loader and arrives here as an element with no pixels; nothing on
+   * this path rejects, because a rejection is the page never revealing
+   * (`SDS-006`).
+   */
+  async load(onProgress: (fraction: number) => void): Promise<void> {
+    onProgress(0);
+
+    const units = this.#projects.length + 1;
+    let settled = 0;
+    let innerFraction = 0;
+    const report = (): void => {
+      if (this.#destroyed) return;
+      onProgress(Math.min(1, (settled + innerFraction) / units));
+    };
+
+    /* Queued before the inner load, so the posters are already in flight while
+     * GSAP's chunk downloads. */
+    const posters = this.#projects.map(async (project, i) => {
+      const image = await sharedAssetLoader.add({
+        url: project.poster,
+        kind: "image",
+      });
+      settled += 1;
+      report();
+      return { i, image, project };
+    });
+
+    await this.#inner.load((fraction) => {
+      innerFraction = fraction;
+      report();
+    });
+
+    const arrived = await Promise.all(posters);
+    if (!this.#destroyed) {
+      for (const poster of arrived) {
+        this.#placePoster(poster.i, poster.image, poster.project);
+      }
+    }
+
+    onProgress(1);
+  }
+
+  /**
+   * Render the frame for `progress`.
+   *
+   * Absolute and stateless (`SDS-001`): everything visible is the inner
+   * timeline's, and the timeline is seeked to `progress` rather than advanced.
+   * The band bookkeeping below decides only *when to tell someone*, never what
+   * to draw — see {@link ActiveScreenListener}.
+   *
+   * No layout is read here (`SDS-004`); there is no measurement in this scene
+   * at all, because the composition is in CSS pixels of a perspective world.
+   */
+  seek(progress: number): void {
+    if (this.#destroyed) return;
+
+    this.#progress = clamp01(progress);
+    this.#inner.seek(this.#progress);
+
+    const next = activeScreen(this.#progress, this.#projects.length);
+    if (next !== this.#active) {
+      const previous = this.#active;
+      this.#active = next;
+      this.#options.onActiveScreenChange?.(previous, next);
+    }
+  }
+
+  resize(width: number, height: number): void {
+    this.#inner.resize(width, height);
+  }
+
+  /**
+   * Release the posters, then tear the timeline down.
+   *
+   * In that order: releasing settles anything still pending, so nothing the
+   * loader is holding is left awaiting an adapter that has gone. The inner
+   * adapter removes its own root, which takes the whole lot with it.
+   */
+  destroy(): void {
+    this.#destroyed = true;
+
+    for (const project of this.#projects) {
+      sharedAssetLoader.release(project.poster);
+    }
+
+    this.#inner.destroy();
+  }
+
+  snapshot(): LotSnapshot {
+    const count = this.#projects.length;
+    const world = this.#container.querySelector<HTMLElement>(
+      `.${LOT_WORLD_CLASS}`,
+    );
+    const screens = this.#container.querySelectorAll<HTMLElement>(
+      `.${SCREEN_CLASS}`,
+    );
+
+    return {
+      progress: this.#progress,
+      lotZ: lotZ(this.#progress, count),
+      activeScreen: activeScreen(this.#progress, count),
+      timelineProgress: this.#inner.snapshot().timelineProgress,
+      loadedPosters: this.#loadedPosters,
+      worldTransform: world?.style.transform ?? "",
+      lit: [...screens].map((screen) =>
+        round2(screen.style.getPropertyValue(SCREEN_LIT_PROPERTY)),
+      ),
+    };
+  }
+
+  /** Hang a decoded poster on its screen, or mark the surface as having none. */
+  #placePoster(
+    i: number,
+    image: HTMLImageElement,
+    project: TheaterProject,
+  ): void {
+    const surface = this.#container
+      .querySelector(`[${SCREEN_INDEX_ATTRIBUTE}="${i}"]`)
+      ?.querySelector(`.${SCREEN_SURFACE_CLASS}`);
+    if (!surface) return;
+
+    const usable =
+      image.naturalWidth >= MIN_POSTER_PX &&
+      image.naturalHeight >= MIN_POSTER_PX;
+
+    if (!usable) {
+      /* The loader already warned about a poster that never arrived. This is
+       * the other case — bytes, a successful decode, and nothing worth showing
+       * — which nothing else can see. */
+      if (image.naturalWidth > 0) {
+        console.warn(
+          `[sds] ${project.poster} decoded ${image.naturalWidth}×${image.naturalHeight}, ` +
+            `smaller than ${MIN_POSTER_PX}px — showing a dark screen instead`,
+        );
+      }
+      surface.setAttribute(POSTER_STATE_ATTRIBUTE, "missing");
+      return;
+    }
+
+    image.className = SCREEN_POSTER_CLASS;
+    /* Decorative: the marquee beneath it already names the project, and it is
+     * the link's accessible name. */
+    image.alt = "";
+    surface.append(image);
+    surface.setAttribute(POSTER_STATE_ATTRIBUTE, "ready");
+    this.#loadedPosters += 1;
+  }
+}
+
+/** A tween's current value, to two decimals — enough to compare, not to jitter. */
+function round2(value: string): number {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) / 100 : 0;
+}

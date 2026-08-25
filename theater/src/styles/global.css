@@ -177,6 +177,218 @@ a {
   color: var(--sds-text);
 }
 
+/* ---- the lot ---------------------------------------------------------------
+ * Transcribed from docs/wireframes/theater.html, which is the approved
+ * composition. Two things are deliberately different from it:
+ *
+ *  - The wireframe is a static picture, so it draws the lit screen with a
+ *    `.screen--lit` class and a `transition: filter .3s`. Neither survives
+ *    here: this scene is scrubbed, so the lit state is a *number* the timeline
+ *    writes per frame (`--sds-screen-lit`, 0 to 1) and a transition would be a
+ *    second clock fighting the scroll position. Everything below reads that
+ *    number through calc()/color-mix() instead.
+ *  - `--sds-ground-line` is set on the stage by `lot/build-lot.ts` from
+ *    `GROUND_LINE` in `lot/geometry.ts`, rather than written as `58%` here.
+ *    The screens' placement comes from the same module, and two copies of the
+ *    horizon drift silently (`EVO-UNI-057`).
+ * -------------------------------------------------------------------------- */
+
+.sds-lot {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  perspective: 900px;
+  perspective-origin: 50% calc(100% - var(--sds-ground-line));
+  background:
+    radial-gradient(1px 1px at 12% 18%, var(--sds-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 9%, var(--sds-star) 50%, transparent 51%),
+    radial-gradient(
+      1.5px 1.5px at 41% 22%,
+      var(--sds-star-warm) 50%,
+      transparent 51%
+    ),
+    radial-gradient(1px 1px at 57% 12%, var(--sds-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 66% 27%, var(--sds-star) 50%, transparent 51%),
+    radial-gradient(
+      1.5px 1.5px at 78% 8%,
+      var(--sds-star-cool) 50%,
+      transparent 51%
+    ),
+    radial-gradient(1px 1px at 88% 19%, var(--sds-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 5% 31%, var(--sds-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 94% 34%, var(--sds-star) 50%, transparent 51%),
+    radial-gradient(1px 1px at 49% 4%, var(--sds-star) 50%, transparent 51%),
+    var(--sds-sky);
+}
+
+.sds-lot__world {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(0);
+  /* The one element that actually moves. Promoting anything else — eight
+   * screens each running a `filter` — is the cost centre DTF measured. */
+  will-change: transform;
+}
+
+.sds-lot__ground {
+  position: absolute;
+  top: var(--sds-ground-line);
+  left: 50%;
+  width: 4000px;
+  height: 4800px;
+  margin-left: -2000px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 780px,
+      color-mix(in srgb, var(--sds-star) 5%, transparent) 780px 784px
+    ),
+    linear-gradient(180deg, var(--sds-asphalt) 0%, var(--sds-asphalt-far) 70%);
+  transform: rotateX(-90deg) translateZ(0);
+  transform-origin: 50% 0;
+  transform-style: preserve-3d;
+}
+
+.sds-lot__ground::after {
+  /* the lane */
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 420px;
+  height: 100%;
+  margin-left: -210px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--sds-accent) 6%, transparent),
+    transparent
+  );
+  content: "";
+}
+
+/* A screen is a column whose BOTTOM sits on the ground line: surface on top,
+   then the marquee riding on two posts. */
+.sds-screen {
+  position: absolute;
+  bottom: calc(100% - var(--sds-ground-line));
+  left: 50%;
+  display: flex;
+  width: 520px;
+  flex-direction: column;
+  align-items: center;
+  margin-left: -260px;
+  transform-style: preserve-3d;
+}
+
+.sds-screen__surface {
+  display: block;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border: 6px solid var(--sds-screen-bezel);
+  border-radius: var(--sds-radius-sm);
+  background: var(--sds-screen-dark);
+  box-shadow:
+    0 0 60px color-mix(in srgb, var(--sds-screen-dark) 60%, transparent),
+    0 0 60px
+      color-mix(
+        in srgb,
+        var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 10%),
+        transparent
+      );
+  filter: brightness(calc(0.35 + 0.65 * var(--sds-screen-lit, 0)));
+}
+
+/* Nothing arrived, or what arrived was too small to be the poster. The screen
+   still stands and its marquee still lights — a hole in the lot would read as
+   a broken page. */
+.sds-screen__surface[data-poster="missing"] {
+  background:
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 12px,
+      color-mix(in srgb, var(--sds-star) 3%, transparent) 12px 24px
+    ),
+    var(--sds-screen-dark);
+}
+
+.sds-screen__poster {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.sds-screen__base {
+  position: relative;
+  width: 100%;
+  height: 96px;
+}
+
+.sds-screen__post {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  background: var(--sds-screen-post);
+}
+
+.sds-screen__post--l {
+  left: 70px;
+}
+
+.sds-screen__post--r {
+  right: 70px;
+}
+
+.sds-screen__marquee {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  overflow: hidden;
+  width: 320px;
+  padding: var(--sds-space-2) var(--sds-space-4);
+  border: 3px solid
+    color-mix(
+      in srgb,
+      var(--sds-marquee-edge-lit) calc(var(--sds-screen-lit, 0) * 100%),
+      var(--sds-marquee-edge)
+    );
+  border-radius: 6px;
+  background: color-mix(
+    in srgb,
+    var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 100%),
+    var(--sds-marquee-dim)
+  );
+  box-shadow: 0 0 14px
+    color-mix(
+      in srgb,
+      var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 30%),
+      transparent
+    );
+  color: var(--sds-marquee-ink);
+  font-size: 1.125rem;
+  font-weight: var(--sds-weight-bold);
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.sds-screen:focus-visible {
+  outline: none;
+}
+
+.sds-screen:focus-visible .sds-screen__surface {
+  box-shadow:
+    0 0 0 3px var(--sds-star),
+    0 0 40px var(--sds-marquee);
+}
+
 .sds-persistent {
   display: none;
 }
@@ -203,5 +415,23 @@ a {
 
   .sds-exit-list {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Narrow: smaller screens, and a shallower perspective so a 300px screen
+     still fills the frame. DT5 finishes the job — the per-screen placement is
+     an inline transform written by `lot/build-lot.ts`, which CSS cannot
+     override, so single-file placement has to come from the geometry. */
+  .sds-lot {
+    perspective: 600px;
+  }
+
+  .sds-screen {
+    width: 300px;
+    margin-left: -150px;
+  }
+
+  .sds-screen__marquee {
+    width: 220px;
+    font-size: 0.9rem;
   }
 }

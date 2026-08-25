@@ -1,12 +1,13 @@
 /*
  * Unit tests for the asset queue.
  *
- * `Image` is replaced with a controllable fake, because jsdom does not fetch
- * resources: a real `img.src = …` in this environment never fires `load` or
- * `error`, so every image test would hang on a promise nobody can settle. The
- * fake is a class rather than a `vi.fn()` — an arrow function has no
- * `[[Construct]]` and `new Image()` would throw "not a constructor"
- * (`EVO-FE-150`) — and globals are unstubbed in `afterEach`.
+ * `Image` is replaced with the controllable fake from
+ * `test-helpers/fake-image.ts`, because jsdom does not fetch resources: a real
+ * `img.src = …` in this environment never fires `load` or `error`, so every
+ * image test would hang on a promise nobody can settle. It is used in its
+ * manual mode — nothing settles until this file says so, which is what the
+ * queueing and concurrency assertions below are about. Globals are unstubbed in
+ * `afterEach`.
  *
  * `fetch` is stubbed too. No test here touches the network (`EVO-UNI-020`).
  *
@@ -21,43 +22,7 @@ import {
   DEFAULT_CONCURRENCY,
   STALL_TIMEOUT_MS,
 } from "./asset-loader";
-
-/* ------------------------------------------------------------------ *
- * A controllable image
- * ------------------------------------------------------------------ */
-
-/** Every image the loader has constructed in the current test, oldest first. */
-let images: FakeImage[];
-
-class FakeImage extends EventTarget {
-  crossOrigin: string | null = null;
-  src = "";
-
-  constructor() {
-    super();
-    images.push(this);
-  }
-
-  /** Requests that have actually been sent — the ones occupying a slot. */
-  static inFlight(): FakeImage[] {
-    return images.filter((image) => image.src !== "");
-  }
-
-  succeed(): void {
-    this.dispatchEvent(new Event("load"));
-  }
-
-  fail(): void {
-    this.dispatchEvent(new Event("error"));
-  }
-}
-
-/** The image the loader built for `url`, or a failing assertion. */
-function imageFor(url: string): FakeImage {
-  const image = images.find((candidate) => candidate.src === url);
-  if (!image) throw new Error(`No image was requested for ${url}`);
-  return image;
-}
+import { createFakeImages, type FakeImages } from "../test-helpers/fake-image";
 
 /* ------------------------------------------------------------------ *
  * Harness
@@ -66,11 +31,14 @@ function imageFor(url: string): FakeImage {
 /** Responses `fetch` should give, by URL. Anything unlisted rejects. */
 let responses: Map<string, { ok: boolean; body: unknown }>;
 
+/** Every image the loader has constructed in the current test. */
+let fake: FakeImages;
+
 beforeEach(() => {
-  images = [];
+  fake = createFakeImages();
   responses = new Map();
 
-  vi.stubGlobal("Image", FakeImage);
+  vi.stubGlobal("Image", fake.Image);
   vi.stubGlobal("fetch", (url: string): Promise<Response> => {
     const response = responses.get(url);
     if (!response)
@@ -110,16 +78,16 @@ describe("createAssetLoader — aggregate progress", () => {
 
     expect(loader.progress()).toBe(0);
 
-    imageFor("/a.png").succeed();
+    fake.for("/a.png").succeed();
     await pending[0];
     expect(loader.progress()).toBe(0.25);
 
-    imageFor("/b.png").succeed();
-    imageFor("/c.png").succeed();
+    fake.for("/b.png").succeed();
+    fake.for("/c.png").succeed();
     await Promise.all([pending[1], pending[2]]);
     expect(loader.progress()).toBe(0.75);
 
-    imageFor("/d.png").succeed();
+    fake.for("/d.png").succeed();
     await pending[3];
     expect(loader.progress()).toBe(1);
   });
@@ -132,11 +100,11 @@ describe("createAssetLoader — aggregate progress", () => {
     const first = loader.add({ url: "/a.png", kind: "image" });
     const second = loader.add({ url: "/b.png", kind: "image" });
 
-    imageFor("/a.png").succeed();
+    fake.for("/a.png").succeed();
     await first;
 
     unsubscribe();
-    imageFor("/b.png").succeed();
+    fake.for("/b.png").succeed();
     await second;
 
     // Two adds (the denominator moved, so the fraction changed) then one
@@ -151,9 +119,9 @@ describe("createAssetLoader — aggregate progress", () => {
     const second = loader.add({ url: "/a.png", kind: "image" });
 
     expect(second).toBe(first);
-    expect(FakeImage.inFlight()).toHaveLength(1);
+    expect(fake.inFlight()).toHaveLength(1);
 
-    imageFor("/a.png").succeed();
+    fake.for("/a.png").succeed();
     await first;
     expect(loader.progress()).toBe(1);
   });
@@ -162,7 +130,7 @@ describe("createAssetLoader — aggregate progress", () => {
     const loader = createAssetLoader();
     const pending = loader.add({ url: "/a.png", kind: "image" });
 
-    const image = imageFor("/a.png");
+    const image = fake.for("/a.png");
     image.succeed();
 
     expect(await pending).toBe(image);
@@ -187,8 +155,8 @@ describe("createAssetLoader — a failed asset settles rather than rejecting", (
     const good = loader.add({ url: "/a.png", kind: "image" });
     const bad = loader.add({ url: "/missing.png", kind: "image" });
 
-    imageFor("/a.png").succeed();
-    imageFor("/missing.png").fail();
+    fake.for("/a.png").succeed();
+    fake.for("/missing.png").fail();
     await Promise.all([good, bad]);
 
     // The whole point: the ring reaches 1 and dismisses, with no timer involved.
@@ -200,7 +168,7 @@ describe("createAssetLoader — a failed asset settles rather than rejecting", (
     const loader = createAssetLoader();
     const pending = loader.add({ url: "/missing.png", kind: "image" });
 
-    const image = imageFor("/missing.png");
+    const image = fake.for("/missing.png");
     image.fail();
 
     expect(await pending).toBe(image);
@@ -220,7 +188,7 @@ describe("createAssetLoader — a failed asset settles rather than rejecting", (
   it("logs every failed URL, in every build", async () => {
     const loader = createAssetLoader();
     const pending = loader.add({ url: "/missing.png", kind: "image" });
-    imageFor("/missing.png").fail();
+    fake.for("/missing.png").fail();
     await pending;
 
     expect(console.warn).toHaveBeenCalledWith(
@@ -242,7 +210,7 @@ describe("createAssetLoader — the stall timeout is a separate mechanism", () =
       });
 
     // The image was requested and simply never calls back.
-    expect(FakeImage.inFlight()).toHaveLength(1);
+    expect(fake.inFlight()).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(STALL_TIMEOUT_MS - 1);
     expect(settled).toBe(false);
     expect(loader.progress()).toBe(0);
@@ -269,11 +237,11 @@ describe("createAssetLoader — the stall timeout is a separate mechanism", () =
     await first;
     expect(loader.failures()).toEqual(["/first.png"]);
 
-    expect(FakeImage.inFlight().map((image) => image.src)).toEqual([
+    expect(fake.inFlight().map((image) => image.src)).toEqual([
       "/first.png",
       "/queued.png",
     ]);
-    imageFor("/queued.png").succeed();
+    fake.for("/queued.png").succeed();
     await queued;
 
     expect(loader.failures()).toEqual(["/first.png"]);
@@ -285,7 +253,7 @@ describe("createAssetLoader — the stall timeout is a separate mechanism", () =
 
     const loader = createAssetLoader();
     const pending = loader.add({ url: "/a.png", kind: "image" });
-    imageFor("/a.png").succeed();
+    fake.for("/a.png").succeed();
     await pending;
 
     await vi.advanceTimersByTimeAsync(STALL_TIMEOUT_MS * 2);
@@ -302,7 +270,7 @@ describe("createAssetLoader — concurrency", () => {
       void loader.add({ url: `/frame-${index}.png`, kind: "image" });
     }
 
-    expect(FakeImage.inFlight()).toHaveLength(DEFAULT_CONCURRENCY);
+    expect(fake.inFlight()).toHaveLength(DEFAULT_CONCURRENCY);
   });
 
   it("never exceeds the cap, and starts the next asset as a slot frees", async () => {
@@ -311,32 +279,32 @@ describe("createAssetLoader — concurrency", () => {
       (url) => loader.add({ url, kind: "image" }),
     );
 
-    expect(FakeImage.inFlight().map((image) => image.src)).toEqual([
+    expect(fake.inFlight().map((image) => image.src)).toEqual([
       "/a.png",
       "/b.png",
     ]);
 
-    imageFor("/a.png").succeed();
+    fake.for("/a.png").succeed();
     await pending[0];
-    expect(FakeImage.inFlight().map((image) => image.src)).toEqual([
+    expect(fake.inFlight().map((image) => image.src)).toEqual([
       "/a.png",
       "/b.png",
       "/c.png",
     ]);
 
     // A failure frees its slot exactly like a success does.
-    imageFor("/b.png").fail();
+    fake.for("/b.png").fail();
     await pending[1];
-    expect(FakeImage.inFlight()).toHaveLength(4);
+    expect(fake.inFlight()).toHaveLength(4);
 
-    imageFor("/c.png").succeed();
-    imageFor("/d.png").succeed();
+    fake.for("/c.png").succeed();
+    fake.for("/d.png").succeed();
     await Promise.all([pending[2], pending[3]]);
-    imageFor("/e.png").succeed();
+    fake.for("/e.png").succeed();
     await pending[4];
 
     expect(loader.progress()).toBe(1);
-    expect(images).toHaveLength(5);
+    expect(fake.all()).toHaveLength(5);
   });
 });
 
@@ -361,7 +329,7 @@ describe("createAssetLoader — settleAll", () => {
   it("leaves an already-arrived asset alone", async () => {
     const loader = createAssetLoader();
     const pending = loader.add({ url: "/a.png", kind: "image" });
-    const image = imageFor("/a.png");
+    const image = fake.for("/a.png");
     image.succeed();
     await pending;
 
@@ -376,7 +344,7 @@ describe("createAssetLoader — release", () => {
   it("stops counting a released asset and lets a later add refetch it", async () => {
     const loader = createAssetLoader();
     const first = loader.add({ url: "/a.png", kind: "image" });
-    imageFor("/a.png").succeed();
+    fake.for("/a.png").succeed();
     await first;
 
     void loader.add({ url: "/b.png", kind: "image" });
@@ -387,7 +355,9 @@ describe("createAssetLoader — release", () => {
 
     const again = loader.add({ url: "/a.png", kind: "image" });
     expect(again).not.toBe(first);
-    expect(images.filter((image) => image.src === "/a.png")).toHaveLength(2);
+    expect(fake.all().filter((image) => image.src === "/a.png")).toHaveLength(
+      2,
+    );
   });
 
   it("settles a pending asset silently — a release is deliberate, not a failure", async () => {
