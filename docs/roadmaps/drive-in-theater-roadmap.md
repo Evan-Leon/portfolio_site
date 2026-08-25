@@ -22,20 +22,29 @@ declared to the asset loader and gate the reveal; clips (`images/<slug>/demo.mp4
 produced by hand in the final phase) are deliberately outside the loader and degrade to
 the poster when missing. A multi-stage `Dockerfile` builds the theater in a Node stage
 and copies `theater/dist` into today's nginx image at `/theater/`; `index.html` gains one
-hero CTA hidden on phones and under reduced motion. The load-bearing assumption —
-transformed `<video>` elements perform and hit-test — is falsified first, cheaply.
+hero CTA hidden on phones and under reduced motion. Delivery is its own phase (DT10): a
+GitHub Actions workflow builds and pushes the image to ghcr.io with an immutable commit
+tag and deploys it to the droplet by `docker compose pull`, and Evan's cutover decision
+moves `evanleon.com` — today served from the droplet root, not this container — onto it.
+The load-bearing assumption — transformed `<video>` elements perform and hit-test — is
+falsified first, cheaply, on a probe that reproduces the production rendering path.
 
 **Written:** 2026-08-25
 **Source of truth:** `theater/**` (new), `Dockerfile`, `.dockerignore`, `package.json`,
 `pnpm-workspace.yaml` (new), `.githooks/pre-commit`, `.prettierignore`, `index.html`,
 `assets/css/styles.css`, `images/<slug>/demo.mp4` (new), `.claude/skills/adding-project-demo-clips/`
-(new), `.agents/skills/adding-project-demo-clips/` (new), `docs/wireframes/theater.html`,
-`docs/wireframes/index-hero-cta.html`
+(new), `.agents/skills/adding-project-demo-clips/` (new), `.github/workflows/deploy.yml`
+(new), `docs/deploy.md` (new), `docs/wireframes/theater.html`, `docs/wireframes/index-hero-cta.html`
 **Prerequisites:** Node `^20.19.0 || >=22.12.0` and pnpm on the WSL host (host has Node
 24.16.0 / pnpm 11.15.1, verified 2026-08-25); Docker with the external `evo-net` network
 (the existing `rebuild-restart` skill); ffmpeg for DT9 (host has 6.1.1); the sibling
 checkout `/home/evan/EVOsystem/scroll-driven-skeleton` at commit `7e5d44a` for DT0's
-vendoring; **DTF must record `GO` or `GO-REDUCED` before DT0 runs**; both wireframes approved 2026-08-25
+vendoring; **DTF must record `GO` or `GO-REDUCED` before DT0 runs**; **`images/el-blackjack/01.png` is a
+68-byte 1×1 placeholder PNG (verified 2026-08-25) and must be replaced by a real screenshot
+(≥ 1280×800 landscape or the portrait shape the other pages use) via the
+`adding-project-screenshots` skill before DT3 — DT3's poster-dimension test fails until it is**;
+for DT10, droplet SSH access, the three repo secrets (`DROPLET_HOST`, `DROPLET_USER`,
+`DROPLET_SSH_KEY`) and control of `evanleon.com`'s DNS (Cloudflare); both wireframes approved 2026-08-25
 (`docs/wireframes/theater.html` @ `c9e55bd`, `docs/wireframes/index-hero-cta.html` @ `959cdb9`).
 **Spec:** `docs/superpowers/specs/2026-08-25-drive-in-theater-design.md`
 
@@ -50,6 +59,7 @@ vendoring; **DTF must record `GO` or `GO-REDUCED` before DT0 runs**; both wirefr
 | DT5 | Keyboard drive-by-focus, `reducedMotionSteps`, narrow layout | frontend | S |
 | DT6 | Playwright suite for the theater | tests | S |
 | DT7 | Hero CTA on `index.html` | site | XS |
+| DT10 | Publish to ghcr, deploy to the droplet, cut over `evanleon.com` | infra [MANUAL gate] | S |
 | DT8 | `adding-project-demo-clips` skill and ffmpeg recipe | skills | XS |
 | DT9 | Record and encode the eight demo clips | media [MANUAL] | — |
 
@@ -115,27 +125,32 @@ Applicable rules from the shared tier for this phase:
 
 <reference_material>
 Read these files before writing any code:
-- `docs/wireframes/theater.html` — the `.lot`, `.lot__world`, `.screen` CSS block and the eight `nth-of-type` placements: the probe reproduces exactly this transform stack with `<video>` in place of `<img>`. Do not copy the annotations (`.note`) or the beats.
+- `docs/wireframes/theater.html` — the `.lot`, `.lot__world`, `.screen` CSS block, the lit/unlit screen rules (`filter: brightness`, marquee glow) and the eight `nth-of-type` placements: the probe reproduces exactly this transform stack with `<video>` in place of `<img>`. Do not copy the annotations (`.note`) or the beats.
+- `/home/evan/EVOsystem/scroll-driven-skeleton/src/engine/engine.ts` — the frame loop (`Lenis({ autoRaf: false })` ticked from rAF, one scroll read, `seek(progress)`): the probe's loop must have this shape, not a `scroll` listener.
+- `/home/evan/EVOsystem/scroll-driven-skeleton/src/adapters/gsap-timeline.ts` — how progress is applied (`timeline.progress(p)`), which the probe mirrors.
 - `docs/superpowers/specs/2026-08-25-drive-in-theater-design.md` — "Core assumption" section, for what the result feeds.
 </reference_material>
 
 <constraints>
-- The probe is a single standalone HTML file at `docs/spikes/2026-08-25-transformed-video-probe.html`, opened over `file://`. It ships nothing and imports nothing.
-- It needs eight video sources. No clips exist yet: generate a 6-second 960×600 synthetic test pattern once with ffmpeg (`testsrc2` source, H.264, no audio) into `docs/spikes/probe-clip.mp4` and reference it eight times. Delete nothing afterwards — the spike directory is the receipt.
-- Three variants, selected by a query string or a top-of-file constant: **flat** (eight videos in a grid, no transforms — the baseline), **lot** (the wireframe's transform stack), **overload** (the lot variant with 32 videos — the failing control). All videos `muted loop playsinline autoplay`.
-- Scroll drives a `translateZ` on `.lot__world` through a plain `scroll` listener + rAF (this is a probe, not the engine; `SDS-005` does not apply here).
-- Measurement is manual, in a real browser on the host (Chrome and Firefox; Safari/WebKit if a Mac is available, otherwise record "not measured"): DevTools Performance panel, 10 s of continuous wheel scrolling, read the frame-rate track. Record the *lowest sustained* fps, not the average.
-- Hit-testing: with the lot variant, click the third screen (the one yawed away from the camera) and confirm the `<a>`'s `href` navigates; Tab from the top of the document and confirm focus lands on screens in DOM order with a visible ring.
-- Decision bands, pre-registered: **GO** = lot variant ≥ 50 fps sustained in Chrome *and* Firefox, overload variant visibly lower than lot (proves the meter moves), click and Tab both succeed. **NO-GO** = lot variant < 30 fps sustained in either browser, or click/Tab fails. Between 30 and 50 fps = **GO-REDUCED**: proceed, but DT4 caps concurrently *decoding* videos at one (only the active screen has a `src` attached) instead of relying on `preload="none"` alone.
-- Record the decision line in this roadmap under "DTF decision record" below and in the session log. On NO-GO, stop: the fallback (cross-fading the existing PNGs on untransformed screens) is a spec change, decided by Evan, not by this phase.
+- The probe is a single standalone HTML file at `docs/spikes/2026-08-25-transformed-video-probe.html`, opened over `file://`. It ships nothing; it may load `gsap` and `lenis` from jsdelivr `<script>` tags (the same libraries the vendored engine uses) — nothing else.
+- It needs eight video sources. No clips exist yet: generate **eight distinct** 6-second 960×600 synthetic clips once with ffmpeg (`testsrc2` with a different `seed`/overlay text per file, H.264, no audio) into `docs/spikes/probe-clip-0..7.mp4` — one repeated file would let the browser share a decoder and understate the cost. Delete nothing afterwards — the spike directory is the receipt.
+- Four variants, selected by a query string or a top-of-file constant, all with eight videos `muted loop playsinline`:
+  - **flat** — eight videos in a plain grid, no transforms, all `autoplay`: the baseline.
+  - **lot** — the production path, not a sketch of it: the wireframe's transform stack (`perspective: 900px`, `preserve-3d` world, eight screens at `translate3d(±480px, 0, −(i+1)·800px) rotateY(±18°)`, 520px 16:10 surfaces, marquee and posts); a GSAP timeline (`{ paused: true }`) holding one tween on the world's `translateZ` from 0 to 7200px **and** per-screen lit tweens driving `filter: brightness()` 0.35→1 and a marquee glow (`box-shadow`/`background`) in and out over each screen's band; Lenis constructed with `autoRaf: false`; a rAF loop that calls `lenis.raf(t)`, reads `window.scrollY` once, and seeks `timeline.progress(scrollY / range)` absolutely. All eight `<source>`s attached; only the screen whose band contains the camera is told to `play()`, the rest `pause()` — exactly DT4's rule.
+  - **overload** — the lot variant with 32 screens: the failing control (EVO-UNI-120).
+  - **reduced** — the lot variant where a screen's `<source>` is attached only while it is active and removed (with `load()`) when it leaves the band: DT4's GO-REDUCED mitigation, measured here so a GO-REDUCED verdict rests on a number, not a hope.
+- **Measurement is defined, not left to feel** (manual, real browsers on the host — Chrome and Firefox; WebKit only if a Mac is available, else "not measured"): a 1440×900 window at 100% zoom, laptop on mains power, no other tabs playing media; DevTools Performance recording of **10 s of continuous wheel scrolling at a natural reading pace, top to bottom**; the metric is the **lowest fps over any contiguous 1 s window** in that recording; **three recordings per variant per browser, take the median**. Write all numbers into the probe's header comment.
+- Hit-testing, on the lot variant: click the third screen (yawed away from the camera) and confirm the `<a>`'s `href` navigates; Tab from the top and confirm focus lands on screens in DOM order with a visible ring.
+- Decision bands, pre-registered on the **lot** variant's median-of-three in **both** Chrome and Firefox: **GO** = ≥ 50 fps, overload reads lower than lot (the meter moves), click and Tab succeed. **GO-REDUCED** = lot in 30–49 fps in either browser **and** the *reduced* variant ≥ 50 fps in both, click and Tab succeed — DT4 then attaches a `<source>` only to the active screen. **NO-GO** = lot < 30 fps in either browser, or reduced < 50 when lot is in the 30–49 band, or click/Tab fails. A result straddling a boundary across the three runs is resolved by the median, never by re-running until it passes.
+- Record the decision line in this roadmap under "Decision records" below and in the session log. On NO-GO, stop: the fallback (cross-fading the existing PNGs on untransformed screens, or dropping the lit-state filters) is a spec change, decided by Evan, not by this phase.
 </constraints>
 
 <build_order>
 
 ### 1. Probe page
-- [ ] Generate `docs/spikes/probe-clip.mp4` with ffmpeg (6 s, 960×600, `testsrc2`, libx264, `-an`, `-movflags +faststart`).
-- [ ] Write `docs/spikes/2026-08-25-transformed-video-probe.html` with the three variants and the scroll-driven `translateZ`, reproducing the wireframe's transform stack.
-- [ ] Add a one-paragraph header comment stating what is measured, the three variants, and the pre-registered bands.
+- [ ] Generate `docs/spikes/probe-clip-0..7.mp4` with ffmpeg (6 s, 960×600, `testsrc2` with a distinct seed/label per file, libx264, `-an`, `-movflags +faststart`).
+- [ ] Write `docs/spikes/2026-08-25-transformed-video-probe.html` with the four variants; the lot/overload/reduced variants drive a GSAP timeline (world `translateZ` + per-screen brightness/marquee tweens) from a Lenis-ticked rAF loop, per `<constraints>`.
+- [ ] Add a header comment stating what is measured, the four variants, the sampling protocol, and the pre-registered bands, with empty slots for the numbers.
 
 ### 2. Hand over
 - [ ] Commit the probe and the clip (the `<commit>` below). The measurement itself is a human step — see **Manual Verification** — so the session's work ends here; the decision line is written by whoever measures.
@@ -144,23 +159,26 @@ Read these files before writing any code:
 
 ## Manual Verification (Evan, in a real browser — not an agent step)
 
-1. Open the **flat** variant in Chrome and in Firefox; DevTools → Performance → record 10 s of continuous wheel scrolling; note the *lowest sustained* fps in the probe file's header comment.
-2. Open the **overload** variant; same. It must read lower than flat — if it does not, the meter is not moving (EVO-UNI-120): hand the probe back to a session to add videos / enlarge surfaces before measuring further.
-3. Open the **lot** variant; same measurement, plus: click the third screen (yawed away from the camera) and confirm its `href` navigates; Tab from the top and confirm focus lands on the screens in DOM order with a visible ring.
-4. Apply the pre-registered bands from `<constraints>` and write the decision row (`GO` / `GO-REDUCED` / `NO-GO`, the numbers, date, decider) into the "DTF decision record" table at the bottom of this roadmap; commit it as `docs(dtf): decision record`.
+1. Open the **flat** variant in Chrome and in Firefox; DevTools → Performance → record 10 s of continuous wheel scrolling at a natural pace; note the lowest 1 s-window fps. Three recordings per browser; write the median (and the three raw numbers) into the probe file's header comment.
+2. **overload** — same. It must read lower than **lot** — if it does not, the meter is not moving (EVO-UNI-120): hand the probe back to a session to add screens / enlarge surfaces before measuring further.
+3. **lot** — same measurement, plus the click and Tab checks from `<constraints>`.
+4. **reduced** — same measurement (this is what a GO-REDUCED verdict rests on).
+5. Apply the pre-registered bands and write the decision row (`GO` / `GO-REDUCED` / `NO-GO`, the four medians per browser, click/Tab result, date, decider) into the "Decision records" table at the bottom of this roadmap; commit it as `docs(dtf): decision record`.
 
 <verification>
 ```bash
 cd /home/evan/EVOsystem/portfolio_site
-test -f docs/spikes/probe-clip.mp4 && ffprobe -v error -show_entries stream=codec_name,width,height -of csv=p=0 docs/spikes/probe-clip.mp4
-# expected: h264,960,600
-grep -c '<video' docs/spikes/2026-08-25-transformed-video-probe.html
-# expected: ≥ 8 (the lot/flat variants) — the overload variant may clone them in script
+for i in 0 1 2 3 4 5 6 7; do ffprobe -v error -show_entries stream=codec_name,width,height -of csv=p=0 docs/spikes/probe-clip-$i.mp4; done
+# expected: eight lines of h264,960,600
+ls docs/spikes/probe-clip-*.mp4 | wc -l                       # 8 distinct clips
+grep -c '<video\|createElement(.video.)' docs/spikes/2026-08-25-transformed-video-probe.html   # ≥ 1 — screens may be built in script
+grep -n 'gsap.timeline\|timeline.progress(' docs/spikes/2026-08-25-transformed-video-probe.html   # the lot variant seeks a GSAP timeline absolutely
+grep -n 'brightness(' docs/spikes/2026-08-25-transformed-video-probe.html   # the lit-state filter is in the probe
 grep -E '^\| DTF \| (GO|GO-REDUCED|NO-GO) \|' docs/roadmaps/drive-in-theater-roadmap.md
 # expected: exactly one matching row in the DTF decision record table
 ```
 
-Expected, for the session that builds the probe: the probe clip is h264 960×600 and the file carries ≥ 8 `<video>` elements; the decision-record grep prints **nothing yet** (the row is still `_not yet run_`). Expected, after Manual Verification: the grep prints exactly one row, and the fps numbers for all three variants are in the probe file's header with overload lower than lot in both browsers.
+Expected, for the session that builds the probe: eight distinct h264 960×600 clips; the probe seeks a GSAP timeline and carries the brightness filter; the decision-record grep prints **nothing yet** (the row is still `_not yet run_`). Expected, after Manual Verification: the grep prints exactly one row, and the medians for all four variants are in the probe file's header with overload lower than lot in both browsers.
 </verification>
 
 <commit>
@@ -198,7 +216,7 @@ build.
 <context>
 ## What's already built
 
-- DTF recorded `GO` (or `GO-REDUCED`) in this roadmap's "DTF decision record". Check it.
+- DTF recorded `GO` (or `GO-REDUCED`) in this roadmap's "Decision records". Check it.
 - This repo: root `package.json` (`name: portfolio-site`, scripts `format` /
   `format:check` = Prettier over `"**/*.{html,css,js}"`, `validate:codex`; devDependency
   `prettier ^3.6.2`; `packageManager: pnpm@11.15.1`), `pnpm-lock.yaml`, no
@@ -297,7 +315,7 @@ Read these files before writing any code:
 
 <branch>
 Check `/home/evan/EVOsystem/scroll-driven-skeleton/src/test-setup.ts` before writing any code:
-- If, after dropping `frame-sequence.ts` and its test, **no remaining vendored file calls the canvas API** — `grep -rnE '\.getContext\(|HTMLCanvasElement' theater/src` is empty (match the API, not the word: several vendored comments say "canvas" in prose, and `adapter-contract.test.ts` creates a `<canvas>` element as an opaque fixture without ever drawing on it — neither needs the mock) → remove the `vitest-canvas-mock` import and its numbered item from `test-setup.ts`'s header, and leave `vitest-canvas-mock` out of `theater/package.json`. **This is the expected outcome** as of `7e5d44a`; the `<rules>` bullet for `EVO-UNI-012` assumes it.
+- If, after dropping `frame-sequence.ts` and its test, **no remaining vendored file calls the canvas API** — `grep -rnE '\.getContext\(|HTMLCanvasElement' theater/src` is empty (match the API, not the word: several vendored comments say "canvas" in prose, and `adapter-contract.test.ts` creates a `<canvas>` element as an opaque fixture without ever drawing on it — neither needs the mock) → remove the `vitest-canvas-mock` import and its numbered item from `test-setup.ts`'s header, leave `vitest-canvas-mock` out of `theater/package.json`, **and delete the `canvas 2d fill` `describe` block from `src/test-setup.test.ts`** — its two tests exist only to prove the mock and fail the moment it is gone (a scratch run of this exact removal on `7e5d44a` failed 2 of 233 tests for that reason); keep that file's `matchMedia` and `ResizeObserver` tests. **This is the expected outcome** as of `7e5d44a`; the `<rules>` bullet for `EVO-UNI-012` assumes it.
 - If something still calls the API → keep `vitest-canvas-mock` as a devDependency and its header item, and record which file needs it in the test-setup header.
 </branch>
 
@@ -329,6 +347,7 @@ cd /home/evan/EVOsystem/portfolio_site
 cat pnpm-workspace.yaml                                   # lists theater
 pnpm install --frozen-lockfile                            # exit 0, no "ignored build scripts" warning
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
+pnpm -C theater test -- src/test-setup.test.ts               # matchMedia + ResizeObserver tests pass; no canvas tests remain
 pnpm -C theater build && test -f theater/dist/index.html
 grep -c 'src="/theater/assets/' theater/dist/index.html   # ≥ 1: base applied to the built asset URLs
 grep -rn 'frameSequence\|lottie\|dist-wix\|build:wix' theater/src theater/e2e theater/*.ts theater/*.json ; echo "exit=$?"   # expected: no output, exit=1
@@ -453,7 +472,8 @@ curl -s -o /dev/null -w '%{http_code}\n' http://portfolio-site.localhost/theater
 curl -s http://portfolio-site.localhost/theater/ | grep -c 'src="/theater/assets/'      # ≥ 1
 curl -s -o /dev/null -w '%{http_code}\n' http://portfolio-site.localhost/                # 200 (site unchanged)
 curl -s -o /dev/null -w '%{http_code}\n' http://portfolio-site.localhost/projects/nom-noms.html   # 200
-curl -s -o /dev/null -w '%{http_code}\n' http://portfolio-site.localhost/theater/nope    # 404
+curl -s -o /dev/null -w '%{http_code}\n' http://portfolio-site.localhost/theater/nope    # 404 (nginx; note vite preview serves the index here — a known, accepted difference)
+curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' http://portfolio-site.localhost/theater   # 301 → …/theater/ (nginx directory redirect); the CTA links the slashed form
 # negative: a type error must fail the image build — introduce one, build, revert
 echo 'const x: number = "no"' >> theater/src/main.ts && (docker compose build >/dev/null 2>&1; echo "build exit=$?") ; git checkout -- theater/src/main.ts
 # expected: build exit=1
@@ -672,6 +692,11 @@ it scrubs backwards exactly.
   `classic-golf` "The Classic", `spead-read` "Spead Read", `media-cloud-web-tools`
   "Media Cloud Web Tools", `media-cloud-vitals` "Media Cloud Vitals", `showrunner-digest`
   "ShowRunner Digest" — pages at `projects/<slug>.html`, posters at `images/<slug>/01.png`.
+  **Seven posters are real screenshots (1280×794 up to 2056×1071; `classic-golf` is a
+  556×1003 portrait); `images/el-blackjack/01.png` is a 68-byte 1×1 placeholder** — it
+  decodes successfully, so the loader counts it as loaded and the ring reaches 100% over
+  a blank screen. The header Prerequisites require Evan to replace it before this phase;
+  the test below refuses to pass until he has.
 
 **Out of scope:** `<video>` elements and playback (DT4) — this phase's screens show the
 poster `<img>` only; keyboard drive-by-focus and the narrow layout (DT5).
@@ -707,9 +732,9 @@ Read these files before writing any code:
 - **`theater/src/projects.ts`** exports `interface TheaterProject { slug: string; name: string; href: string; poster: string; clip: string }` and `const projects: readonly TheaterProject[]` — eight entries, `href = '/projects/<slug>.html'`, `poster = '/images/<slug>/01.png'`, `clip = '/images/<slug>/demo.mp4'`. Site-absolute; never built from `import.meta.env.BASE_URL` (these are not theater assets).
 - **`theater/src/lot/geometry.ts`** (pure, no DOM): `SPACING = 800`, `OFFSET = 480`, `YAW_DEG = 18`, `GROUND_LINE = 0.58`, `VH_PER_SCREEN = 120`. (The approved wireframe's static `nth-of-type` transforms read `z = -600, -1400, -2200, …` — that is placement `z` **plus** a depicted `lotZ` of 200px, the "just past the gate" frame its header comment describes; the formulas below are the source of truth and the literal test values come from them, not from the wireframe's CSS.) `screenPlacement(i: number): { x: number; z: number; yaw: number }` (even `i` → `x = -OFFSET`, `yaw = +YAW_DEG`; odd → `+OFFSET`, `-YAW_DEG`; `z = -(i + 1) * SPACING`); `lotZ(progress: number, count: number): number` = `clamp01(progress) * SPACING * (count + 1)` (the camera starts at the gate and ends one spacing past the last screen); `activeScreen(progress: number, count: number): number | null` = the `i` with `i * SPACING <= lotZ < (i + 1) * SPACING` when `0 <= i < count`, else `null` — bands are contiguous and disjoint, and the last screen goes inactive at exactly `lotZ = count * SPACING`; `screenProgress(i: number, count: number): number` = the progress at which screen `i`'s band begins (`i * SPACING / (SPACING * (count + 1))`) — DT5 consumes this by exact name.
 - **`theater/src/lot/build-lot.ts`** exports `buildLot(projects: readonly TheaterProject[]): GsapTimelineBuilder`. Inside the container: `.sds-lot` stage (perspective, CSS starfield background), `.sds-lot__world` (preserve-3d), `.sds-lot__ground`, and one `<a class="sds-screen" href data-screen-index>` per project containing `.sds-screen__surface` (holding an `<img>` for the poster, `alt=""`), `.sds-screen__base` with two `.sds-screen__post`s and `.sds-screen__marquee` (the project name — this text is the link's accessible name). Placement from `screenPlacement(i)` via inline `transform`. The timeline: one tween on `.sds-lot__world` from `translateZ(0)` to `translateZ(lotZ(1, n))` spanning the whole timeline; per screen, a lit tween (`filter` brightness 0.35→1 and marquee colour/glow via a `--sds-screen-lit` custom property 0→1) that begins at `screenProgress(i, n)` and completes over 15% of the band, and an unlit tween back that begins when the band ends and completes over 5% of a band. Durations are relative weights only.
-- **`theater/src/lot/lot-scene.ts`** exports `lotScene(projects: readonly TheaterProject[]): AdapterFactory` and `interface LotAdapter extends AnimationAdapter { snapshot(): LotSnapshot }` with `LotSnapshot = { progress: number; lotZ: number; activeScreen: number | null; timelineProgress: number | null; loadedPosters: number }`. The factory builds the inner `gsapTimeline(buildLot(projects))` adapter and wraps it: `load()` first declares every poster via `sharedAssetLoader.add({ url, kind: 'image' })`, reporting combined progress (posters and the inner load) through `onProgress`, and swaps a settled-without-bytes poster for a dark surface (EVO-UNI-053); `seek(p)` forwards to the inner adapter; `destroy()` releases the posters then destroys the inner adapter; `eager` is `true`. Do **not** attach a `factory.assets` manifest: the engine's `warmDeferredAssets` skips eager scenes, and the lot is the only scene, so a manifest would never be read — the posters gate the reveal through `load()` alone. `activeScreen` in the snapshot is computed from progress with `geometry.activeScreen`. DT4 adds the video side effect to this wrapper's `seek` — leave a clearly named seam (`onActiveScreenChange(prev, next)`) for it.
+- **`theater/src/lot/lot-scene.ts`** exports `lotScene(projects: readonly TheaterProject[]): AdapterFactory` and `interface LotAdapter extends AnimationAdapter { snapshot(): LotSnapshot }` with `LotSnapshot = { progress: number; lotZ: number; activeScreen: number | null; timelineProgress: number | null; loadedPosters: number; worldTransform: string; lit: number[] }` — `worldTransform` is the world element's **inline** `style.transform` as GSAP wrote it and `lit` is each screen's **inline** `--sds-screen-lit` value (`style.getPropertyValue`, rounded to 2 dp) in drive order. Both are reads of styles the timeline itself set, not layout (`SDS-004`), and they make the snapshot observe what is *rendered*, not what was *computed*: a tween aimed at the wrong element or a misspelled property now fails the contract's discrimination and order-independence checks instead of passing on the pure values alone. The factory builds the inner `gsapTimeline(buildLot(projects))` adapter and wraps it: `load()` first declares every poster via `sharedAssetLoader.add({ url, kind: 'image' })`, reporting combined progress (posters and the inner load) through `onProgress`, and swaps a poster that settled without bytes **or decoded smaller than 64×64** (`naturalWidth`/`naturalHeight` on the element the loader resolves — a placeholder is "valid but wrong", EVO-UNI-053) for a dark surface marked `data-poster="missing"`; `seek(p)` forwards to the inner adapter; `destroy()` releases the posters then destroys the inner adapter; `eager` is `true`. Do **not** attach a `factory.assets` manifest: the engine's `warmDeferredAssets` skips eager scenes, and the lot is the only scene, so a manifest would never be read — the posters gate the reveal through `load()` alone. `activeScreen` in the snapshot is computed from progress with `geometry.activeScreen`. DT4 adds the video side effect to this wrapper's `seek` — leave a clearly named seam (`onActiveScreenChange(prev, next)`) for it.
 - **Registry:** `{ id: 'lot', vh: 100 + VH_PER_SCREEN * projects.length, adapter: lotScene(projects) }`.
-- **Tests:** `theater/src/projects.test.ts` — slugs unique; for every project `../projects/<slug>.html` and `../images/<slug>/01.png` exist (Node `fs`, resolved from `import.meta.dirname`); and the eight `href`s equal, in order, the `href`s inside `theater/index.html`'s exit-beat `<ul>` (read the file, extract with a regex anchored on `<li><a href="`) — the hand-written no-JS list and the registry cannot drift. `theater/src/lot/geometry.test.ts` — literal placements for `i = 0, 1, 2, 7`; `lotZ` at 0, 0.5, 1 for `count = 8`; `activeScreen` at band boundaries (`0` at progress 0, `null` at progress 1, the exact progress where screen 0 hands over to screen 1, out-of-range progress clamps). `theater/src/lot/lot-scene.contract.test.ts` — `adapterContract(lotScene(projects), { name: 'lot', observe: (a) => (a as LotAdapter).snapshot() })`. **jsdom's real `Image` never fires `load` or `error`** (stated in `theater/src/loader/asset-loader.test.ts`'s header), so without help each poster settles only via the loader's real 4 s `STALL_TIMEOUT_MS` — eight of them against Vitest's 5 s default timeout is a hang. Both `lot-scene.contract.test.ts` and (in DT4) `lot-scene.test.ts` must therefore mirror `asset-loader.test.ts`: `vi.stubGlobal('Image', FakeImage)` with a `FakeImage` that settles on demand (copy that test's class into a shared `theater/src/test-helpers/fake-image.ts` rather than duplicating it — EVO-UNI-057), or `vi.useFakeTimers()` + `vi.advanceTimersByTimeAsync(STALL_TIMEOUT_MS)` around `load()`. With that in place the contract's `load-resolves` check passes as the loader guarantees (a settled-unsuccessful asset resolves, never rejects).
+- **Tests:** `theater/src/projects.test.ts` — slugs unique; for every project `../projects/<slug>.html` and `../images/<slug>/01.png` exist (Node `fs`, resolved from `import.meta.dirname`) **and the poster's PNG header declares width ≥ 640 and height ≥ 400 or width ≥ 400 and height ≥ 640** (read bytes 16–23 of the file: big-endian width then height after the 8-byte signature and the IHDR length/type — no image library; a 1×1 placeholder fails); and the eight `href`s equal, in order, the `href`s inside `theater/index.html`'s exit-beat `<ul>` (read the file, extract with a regex anchored on `<li><a href="`) — the hand-written no-JS list and the registry cannot drift. `theater/src/lot/geometry.test.ts` — literal placements for `i = 0, 1, 2, 7`; `lotZ` at 0, 0.5, 1 for `count = 8`; `activeScreen` at band boundaries (`0` at progress 0, `null` at progress 1, the exact progress where screen 0 hands over to screen 1, out-of-range progress clamps). `theater/src/lot/lot-scene.contract.test.ts` — `adapterContract(lotScene(projects), { name: 'lot', observe: (a) => (a as LotAdapter).snapshot() })`. `theater/src/lot/build-lot.test.ts` — build the adapter in jsdom (real `gsap`, as the vendored gsap contract test does), `load()` with the `Image` stub, then seek to the middle of screens 0, 3 and 7's bands forward and back to 3 and 0, asserting after each seek the exact `lit` vector (e.g. `[1,0,0,0,0,0,0,0]` at screen 0's band middle, `[0,0,0,1,0,0,0,0]` at screen 3's) and that `worldTransform` contains a `translateZ`/`translate3d` whose Z increases across the forward seeks and returns to the earlier string exactly on the way back. **jsdom's real `Image` never fires `load` or `error`** (stated in `theater/src/loader/asset-loader.test.ts`'s header), so without help each poster settles only via the loader's real 4 s `STALL_TIMEOUT_MS` — eight of them against Vitest's 5 s default timeout is a hang. Both `lot-scene.contract.test.ts` and (in DT4) `lot-scene.test.ts` must therefore mirror `asset-loader.test.ts`: `vi.stubGlobal('Image', FakeImage)` with a `FakeImage` that settles on demand (copy that test's class into a shared `theater/src/test-helpers/fake-image.ts` rather than duplicating it — EVO-UNI-057), or `vi.useFakeTimers()` + `vi.advanceTimersByTimeAsync(STALL_TIMEOUT_MS)` around `load()`. With that in place the contract's `load-resolves` check passes as the loader guarantees (a settled-unsuccessful asset resolves, never rejects).
 - **CSS** for the lot lives in `theater/src/styles/global.css`, transcribed from the wireframe with `sds-` prefixes and tokens only (`--sds-marquee`, `--sds-asphalt*`, `--sds-text`, etc.). The `--sds-screen-lit` property drives brightness and marquee glow through `calc()`/`color-mix()` or two-state classes toggled by the timeline — either is acceptable; pick one and use it for both surface and marquee.
 - `filter: brightness()` on eight surfaces is the known cost centre from DTF; add `will-change: transform` to `.sds-lot__world` only.
 </constraints>
@@ -722,8 +747,8 @@ Read these files before writing any code:
 
 ### 2. The lot
 - [ ] Write `lot/build-lot.ts` (DOM + timeline) and the lot CSS in `global.css`.
-- [ ] Write `lot/lot-scene.ts` (wrapper: posters via the loader, `eager`, `assets`, `snapshot`, the `onActiveScreenChange` seam).
-- [ ] Write `lot/lot-scene.contract.test.ts`; make it pass.
+- [ ] Write `lot/lot-scene.ts` (wrapper: posters via the loader — no factory manifest — `eager`, `snapshot` incl. `worldTransform`/`lit`, the `onActiveScreenChange` seam).
+- [ ] Write `lot/lot-scene.contract.test.ts` and `lot/build-lot.test.ts`; make both pass.
 - [ ] Point the registry at `lotScene(projects)` with the computed `vh`.
 
 ### 3. Prove
@@ -735,7 +760,8 @@ Read these files before writing any code:
 ```bash
 cd /home/evan/EVOsystem/portfolio_site
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
-pnpm -C theater test -- --reporter=verbose 2>&1 | grep -E 'lot|geometry|projects' | head -40   # the three new suites, all ✓
+pnpm -C theater test -- --reporter=verbose 2>&1 | grep -E 'lot|geometry|projects' | head -60   # the four new suites, all ✓
+file images/*/01.png | grep -v 'x 1,'                                  # eight real posters (a 1×1 line here means the prerequisite was skipped)
 grep -n 'new Image\|fetch(' theater/src/lot/*.ts ; echo "exit=$?"     # SDS-006: exit=1
 grep -n 'getBoundingClientRect\|offsetHeight\|offsetWidth' theater/src/lot/*.ts ; echo "exit=$?"   # SDS-004: exit=1
 grep -c '/projects/' theater/src/projects.ts                          # 8
@@ -751,7 +777,7 @@ restores the identical frame (`SDS-001`); clicking a screen opens its project pa
 console has no `[sds]` warnings (in particular no `asset settled without its bytes`).
 Compare a mid-lot frame with `docs/wireframes/theater.html`.
 
-Expected: all three new suites green alongside the vendored ones; both `grep … exit=1`
+Expected: all four new suites green alongside the vendored ones; the `file` check lists eight real posters; both `grep … exit=1`
 guards print nothing; the lot matches the wireframe.
 </verification>
 
@@ -802,8 +828,10 @@ exists and upgrades one screen at a time.
 - `theater/src/lot/lot-scene.contract.test.ts` runs the conformance kit in jsdom. jsdom's
   `HTMLMediaElement.prototype.play()` returns `undefined` and logs "not implemented";
   `pause()` is a no-op. `theater/src/test-setup.ts` stubs `matchMedia` and `ResizeObserver`.
-- DTF's decision record (bottom of this roadmap) says `GO` or `GO-REDUCED`. Under
-  `GO-REDUCED`, only the active screen may hold a `src`.
+- DTF's decision row (bottom of this roadmap, "Decision records") says `GO` or
+  `GO-REDUCED`. Under `GO-REDUCED`, only the active screen may hold a `src` — DTF measured
+  that exact variant (`reduced`) at ≥ 50 fps before proceeding, so this is a mitigation with
+  a number behind it.
 
 **Out of scope:** reduced-motion suppression of video (DT5), keyboard focus (DT5).
 
@@ -825,7 +853,7 @@ Read these files before writing any code:
 - `theater/src/lot/lot-scene.ts` — the `onActiveScreenChange` seam and `destroy()`; the video side effect lands in the seam, and `destroy()` must pause and detach every video.
 - `theater/src/lot/build-lot.ts` — the surface markup to extend.
 - `theater/src/test-setup.ts` — where the media-element mocks go (a new numbered item in its header list).
-- `docs/roadmaps/drive-in-theater-roadmap.md` "DTF decision record" — `GO` vs `GO-REDUCED` decides the `src` strategy below.
+- `docs/roadmaps/drive-in-theater-roadmap.md` "Decision records" — `GO` vs `GO-REDUCED` decides the `src` strategy below.
 </reference_material>
 
 <constraints>
@@ -1093,11 +1121,13 @@ Read these files before writing any code:
 - Specs, one file each under `theater/e2e/`:
   - `reveal.spec.ts` — the loading ring appears, reaches its revealed class, and eight `a.sds-screen` exist with the eight `href`s in drive order.
   - `drive.spec.ts` — read `.sds-lot__world`'s computed `transform` (a `matrix3d`) at three increasing scroll positions inside the lot: the Z translation increases monotonically; scroll back to the first position and the matrix equals the first reading exactly (`SDS-001`). Positions are derived from the `[data-scene="lot"]` spacer's bounding box and `screenProgress`, not hardcoded pixels.
-  - `active-screen.spec.ts` — at the scroll position for screen 2's band (+ a small settle), screen 2 has the lit state (its `--sds-screen-lit` computed value is `1`, or its lit class) and no other screen does; one screen ahead, screen 3 is lit and 2 is not. Real playback must be proven, and no clip exists until DT9, so the spec makes its own: `test.beforeAll` runs ffmpeg (`testsrc2`, 3 s, 960×600, libx264, `-an`) to write `images/nom-noms/demo.mp4` **only if that file does not already exist**, remembering that it created it; `test.afterAll` deletes it in that case (a DT9-era real clip is left alone). Then, at screen 2's band, the active screen's `<video>` reports `paused === false` and screen 1's `paused === true`; at screen 3's band, screen 2's is paused again; and screen 5 (`spead-read`, no clip) carries `data-clip="missing"` with its poster visible. The spec header states the synthetic-clip mechanism and that a crash mid-run can leave `images/nom-noms/demo.mp4` untracked (`git status` shows it; delete it).
-  - `click-through.spec.ts` — clicking screen 4 (`classic-golf`) navigates to `/projects/classic-golf.html` (served by the site-assets plugin) and the page title contains "The Classic".
-  - `reduced-motion.spec.ts` — under `emulateMedia({ reducedMotion: 'reduce' })`, sweeping the lot yields at most nine distinct `.sds-lot__world` transforms (one per keyframe: `projects.length + 1` steps → 10 values including 0; assert `≤ 10` distinct and `≥ 5`), and no `<video>` is unpaused at any sampled position.
-  - `keyboard.spec.ts` — Tab from the top reaches the skip link first; activating it moves focus to `#exit`; reload, Tab past the skip link to screen 1 and assert the page scrolled into the lot (scrollY > the spacer's top) and screen 1 is lit; Tab again → screen 2 lit.
-- Extend `theater/e2e/helpers/app.ts` with `SCREEN = 'a.sds-screen'`, `LOT_WORLD = '.sds-lot__world'`, `LOT_SPACER = '[data-scene="lot"]'`, and `scrollToScreen(page, i)` built on the existing `scrollTo`.
+  - `active-screen.spec.ts` — **all eight screens, forward then backward**: for `i` in 0..7, scroll to the middle of screen `i`'s band and assert screen `i` is lit (`--sds-screen-lit` computed value `1`) and the other seven are not; then for `i` in 7..0 the same in reverse. Real playback must be proven, and no clip exists until DT9, so the spec makes its own: `test.beforeAll` runs ffmpeg (`testsrc2`, 3 s, 960×600, libx264, `-an`) to write `images/nom-noms/demo.mp4` **only if that file does not already exist**, remembering that it created it; `test.afterAll` deletes it in that case (a DT9-era real clip is left alone). Then: at screen 2's band its `<video>` reports `paused === false` and screen 1's `paused === true`; at screen 3's band screen 2's is paused; **back at screen 2's band it is playing again** (reverse activation); and screen 5 (`spead-read`, no clip) carries `data-clip="missing"` with its poster visible. The spec header states the synthetic-clip mechanism and that a crash mid-run can leave `images/nom-noms/demo.mp4` untracked (`git status` shows it; delete it).
+  - `click-through.spec.ts` — **parameterised over all eight** entries of `theater/src/projects.ts` (import it — `e2e/` is in the theater `tsconfig` `include`): scroll to screen `i`'s band, click its `<a>`, assert the URL ends with `href` and the `<title>` contains `name`.
+  - `reduced-motion.spec.ts` — under `emulateMedia({ reducedMotion: 'reduce' })`, sweep the lot in 40 evenly spaced scroll positions and collect the distinct Z translations of `.sds-lot__world`'s computed `matrix3d`; assert the set equals `{ lotZ(k / 9, 8) : k = 0..9 }` within ±1 px (ten values — `reducedMotionSteps` is 9, from `projects.length + 1`), and that no `<video>` is unpaused at any sampled position.
+  - `keyboard.spec.ts` — Tab from the top reaches the skip link first; activating it moves focus to `#exit`; reload, then Tab past the skip link **through all eight screens**, asserting after each Tab that the focused element is screen `i`, that `scrollY` is strictly greater than after the previous Tab, and that screen `i` is lit.
+- Extend `theater/e2e/helpers/app.ts` with `SCREEN = 'a.sds-screen'`, `LOT_WORLD = '.sds-lot__world'`, `LOT_SPACER = '[data-scene="lot"]'`, `scrollToScreen(page, i)` built on the existing `scrollTo`, and `worldZ(page)` that parses the Z translation out of `LOT_WORLD`'s computed `matrix3d`.
+- **Production-parity smoke**, in `theater/e2e/nginx-parity.sh` (plain bash, not Playwright): against `http://portfolio-site.localhost` after `rebuild-restart`, assert `/theater/` 200, `/theater` 301→`/theater/`, `/theater/nope` 404, one hashed `/theater/assets/*.js` from `theater/dist/index.html` 200 with a JavaScript content type, `/images/nom-noms/01.png` 200 `image/png`, `/projects/nom-noms.html` 200. This is what catches a URL that works under `vite preview`'s SPA fallback and 404s under nginx; the Playwright suite deliberately stays on `vite preview`.
+- Chromium only, as configured; the `## Done` claim below is scoped to that.
 - `theater/package.json` `test:e2e` stays `playwright test`; add a root script `theater:e2e`.
 - If `playwright install chromium` is needed, run it once and confirm `pnpm -C theater exec playwright --version` matches the cached revision before blaming a spec (EVO-TOOL-087).
 </constraints>
@@ -1112,7 +1142,7 @@ Read these files before writing any code:
 - [ ] Add the root `theater:e2e` script.
 
 ### 3. Prove and falsify
-- [ ] Run the suite green; then run the two deliberate breakages in `<verification>` and confirm the named specs fail; revert.
+- [ ] Run the suite green; run `theater/e2e/nginx-parity.sh` green against the rebuilt image; then run the six deliberate breakages in `<verification>` — one per spec — and confirm each named spec fails; revert.
 
 </build_order>
 
@@ -1123,19 +1153,39 @@ pnpm -C theater exec playwright --version
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
 pnpm -C theater test:e2e                                    # six files, all pass
 ls theater/e2e/*.spec.ts | wc -l                            # 6
-# Falsify (EVO-UNI-061): break two behaviours, expect the owning spec to fail, revert.
+docker compose build && docker compose up -d --force-recreate && bash theater/e2e/nginx-parity.sh   # every line OK
+# Falsify (EVO-UNI-061): one breakage per spec, expect exactly the owning spec to fail, revert.
 sed -i 's#/projects/classic-golf.html#/projects/nope.html#' theater/src/projects.ts
-pnpm -C theater test:e2e -- click-through ; echo "click-through exit=$?"   # expected: non-zero
+pnpm -C theater test:e2e -- click-through ; echo "click-through exit=$?"   # non-zero
 git checkout -- theater/src/projects.ts
 sed -i 's/reducedMotionSteps: projects.length + 1/reducedMotionSteps: 1/' theater/src/main.ts
-pnpm -C theater test:e2e -- reduced-motion ; echo "reduced-motion exit=$?"   # expected: non-zero (fewer than 5 distinct positions)
+pnpm -C theater test:e2e -- reduced-motion ; echo "reduced-motion exit=$?"   # non-zero
 git checkout -- theater/src/main.ts
+# active-screen: make every screen report inactive
+sed -i 's/^export function activeScreen(/export function activeScreen_(/' theater/src/lot/geometry.ts && printf '\nexport function activeScreen(): number | null { return null }\n' >> theater/src/lot/geometry.ts
+pnpm -C theater test:e2e -- active-screen ; echo "active-screen exit=$?"   # non-zero
+git checkout -- theater/src/lot/geometry.ts
+# drive: freeze the world
+sed -i 's/^export function lotZ(/export function lotZ_(/' theater/src/lot/geometry.ts && printf '\nexport function lotZ(): number { return 0 }\n' >> theater/src/lot/geometry.ts
+pnpm -C theater test:e2e -- drive ; echo "drive exit=$?"   # non-zero
+git checkout -- theater/src/lot/geometry.ts
+# keyboard: disconnect the focus handler
+sed -i "s/addEventListener('focusin'/addEventListener('focusin-disabled'/; s/addEventListener(\"focusin\"/addEventListener(\"focusin-disabled\"/" theater/src/main.ts
+pnpm -C theater test:e2e -- keyboard ; echo "keyboard exit=$?"   # non-zero
+git checkout -- theater/src/main.ts
+# reveal: drop a project
+python3 - <<'EOF'
+import re
+p='theater/src/projects.ts'; t=open(p).read(); open(p,'w').write(re.sub(r"\{[^{}]*showrunner-digest[^{}]*\},?", "", t, count=1))
+EOF
+pnpm -C theater test:e2e -- reveal ; echo "reveal exit=$?"   # non-zero
+git checkout -- theater/src/projects.ts
 pnpm -C theater test:e2e                                    # green again
 ```
 
-Expected: six specs pass; each deliberate breakage makes exactly the named spec fail; the
-suite is green after the reverts and `git status` shows only the new e2e files and the
-helper/package edits.
+Expected: six specs pass; the nginx parity script passes against the rebuilt image; each of
+the six deliberate breakages makes the named spec fail; the suite is green after the reverts
+and `git status` shows only the new e2e files and the helper/package edits.
 </verification>
 
 <commit>
@@ -1146,9 +1196,13 @@ test(dt6): playwright suite for the theater — reveal, drive, active screen, cl
 
 ## Done
 
-After this phase, portfolio_site has a browser suite that fails when the theater stops
-revealing, driving, reversing, lighting the right screen, linking, snapping under reduced
-motion, or answering the keyboard.
+After this phase, portfolio_site has a Chromium suite that fails when the theater stops
+revealing with eight screens, driving forward or restoring its exact position on the way
+back, lighting exactly the active screen in either direction, playing and re-playing the
+active clip, linking any of the eight screens to its page, snapping to the ten reduced-motion
+keyframes, or driving to each screen by Tab — plus a bash smoke that fails when the nginx
+image serves the theater's URLs differently from `vite preview`. It does not cover Firefox or
+WebKit, touch, or clip production; those remain manual.
 
 Paste Phase DT7.
 
@@ -1255,7 +1309,149 @@ feat(dt7): hero "Enter the Drive-In" CTA, hidden on phones and under reduced mot
 ## Done
 
 After this phase, portfolio_site's homepage offers the drive-in to desktop visitors who
-have not asked for reduced motion, and shows exactly what it did before to everyone else.
+have not asked for reduced motion, and shows exactly what it did before to everyone else —
+locally. Nothing is public until DT10.
+
+Paste Phase DT10.
+
+---
+
+## Phase DT10: Publish to ghcr, deploy to the droplet, cut over `evanleon.com`
+
+<task>
+You are executing **Phase DT10 of the Drive-In Theater Roadmap** — giving the theater a
+path to the public site: a workflow that builds and pushes the image on every push to
+`main` and deploys it to the droplet, a rollback that is one command, and Evan's recorded
+decision on moving `evanleon.com` onto the container — because until this phase runs,
+nothing built by DT0–DT7 can reach a visitor.
+</task>
+
+## Load skills first — do this before writing any code
+
+1. `AGENTS.md` — repo orientation (no `project-context` skill exists here)
+2. `/home/evan/EVOsystem/infra/skills/rules-index/references/tooling.md` (Docker, git rows) and `universal.md`; `theater/skills/rules-index/SKILL.md`
+3. `.claude/skills/rebuild-restart/SKILL.md`
+4. `.claude/skills/writing-session-logs/SKILL.md`
+
+<context>
+## What's already built
+
+- The theater is complete, tested and linked from the homepage (DT0–DT7): `docker compose
+  build` produces the multi-stage image (Node build stage → nginx) and `docker compose up -d
+  --force-recreate` serves it locally at `http://portfolio-site.localhost` behind Traefik on
+  `evo-net`. `docker-compose.yml` declares `image: ghcr.io/evan-leon/portfolio-site:latest`,
+  `build: .`, `restart: unless-stopped`, and two Traefik routers on
+  `Host(portfolio-site.${DOMAIN:-localhost})` — `web` (HTTP) and `websecure` (HTTPS, `le`
+  cert resolver, prod only). `.env` holds `DOMAIN=localhost` locally; `.env.example` is committed.
+- **There is no `.github/workflows/` directory and nothing pushes the image anywhere** — the
+  ghcr image name in the compose file has never been published. **Production `evanleon.com`
+  is served directly from the droplet root — not containerised, not on `evo-net`** — per
+  `/home/evan/EVOsystem/infra/domain-registry.md` ("Portfolio Site": "prod-ready … but NOT
+  cut over") and `/home/evan/EVOsystem/infra/local-deployment/onboard-project.md`
+  ("No `.github/workflows/` created — cutover is a separate future decision", 2026-07-23).
+  Verified 2026-08-25: `https://evanleon.com/` is 200 behind Cloudflare, `/theater/` is 404.
+- The fleet's delivery pattern is `/home/evan/EVOsystem/infra/local-deployment/cicd-github-actions.md`:
+  a `deploy.yml` on push to `main` that logs in to ghcr with `GITHUB_TOKEN`, builds and
+  pushes with `docker/build-push-action`, then `appleboy/ssh-action` runs `docker compose
+  pull && docker compose up -d --remove-orphans` in `/opt/<project>` on the droplet, using
+  repo secrets `DROPLET_HOST`, `DROPLET_USER`, `DROPLET_SSH_KEY`. jourNOW's
+  `/home/evan/EVOsystem/jourNOW/.github/workflows/deploy.yml` is the live precedent.
+  Droplet one-time setup is `/home/evan/EVOsystem/infra/local-deployment/onboard-droplet.md`
+  (compose file + `.env` in `/opt/<project>`, first `docker compose pull`).
+- The theater's build already runs inside the Dockerfile (DT1), so the workflow needs no
+  Node step of its own — but the build stage runs `tsc --noEmit`, so a type error fails
+  the workflow, which is the point.
+
+**Out of scope:** the clip skill and the clips (DT8, DT9 — every later commit to `main`
+deploys automatically once this phase lands, so clips ship as they are committed); any
+change to what the image contains.
+
+Verify this against the actual codebase before proceeding — commits may have landed
+since this roadmap was written.
+</context>
+
+<rules>
+Applicable rules from the shared tier for this phase:
+- **EVO-UNI-006** — no secrets in the repo: the droplet host, user and key are GitHub Actions secrets; `.env` stays gitignored.
+- **EVO-TOOL-107** — the build stage's corepack relies on the committed `packageManager` pin; the workflow builds the same Dockerfile, so nothing new is needed, but do not "simplify" the pin away.
+- **EVO-TOOL-111** — the droplet container has no bind mount; only a pulled image changes what it serves.
+- **EVO-TOOL-131** — `restart: unless-stopped` stays on the service.
+- **EVO-TOOL-167** — `Up (healthy)` proves nothing about the public route; verification is HTTP through the real hostname.
+- **EVO-TOOL-130** — if the public URL fails, prove where: on the droplet, `curl` the container by name on `evo-net` first, then through Traefik, then through Cloudflare.
+- **EVO-UNI-090** — the cutover decision and the deploy outcome are written into this roadmap the moment they happen.
+</rules>
+
+<reference_material>
+Read these files before writing any code:
+- `/home/evan/EVOsystem/infra/local-deployment/cicd-github-actions.md` — the `deploy.yml` template and the secrets table; **do not copy its `:latest`-only tag** — see `<constraints>`.
+- `/home/evan/EVOsystem/jourNOW/.github/workflows/deploy.yml` — a working instance of the same pattern.
+- `/home/evan/EVOsystem/infra/local-deployment/onboard-droplet.md` — the one-time droplet setup this phase's Manual Verification walks Evan through.
+- `/home/evan/EVOsystem/infra/domain-registry.md` "Portfolio Site" — the current prod truth; this phase updates it after the cutover decision.
+- `docker-compose.yml`, `.env.example`, `Dockerfile` — what the workflow builds and the droplet runs.
+- `theater/src/projects.ts` — the poster and clip URLs the post-deploy audit walks.
+</reference_material>
+
+<constraints>
+- **Workflow** `.github/workflows/deploy.yml`, on push to `main`: checkout; log in to ghcr; build the repo-root Dockerfile once and push **two tags**: `ghcr.io/evan-leon/portfolio-site:latest` and `ghcr.io/evan-leon/portfolio-site:sha-<short sha>` (immutable — the rollback handle); then ssh to the droplet and run, in `/opt/portfolio-site`: `docker compose pull` **then** `docker compose up -d --remove-orphans` — pull first, so a failed pull leaves the running container untouched. `permissions: contents: read, packages: write`. No `ci.yml` is added — the image build *is* the check (typecheck + vite build run inside it).
+- **Rollback is one command:** `docker-compose.yml` reads `image: ghcr.io/evan-leon/portfolio-site:${IMAGE_TAG:-latest}` so that on the droplet `IMAGE_TAG=sha-<previous> docker compose up -d` restores the prior image without a rebuild. Locally `IMAGE_TAG` stays unset and `build: .` continues to produce `:latest`.
+- **The cutover is a recorded decision, not an assumption.** Two hostnames exist: `portfolio-site.${DOMAIN}` (the compose file's Traefik rule today — with `DOMAIN=evanleon.com` on the droplet that is `portfolio-site.evanleon.com`, which the workflow deploys to unconditionally) and `evanleon.com` itself (today served from the droplet root by something outside Docker). Evan decides `CUTOVER: GO` or `CUTOVER: NO-GO`; on GO the compose routers gain `Host(\`evanleon.com\`) || Host(\`www.evanleon.com\`)` in addition to the subdomain, the non-container server for that host is stopped, and Cloudflare's records point at the droplet (they may already); on NO-GO the theater is public only at `portfolio-site.evanleon.com/theater/` and the `## Done` line says exactly that. Either way the decision row goes into the "Decision records" table.
+- **Recovery is written down** in a new `docs/deploy.md` (short): build fails → nothing deployed, fix and push; push fails → nothing deployed; pull fails on the droplet → old container keeps serving; container recreated but the public host fails → `IMAGE_TAG=sha-<previous> docker compose up -d` (previous sha from `docker image ls`), then diagnose per EVO-TOOL-130; cutover regressions → revert the router rule commit and re-run the workflow, or restart the previous root server. Also: the DNS/Cloudflare state before and after cutover, so it can be undone.
+- **Post-deploy asset audit** (the owner-side observability this roadmap otherwise lacks — monitoring is deliberately manual/synthetic, and this is the synthetic part): a script `scripts/audit_theater_assets.sh` that, given a base URL, curls `/`, `/projects/<slug>.html`, `/theater/`, the hashed theater JS (parsed from `/theater/`), and every poster and clip URL from `theater/src/projects.ts`, printing status, content type and byte count per URL and exiting non-zero on any poster that is not `200 image/png` with > 10 000 bytes, or any project page that is not 200. Clips are reported but do not fail the audit (they may legitimately not exist yet). Run it locally against `http://portfolio-site.localhost` in `<verification>` and against the public host in Manual Verification.
+- Update `/home/evan/EVOsystem/infra/domain-registry.md`'s "Portfolio Site" block with the outcome (a separate commit in the `infra` repo, same phase scope).
+</constraints>
+
+<build_order>
+
+### 1. Workflow and compose
+- [ ] Write `.github/workflows/deploy.yml` per `<constraints>` (two tags, pull before up).
+- [ ] Parameterise the compose image tag with `IMAGE_TAG`; document it in `.env.example`.
+
+### 2. Recovery and audit
+- [ ] Write `docs/deploy.md` (recovery paths, DNS/Cloudflare before/after).
+- [ ] Write `scripts/audit_theater_assets.sh`; run it against the local stack.
+
+### 3. Hand over
+- [ ] Commit; the push to `main` triggers the workflow. The droplet setup, the first public verification and the cutover decision are Evan's — see Manual Verification.
+
+</build_order>
+
+## Manual Verification (Evan — droplet, GitHub, DNS)
+
+1. GitHub → Settings → Secrets → Actions: `DROPLET_HOST`, `DROPLET_USER`, `DROPLET_SSH_KEY` (per `cicd-github-actions.md`). Confirm the repo's Packages visibility allows the droplet to pull (public package, or `docker login ghcr.io` on the droplet).
+2. Droplet: `/opt/portfolio-site/` with `docker-compose.yml` and a `.env` containing `DOMAIN=evanleon.com` (per `onboard-droplet.md`); `docker compose pull && docker compose up -d`.
+3. Watch the workflow run for the DT10 commit go green; then `bash scripts/audit_theater_assets.sh https://portfolio-site.evanleon.com` — every poster 200, `/theater/` 200, hashed JS 200.
+4. Decide the cutover. On **GO**: add the `evanleon.com` host rule (a commit; the workflow deploys it), stop the root server, confirm `bash scripts/audit_theater_assets.sh https://evanleon.com` passes and `https://evanleon.com/theater/` renders. On **NO-GO**: leave `evanleon.com` as it is.
+5. Write the row `| DT10 | CUTOVER: GO / NO-GO | <hostname the theater is public at> | <date> | Evan |` into the "Decision records" table; update `infra/domain-registry.md`; commit both.
+
+<verification>
+```bash
+cd /home/evan/EVOsystem/portfolio_site
+test -f .github/workflows/deploy.yml && grep -n 'sha-\|:latest\|docker compose pull\|docker compose up' .github/workflows/deploy.yml   # both tags; pull precedes up
+grep -n 'IMAGE_TAG' docker-compose.yml .env.example                       # parameterised tag, documented
+test -f docs/deploy.md && grep -c 'IMAGE_TAG=sha-' docs/deploy.md          # ≥ 1: the rollback command is written down
+docker compose build && docker compose up -d --force-recreate
+bash scripts/audit_theater_assets.sh http://portfolio-site.localhost ; echo "audit exit=$?"   # 0
+# the audit must be able to fail (EVO-UNI-120): point it at a host with no theater
+bash scripts/audit_theater_assets.sh https://evanleon.com ; echo "audit exit=$?"   # non-zero today (/theater/ is 404 there until cutover)
+pnpm format:check
+```
+
+Expected: workflow file present with both tags and pull-before-up; the audit passes locally and fails against the not-yet-cut-over public host. After Manual Verification: a green workflow run, the audit passing against the public hostname, and one `DT10` row in the Decision records table.
+</verification>
+
+<commit>
+```
+feat(dt10): deploy workflow (ghcr sha + latest tags, pull-then-up), IMAGE_TAG rollback, deploy.md, asset audit
+```
+</commit>
+
+## Done
+
+After this phase — the session's workflow plus Evan's Manual Verification — every push to
+`main` builds, publishes and deploys the site image, a bad deploy is undone with one
+`IMAGE_TAG=sha-… docker compose up -d`, and the theater is public at the hostname the
+Decision records row names (`evanleon.com/theater/` on `CUTOVER: GO`, else
+`portfolio-site.evanleon.com/theater/`).
 
 Paste Phase DT8.
 
@@ -1386,7 +1582,7 @@ built for; the theater is complete and shipped without it, showing posters.
 - [ ] `media-cloud-vitals` — `images/media-cloud-vitals/demo.mp4`.
 - [ ] `showrunner-digest` — `images/showrunner-digest/demo.mp4`.
 - [ ] After each clip: `ffprobe` it per the skill; `git add images/<slug>/demo.mp4 && git commit -m "feat(dt9): <slug> demo clip"` — commit each clip as it lands (`EVO-UNI-090`); a clip that exists only in the working tree is not delivered.
-- [ ] When all eight are in: `docker compose build && docker compose up -d --force-recreate`, drive the lot, confirm every screen plays on approach and none shows `data-clip="missing"`.
+- [ ] When all eight are in: `docker compose build && docker compose up -d --force-recreate`, drive the lot, confirm every screen plays on approach and none shows `data-clip="missing"`; each pushed clip commit has already been deployed by DT10's workflow — run `bash scripts/audit_theater_assets.sh https://<public host>` and confirm eight clips report 200.
 - [ ] Record the outcome (date, which clips landed, any that were skipped and why) in the Changelog table below.
 
 **Paste-ready prompt for a session that helps with the encoding** (the recording itself is yours):
@@ -1404,14 +1600,19 @@ is not for, and an engine the portfolio owns outright.
 
 ---
 
-## DTF decision record
+## Decision records
 
-| Phase | Decision | Chrome fps (flat / lot / overload) | Firefox fps (flat / lot / overload) | WebKit | Click + Tab | Date | Decided by |
+| Phase | Decision | Chrome fps, median of 3 (flat / lot / overload / reduced) | Firefox fps (flat / lot / overload / reduced) | WebKit | Click + Tab | Date | Decided by |
 |---|---|---|---|---|---|---|---|
 | DTF | _not yet run_ | | | | | | |
+
+| Phase | Decision | Public hostname of the theater | Date | Decided by |
+|---|---|---|---|---|
+| DT10 | _not yet run_ | | | |
 
 ## Changelog
 
 | Date | Phase | Commit | Outcome / deviations |
 |---|---|---|---|
-| 2026-08-25 | — | — | Roadmap written (Part 2). Independent evaluation pending. |
+| 2026-08-25 | — | `0a23820` → `647f093` | Roadmap written (Part 2); two cold Sonnet evaluators, 16 findings, 15 accepted / 1 rescoped. |
+| 2026-08-25 | — | (Part 3 corrective commit) | Part 3 (Codex, Evan-driven; receipt `docs/roadmaps/drive-in-theater-part3-codex-review.md`): 8 findings, 7 accepted / 1 rescoped / 0 rejected. Added DT10 (deploy + cutover — production was never on this container); DTF now reproduces the production path (GSAP + brightness + Lenis-ticked rAF), adds a `reduced` variant and a defined sampling protocol; DT0 removes the canvas describe block; DT3 gates on poster dimensions (el-blackjack's 01.png is a 1×1) and snapshots rendered state; DT6 parameterised over all eight screens, one breakage per spec, nginx parity smoke, Done rescoped to what is proven. |

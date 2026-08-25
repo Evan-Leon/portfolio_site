@@ -168,6 +168,11 @@ card grid remain exactly as they are and stay the fallback path.
   wrapper under `.agents/skills/`, registered with
   `scripts/validate_codex_setup.py`) — the same shape as
   `adding-project-screenshots`.
+- **Poster integrity is asserted, not assumed.** A poster that decodes but is
+  tiny (the 1×1 case) is "valid but wrong": the `projects.ts` test reads each
+  PNG's IHDR dimensions, and the adapter treats a decoded poster under 64×64 as
+  missing. Owner-side monitoring is otherwise deliberately manual — DT10's
+  audit script, run after each deploy.
 - **Missing clip = poster, not error.** The `<video>` `error` event hides the
   video element and leaves the poster lit. The theater is complete before any
   clip exists and upgrades one screen at a time as clips land.
@@ -221,8 +226,11 @@ cost under a scrubbed 3D transform. The skeleton's own GSAP scene
 (`scroll-driven-skeleton/src/scenes/registry.ts:85-118`) transforms five
 plain `<div>`s — same engine path, but no media element. No transfer argument
 is available, so a cheap falsifier runs first: phase DTF (below) — a throwaway
-page with eight transformed videos, fps read from DevTools, and a click/Tab
-check — before any vendoring happens. Its decision line (`GO`/`NO-GO`) is
+page that reproduces the production rendering path (the wireframe's transform
+stack, a GSAP timeline with the brightness/marquee lit tweens, a Lenis-ticked
+rAF seek), eight distinct videos, a defined sampling protocol (median of three
+10 s recordings, lowest 1 s window), a failing control, and a `reduced` variant
+that a GO-REDUCED verdict must clear — before any vendoring happens. Its decision line (`GO`/`NO-GO`) is
 recorded in the roadmap.
 
 ## What already exists
@@ -240,6 +248,8 @@ No external service is involved (Step 5 N/A).
 | `images/<slug>/01.png` × 8 | media | Complete — used as posters |
 | `images/<slug>/demo.mp4` | media | **Missing** — manual production phase |
 | `Dockerfile`, `.dockerignore`, `nginx.conf` | infra | Partial — single-stage; nginx needs no change |
+| `.github/workflows/`, droplet compose, `evanleon.com` cutover | delivery | **Missing** — prod is served from the droplet root, not this container (`infra/domain-registry.md`); no workflow exists |
+| `images/el-blackjack/01.png` | media | **Placeholder** — a 68-byte 1×1 PNG; decodes "successfully", must be replaced before DT3 |
 | `package.json`, `pnpm-lock.yaml`, `.githooks/pre-commit`, `.prettierignore` | tooling | Partial — no workspace, hook filters `.(html\|css\|js)$` only |
 | `scroll-driven-skeleton/src/{engine,adapters,host,loader,page,styles}` | engine | Complete in the sibling repo — to be vendored |
 | `scroll-driven-skeleton/e2e/helpers/app.ts`, `playwright.config.ts` | tests | Complete in the sibling repo — to be vendored |
@@ -263,6 +273,7 @@ scopes cannot collide with anything). Rows are in execution order.
 | DT5 | Keyboard drive-by-focus, `reducedMotionSteps`, narrow layout | frontend | S | DT4 |
 | DT6 | Playwright e2e suite for the theater | tests | S | DT5 |
 | DT7 | Hero CTA on `index.html` + hide rules | site | XS | DT6 |
+| DT10 | Publish to ghcr, deploy to the droplet, cut over `evanleon.com` | infra [MANUAL gate] | S | DT7 |
 | DT8 | `adding-project-demo-clips` skill, ffmpeg recipe, Codex wrapper | skills | XS | DT4 |
 | DT9 | `[MANUAL]` record and encode the eight clips | media [MANUAL] | — | DT8 |
 
@@ -304,6 +315,13 @@ scopes cannot collide with anything). Rows are in execution order.
   regression net.
 - **DT7** — Hero CTA markup + CSS hide rules; `View Projects` demoted to
   secondary. Last, so the site never links to a half-built lot.
+- **DT10** — `.github/workflows/deploy.yml` (build once, push `:latest` and
+  `:sha-<short>`, ssh `docker compose pull` then `up`), `IMAGE_TAG` rollback in
+  the compose file, `docs/deploy.md` recovery paths, a post-deploy asset audit
+  script, and Evan's recorded `CUTOVER: GO/NO-GO` for moving `evanleon.com`
+  (today served from the droplet root, not this container — `infra/domain-registry.md`)
+  onto the container. Unlocks: the theater is public at a named hostname; every
+  later push deploys.
 - **DT8** — The skill and its Codex wrapper; ffmpeg recipe; validator
   registration. Unlocks: DT9 has instructions.
 - **DT9** — `[MANUAL]`: eight recordings encoded to `images/<slug>/demo.mp4`
@@ -423,7 +441,10 @@ scopes cannot collide with anything). Rows are in execution order.
 - ffmpeg on the host for DT9 (host has 6.1.1 — verified 2026-08-25).
 - Docker + the `evo-net` network for DT1's integration check (existing
   `rebuild-restart` skill).
-- DTF must record `GO` before DT0 runs.
+- DTF must record `GO` or `GO-REDUCED` before DT0 runs.
+- `images/el-blackjack/01.png` replaced with a real screenshot before DT3.
+- For DT10: droplet SSH access, the three deploy secrets, Cloudflare DNS control
+  for `evanleon.com`.
 
 ## Open questions
 
