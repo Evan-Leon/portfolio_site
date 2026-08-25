@@ -111,6 +111,65 @@ describe("lotScene — clip lifecycle", () => {
     expect(screen?.querySelector("video")).toBe(null);
   });
 
+  it("plays the band it was already on when its DOM finally appears", async () => {
+    /*
+     * THE ENGINE SEEKS THIS ADAPTER BEFORE ITS SCREENS EXIST.
+     *
+     * `mountScene` constructs the adapter, calls `load()`, and seeks it in the
+     * same update pass — but `buildLot` runs inside the inner adapter's
+     * `load()`, after `await import('gsap')`, so that first seek lands with an
+     * empty container. It still records the band: `activeScreen(0, count)` is
+     * `0`, so `#active` becomes 0 against a screen that does not exist and
+     * nothing plays.
+     *
+     * Every seek after that agrees the band is 0, so no *change* is ever
+     * observed and the clip is never started. Measured in a real Chromium
+     * before the fix: driving in to screens 0, 1, 2 played 1 and 2 only, and
+     * screen 0 played solely on the way back down.
+     *
+     * Every other test in this file awaits `load()` before its first `seek`,
+     * which is precisely why none of them could see it. This one reproduces
+     * the engine's real ordering instead.
+     *
+     * The fix mirrors the inner adapter, which already holds its `#progress`
+     * across the same gap and re-applies it at the end of `load()` for the
+     * same reason (see `#render` in `adapters/gsap-timeline.ts`).
+     */
+    const plays: number[] = [];
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(function (
+      this: HTMLMediaElement,
+    ) {
+      plays.push(screenIndex(this));
+      return Promise.resolve();
+    });
+
+    const bands: string[] = [];
+    const early = document.createElement("div");
+    document.body.append(early);
+    const engineOrder = lotScene(THREE_PROJECTS, {
+      onActiveScreenChange: (previous, next) =>
+        bands.push(`${previous}->${next}`),
+    })(early) as LotAdapter;
+
+    const loading = engineOrder.load(() => {});
+    engineOrder.seek(0);
+    expect(early.querySelector("video")).toBe(null);
+    expect(plays).toEqual([]);
+
+    await loading;
+
+    expect(plays).toEqual([0]);
+    expect(engineOrder.snapshot().playing).toBe(0);
+    /* And exactly one band notification — the real one, from the seek. The
+     * screens moved no bands while the DOM was being built, so reporting a
+     * second `null->0` to the listener would be inventing a crossing that
+     * never happened. */
+    expect(bands).toEqual(["null->0"]);
+
+    engineOrder.destroy();
+    early.remove();
+  });
+
   it("holds the poster under prefers-reduced-motion — pauses, never plays", () => {
     /*
      * A looping clip is motion the visitor never asked to start and cannot

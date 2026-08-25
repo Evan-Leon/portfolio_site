@@ -214,6 +214,32 @@ class LotScene implements LotAdapter {
     if (!this.#destroyed && !this.#clipsWired) {
       this.#wireClipFallbacks();
       this.#clipsWired = true;
+
+      /*
+       * APPLY THE BAND THIS ADAPTER IS ALREADY ON, NOW THAT THERE IS SOMETHING
+       * TO APPLY IT TO.
+       *
+       * The engine constructs an adapter and seeks it in the same update pass,
+       * while this method is still awaiting the inner adapter's dynamic
+       * `import('gsap')` — so the first seek arrives before `buildLot` has made
+       * a single screen. It is not lost: `#active` records the band. But the
+       * *effect* of that activation is a `play()` on an element that did not
+       * exist, and every seek afterwards agrees the band is unchanged, so the
+       * crossing never happens again and the clip is never started. Screen 0 is
+       * the one this always hits, because the lot's clamped progress is 0 for
+       * the whole approach — measured in Chromium, it played only when the
+       * visitor drove past it and came back.
+       *
+       * `previous` is `null` rather than `#active` because these screens are
+       * new elements with nothing playing on them; there is nothing to pause.
+       * The listener in `#options` is deliberately not notified — no band was
+       * crossed, and reporting one would invent a crossing.
+       *
+       * The inner adapter holds `#progress` across this same gap and re-applies
+       * it here for the same reason; see `#render` in
+       * `adapters/gsap-timeline.ts`.
+       */
+      this.#onActiveScreenChange(null, this.#active);
     }
 
     const arrived = await Promise.all(posters);
