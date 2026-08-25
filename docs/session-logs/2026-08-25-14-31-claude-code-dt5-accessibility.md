@@ -41,6 +41,14 @@ driven in a real headless Chromium via an ad-hoc Playwright script (scratch
 only — the committed suite is DT6's deliverable, and nothing was added to
 `theater/e2e/`). All three hold; numbers under Verification.
 
+Also done: **fixed the DT4 clip bug that the browser run surfaced** (see
+Verification). `LotScene.load()` now applies the band the adapter is already on
+once the DOM exists, mirroring what the inner GSAP adapter does with its held
+`#progress`. Root-caused with `superpowers:systematic-debugging` rather than
+patched: instrumented the component boundaries in jsdom to prove where the
+effect was lost, found the working example one layer down, then wrote the
+failing test before touching the implementation.
+
 Not done (out of scope, DT6): the committed Playwright suite.
 
 ## Commits
@@ -48,7 +56,8 @@ Not done (out of scope, DT6): the committed Playwright suite.
 portfolio_site:
 
 - `f1c49b6` — feat(dt5): keyboard drive-by-focus, reducedMotionSteps engine option, narrow single-file lot
-- (this log, committed separately)
+- `f3c67c9` — fix(dt4): play the first screen's clip on the way in, not only on the way back
+- (this log, committed separately, updated as the session continued)
 
 ## Uncommitted work left behind
 
@@ -102,6 +111,16 @@ All run from the repo root, all passing unless noted.
     rotation, `width: 300px`, and `z = -(i + 1) × 800` — single file down the
     lane, with the drive untouched. The page still drives: scrolling to the
     middle of the lot moves world-Z 0 → 3600 and the chrome readout to 50%.
+- **The DT4 clip fix**, after the above. Failing test first: it fails with
+  `expected [] to deeply equal [ 0 ]` without the change. After: `pnpm -C
+  theater typecheck`, `lint`, `test` (296 tests, up from 295), `build`, and
+  `pnpm format:check` all pass; image rebuilt and container recreated,
+  `/theater/` 200. Re-ran the browser probe against the fixed build: at
+  `no-preference` screen 0 is playing at reveal, each band plays in turn
+  (`0, 1, 2, 1, 0` across a drive out and back) and **exactly one** video is
+  playing at every sample — so the pause side still holds. At `reduce` the play
+  count stays **zero** at every sample including reveal, confirming the new call
+  site honours the reduced-motion guard rather than bypassing it.
 - **Mutation check** (`EVO-UNI-061`): reverting the frame loop to
   `REDUCED_MOTION_STEPS` and deleting the reduced-motion guard in `lot-scene.ts`
   fails exactly the three new behaviour tests and nothing else (3 failed / 292
@@ -113,8 +132,8 @@ None.
 
 ## Open flags
 
-- **DT4 defect found by DT5's browser run: screen 0's clip never plays on the
-  first approach.** Probed and confirmed — driving into screen 0, then 1, then
+- ~~**DT4 defect: screen 0's clip never plays on the first approach.**~~
+  **Fixed this session in `f3c67c9`** — kept below for the record. Probed and confirmed — driving into screen 0, then 1, then
   2 fires `play` for 1 and 2 only; driving back to 1 and then 0 fires both, so
   screen 0 plays only on a *return* visit. Mechanism: `buildLot` runs inside the
   GSAP timeline builder, which cannot run until `load()` has dynamically
@@ -125,9 +144,15 @@ None.
   ever fires on the way in. Invisible to `lot-scene.test.ts`, which awaits
   `load()` before its first `seek`. Not introduced by DT5 (the reduced-motion
   early return is below the pause and the probe ran at `no-preference`) and not
-  fixed here — it is DT4's contract. The likely fix is re-firing the activation
-  for the current `#active` once `load()` has built the DOM, with a test that
-  seeks *before* `load()` resolves.
+  originally fixed with DT5. Root cause confirmed by instrumenting the
+  boundaries in jsdom: after construction the container holds 0 screens and 0
+  videos; the pre-load `seek(0)` records `null->0` with no DOM and no play;
+  after `load()` the DOM holds its screens but driving into band 0 produces no
+  further change and no play; only leaving to band 1 and returning plays 0. The
+  fix applies the held band at the end of `load()`, which is exactly what
+  `GsapTimelineScene` already does with its held `#progress` (`#render`, and the
+  comment above its call in `load()` names the engine's epsilon guard as the
+  reason). Two adapters, the same gap, one of them had solved it.
 - **The `focusin` handler has no automated test.** It lives in `main.ts`, which
   no unit test imports, and DT5 scopes its tests to the engine and the adapter.
   Its logic — `:focus-visible`, the index parse, `BAND_SETTLE` — is proven only
@@ -148,6 +173,15 @@ None.
   as the block having vanished.
 
 ## Rules-index candidates
+
+- An adapter that holds state across its own `load()` must re-apply it when
+  `load()` finishes. The engine constructs, seeks, and loads in one pass, so the
+  first `seek` lands before a dynamically-imported renderer has built anything;
+  the value is recorded but its effect is dropped, and the engine's epsilon
+  guard then suppresses every identical seek that would have re-delivered it.
+  Silent, and invisible to any test that awaits `load()` before its first
+  `seek`. Cost this project one shipped drive-in where the first screen's clip
+  only played on the way back. promote → react-frontend
 
 - Placement a breakpoint has to override belongs in custom properties, and the
   override needs `!important`. Per-element arithmetic is written inline, and an
@@ -172,13 +206,11 @@ None.
 
 ## Next steps
 
-- Fix the screen-0 first-approach clip bug under Open flags, with a regression
-  test that seeks before `load()` resolves. It is a small change to
-  `lot-scene.ts` and wants its own commit against DT4's contract.
 - Phase DT6: the committed Playwright suite. The three behaviours are already
   proven ad-hoc (see Verification); DT6 turns that into a standing net, and the
   ten-position reduced-motion assertion and the served-clip route are both worth
-  carrying over.
+  carrying over. Add a spec for the screen-0-plays-at-reveal case too: the unit
+  test now pins the ordering, but the browser is where it was actually visible.
 
 ## Pointers
 
