@@ -213,6 +213,35 @@
        offset lives where it belongs, in the world's animated translateZ.
 
     ---------------------------------------------------------------------------
+    AUTOMATED MEASUREMENT MODE  (?measure=all)  -- a DEVIATION, recorded as one
+    ---------------------------------------------------------------------------
+    Open this URL in the browser under test and leave it alone for ~2.5 minutes:
+
+        ...2026-08-25-transformed-video-probe.html?variant=flat&measure=all&reset=1
+
+    It walks flat -> overload -> lot -> reduced, three 10 s runs each, and prints
+    a table of every run, the four medians, and the EVO-UNI-120 control check.
+
+    How it differs from the pre-registered protocol, and why:
+      * The scroll is driven by the page, not by a hand on a wheel: every frame
+        the position is recomputed from wall-clock elapsed so the page travels
+        top to bottom in exactly 10 s. Every frame therefore lands on a NEW
+        scroll position -- a stepped driver (a timer nudging scroll 20x/second)
+        would leave most frames with nothing to repaint and inflate the number.
+        Identical trajectory in all four variants is what makes them comparable.
+      * fps is counted from requestAnimationFrame timestamps: the lowest number
+        of frames in any contiguous 1 s window of the recording. Same definition
+        as the DevTools FPS track, read a different way.
+      * Lenis's wheel-smoothing path is idle in this mode (scroll position is
+        set directly). Its cost is identical across lot/overload/reduced, so the
+        control comparison is unaffected, but a hand-scrolled DevTools recording
+        is still the tiebreaker if a median lands within a few fps of a band
+        edge (50, or 30).
+    The automated numbers go in the table below labelled as such. They are a
+    real reading from the real browser, not a substitute for judgement about
+    which instrument produced them.
+
+    ---------------------------------------------------------------------------
     RIG SELF-CHECK -- already done, so the manual pass is only about fps
     ---------------------------------------------------------------------------
     Before hand-off this file was driven in headless Chromium (Playwright) and
@@ -729,6 +758,146 @@
         requestAnimationFrame(frame);
       }
 
+
+      /* ===================================================================
+       * OPTIONAL AUTOMATED MEASUREMENT — ?measure=all (or ?measure=1)
+       *
+       * Off by default and completely inert without the parameter: the probe
+       * must stay clean for a hand-scrolled DevTools recording, which remains
+       * the pre-registered instrument. See the header for how this differs.
+       * =================================================================== */
+      const MEASURE = new URLSearchParams(location.search).get("measure");
+      const MEASURE_ORDER = ["flat", "overload", "lot", "reduced"];
+      const RUNS = 3;
+      const RUN_MS = 10000;
+      const SETTLE_MS = 1800;
+      const STORE = "dtf-measure-results";
+
+      /* The metric: the fewest frames landing in any contiguous 1 s window.
+         Lowest window, not mean — the cost climbs as decoders accumulate, and
+         a mean would hide that ramp behind the cheap first half. */
+      function lowestWindowFps(ts) {
+        if (ts.length < 2) return 0;
+        const last = ts[ts.length - 1];
+        let min = Infinity;
+        let j = 0;
+        for (let i = 0; i < ts.length; i++) {
+          if (ts[i] + 1000 > last) break;
+          while (j < ts.length && ts[j] < ts[i] + 1000) j++;
+          min = Math.min(min, j - i);
+        }
+        return min === Infinity ? 0 : min;
+      }
+
+      function median(values) {
+        const sorted = [...values].sort((a, b) => a - b);
+        return sorted[Math.floor(sorted.length / 2)];
+      }
+
+      function measureBox() {
+        let el = document.getElementById("measure-overlay");
+        if (!el) {
+          el = document.createElement("div");
+          el.id = "measure-overlay";
+          el.style.cssText =
+            "position:fixed;inset:auto 0 0 0;z-index:100;padding:14px 18px;" +
+            "background:rgba(0,0,0,.88);color:#f0f0ff;border-top:2px solid #7c3aed;" +
+            "font:13px/1.6 ui-monospace,monospace;white-space:pre;overflow:auto;" +
+            "max-height:70vh";
+          document.body.appendChild(el);
+        }
+        return el;
+      }
+
+      /* One 10 s run. The page is moved EVERY frame from wall-clock elapsed, so
+         no frame is free, and the trajectory is identical in every variant. */
+      function runOnce() {
+        return new Promise((resolve) => {
+          window.scrollTo(0, 0);
+          setTimeout(() => {
+            const range = Math.max(
+              1,
+              document.documentElement.scrollHeight - window.innerHeight,
+            );
+            const stamps = [];
+            let start = null;
+            function tick(now) {
+              if (start === null) start = now;
+              const elapsed = now - start;
+              stamps.push(now);
+              window.scrollTo(0, Math.min(range, (elapsed / RUN_MS) * range));
+              if (elapsed < RUN_MS) requestAnimationFrame(tick);
+              else resolve(lowestWindowFps(stamps));
+            }
+            requestAnimationFrame(tick);
+          }, SETTLE_MS);
+        });
+      }
+
+      function renderSummary(state, box) {
+        const rows = MEASURE_ORDER.filter((v) => state[v]).map((v) => {
+          const runs = state[v];
+          return `  ${v.padEnd(10)}${runs.map((n) => String(n).padStart(4)).join(" /")}   median ${median(runs)}`;
+        });
+        const lot = state.lot && median(state.lot);
+        const over = state.overload && median(state.overload);
+        const red = state.reduced && median(state.reduced);
+        let verdict = "";
+        if (lot != null && over != null) {
+          const moves = over < lot;
+          verdict += `\n  CONTROL (EVO-UNI-120): overload ${over} ${moves ? "<" : ">="} lot ${lot}  ->  ${moves ? "meter moves, lot's number is meaningful" : "METER DID NOT MOVE — no verdict may be drawn"}\n`;
+          if (moves) {
+            const band =
+              lot >= 50
+                ? "lot >= 50  ->  GO band (pending the click + Tab checks)"
+                : lot >= 30
+                  ? `lot in 30-49  ->  GO-REDUCED band iff reduced >= 50 (reduced = ${red})`
+                  : "lot < 30  ->  NO-GO band";
+            verdict += `  BAND: ${band}\n`;
+          }
+        }
+        const text =
+          "DTF probe — automated measurement (in-page rAF harness, NOT a hand-scrolled DevTools recording)\n" +
+          "lowest fps over any contiguous 1 s window; 3 runs of 10 s, page driven top->bottom\n" +
+          `browser: ${navigator.userAgent}\n` +
+          `viewport: ${window.innerWidth}x${window.innerHeight}  dpr: ${window.devicePixelRatio}\n\n` +
+          `  variant     run1  run2  run3\n${rows.join("\n")}\n` +
+          verdict +
+          "\nCopy this whole block back to the session.";
+        box.textContent = text;
+        console.log(text);
+      }
+
+      async function measureFlow() {
+        if (new URLSearchParams(location.search).get("reset"))
+          sessionStorage.removeItem(STORE);
+        const state = JSON.parse(sessionStorage.getItem(STORE) || "{}");
+        const box = measureBox();
+
+        const runs = [];
+        for (let r = 1; r <= RUNS; r++) {
+          box.textContent =
+            `MEASURING  ${VARIANT}  —  run ${r} of ${RUNS}  (${RUN_MS / 1000}s)\n` +
+            `don't touch the window; it scrolls itself\n` +
+            (Object.keys(state).length
+              ? `done so far: ${Object.keys(state).join(", ")}`
+              : "");
+          runs.push(await runOnce());
+        }
+        state[VARIANT] = runs;
+        sessionStorage.setItem(STORE, JSON.stringify(state));
+
+        if (MEASURE === "all") {
+          const next = MEASURE_ORDER.find((v) => !state[v]);
+          if (next) {
+            box.textContent = `${VARIANT} done (${runs.join(", ")}) — loading ${next}…`;
+            location.href = `?variant=${next}&measure=all`;
+            return;
+          }
+        }
+        renderSummary(state, box);
+      }
+
       /* =================================================================== */
       if (VARIANT === "flat") {
         buildFlat();
@@ -744,6 +913,11 @@
       } else {
         const { world, screens } = buildLot();
         run(buildTimeline(world, screens), makePlayback(screens));
+      }
+
+      /* Only measure a page that actually built — never a fatal banner. */
+      if (MEASURE && (VARIANT === "flat" || (window.gsap && window.Lenis))) {
+        measureFlow();
       }
     </script>
   </body>
