@@ -1,33 +1,8 @@
 /*
- * The standalone page's stylesheet — the shell around the animation.
- *
- * Transcribed from `docs/wireframes/page-shell.html`, which links the same
- * `tokens.css` imported below, so the approved wireframe and the built page
- * cannot drift. Class names are namespaced `sds-*` where the wireframe used bare
- * ones (`.skip`, `.chrome`, `.section`), for the same reason the loading ring's
- * are: the standalone build shares a document with whatever else is on the page.
- *
- * WHAT DOES NOT BELONG HERE
- * -------------------------
- * The scene geometry — `.sds-scene`, `.sds-scene__pin`, the sticky pin — is the
- * engine's own and lives in `src/engine/engine-styles.ts`, injected through
- * `host.injectStyles()`. It cannot be a stylesheet, because SD11 mounts the
- * experience inside a shadow root that a page-level stylesheet does not reach
- * (`SDS-009`), and restating it here would give two copies, one of which the Wix
- * build never loads. This file is *page chrome and content*: the parts of a
- * standalone web page that a Wix embed does not have in the first place.
- *
- * There is deliberately no `:root` block below. Tokens are declared `:host,
- * :root` in `tokens.css` and this file only reads them (`SDS-009`).
- *
- * Every colour, space, type size, duration and z-index is a token
- * (`EVO-UNI-001`), with no hardcoded `var(--token, #hex)` fallbacks
- * (`EVO-UNI-030`). Four literals are not tokens and are deliberate: the chrome
- * bar's `2px` height, the focus ring's `2px` width, the chrome's `blur(8px)`,
- * and the indicator's `44px` box — graphic geometry belonging to these specific
- * elements, carried over from the approved wireframe rather than re-invented,
- * exactly as the loading ring's `stroke-width` is. Unitless line heights are
- * layout ratios and come from tokens regardless.
+ * The standalone theater shell. Scene geometry remains engine-owned and is
+ * injected by the host; this file styles only the page chrome and HTML beats.
+ * Tokens stay first in the module graph (EVO-FE-239), and every value below
+ * resolves through the shared token layer (EVO-UNI-001, SDS-009).
  */
 @import "./tokens.css";
 
@@ -35,23 +10,24 @@
 *::before,
 *::after {
   box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
-/*
- * Stated rather than left to the default. Lenis normalizes scrolling in JS, and
- * `scroll-behavior: smooth` here would fight it — see the note in the SD5 build
- * log. `auto` is also what the wireframe declares.
- */
 html {
   scroll-behavior: auto;
 }
 
 body {
-  margin: 0;
   background: var(--sds-bg);
-  color: var(--sds-text);
+  color: var(--sds-text-muted);
   font-family: var(--sds-font-sans);
   line-height: var(--sds-leading-normal);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
 }
 
 :focus-visible {
@@ -59,33 +35,32 @@ body {
   outline-offset: var(--sds-space-1);
 }
 
-/* ---- Skip link ------------------------------------------------------------
- * The first focusable element in the document, and the reason the animation is
- * skippable at all: it moves focus past both pinned scenes to the content.
- * Hidden by a transform rather than `display: none`, which would take it out of
- * the tab order and leave nothing to reveal.
- */
 .sds-skip {
   position: absolute;
   top: var(--sds-space-4);
-  left: var(--sds-space-4);
+  left: -9999px;
   z-index: var(--sds-z-skip-link);
   padding: var(--sds-space-2) var(--sds-space-4);
-  border: var(--sds-border-width) solid var(--sds-accent);
-  border-radius: var(--sds-radius-sm);
-  background: var(--sds-bg-raised);
-  color: var(--sds-text);
+  background: var(--sds-text);
+  color: var(--sds-bg);
   font-size: var(--sds-text-small);
-  text-decoration: none;
-  transform: translateY(-200%);
-  transition: transform var(--sds-duration-fast) var(--sds-ease-out);
 }
 
 .sds-skip:focus {
-  transform: translateY(0);
+  left: var(--sds-space-4);
 }
 
-/* ---- Top chrome ----------------------------------------------------------- */
+.sds-chrome__bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: calc(var(--sds-z-chrome) + 1);
+  width: 100%;
+  height: 2px;
+  background: var(--sds-gradient-accent);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+}
 
 .sds-chrome {
   position: fixed;
@@ -94,132 +69,139 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--sds-space-4);
-  padding: var(--sds-space-3) var(--sds-gutter);
-  border-bottom: var(--sds-border-width) solid var(--sds-border);
-  background: color-mix(in srgb, var(--sds-bg) 78%, transparent);
+  padding: var(--sds-space-4) var(--sds-space-8);
   backdrop-filter: blur(8px);
-  font-size: var(--sds-text-small);
 }
 
-.sds-chrome__mark {
-  color: var(--sds-text-muted);
+.sds-chrome__logo {
+  color: var(--sds-text);
+  font-weight: var(--sds-weight-bold);
+  letter-spacing: var(--sds-tracking-tight);
+}
+
+.sds-chrome__percent {
+  color: var(--sds-text-subtle);
+  font-family: var(--sds-font-mono);
   font-size: var(--sds-text-micro);
-  font-weight: var(--sds-weight-medium);
-  letter-spacing: var(--sds-tracking-wide);
-  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
 }
 
-/*
- * Driven by `src/page/chrome.ts` from the engine's `persistentLayer`, one scroll
- * read per frame (`SDS-005`). Full width and scaled from its left edge, rather
- * than the wireframe stand-in's `width` animation: `scaleX` is composited, a
- * width change is a layout change, and this moves every frame.
- */
-.sds-chrome__bar {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: calc(var(--sds-z-chrome) + 1);
-  width: 100%;
-  height: 2px;
-  background: var(--sds-accent);
-  transform: scaleX(0);
-  transform-origin: 0 50%;
-}
-
-/* ---- Content sections -----------------------------------------------------
- * Real HTML in `index.html`, never rendered by JavaScript: the text is here for
- * a crawler and for a reader with JavaScript off, both of which see the page
- * without a single scene.
- */
 .sds-section {
   position: relative;
   z-index: var(--sds-z-content);
-  max-width: var(--sds-content-max);
-  margin: 0 auto;
-  padding: var(--sds-space-32) var(--sds-gutter);
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sds-space-24) var(--sds-space-8);
+  text-align: center;
 }
 
-.sds-section--hero {
-  display: grid;
-  align-content: center;
-  min-height: 100svh;
+.sds-eyebrow {
+  margin-bottom: var(--sds-space-4);
+  color: var(--sds-focus-ring);
+  font-family: var(--sds-font-mono);
+  font-size: var(--sds-text-micro);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
 .sds-section h1 {
-  margin: 0 0 var(--sds-space-6);
-  max-width: 18ch;
+  color: var(--sds-text);
   font-size: var(--sds-text-display);
+  font-weight: var(--sds-weight-bold);
   letter-spacing: var(--sds-tracking-tight);
   line-height: var(--sds-leading-tight);
 }
 
 .sds-section h2 {
-  margin: 0 0 var(--sds-space-4);
-  max-width: 22ch;
+  color: var(--sds-text);
   font-size: var(--sds-text-title);
-  letter-spacing: var(--sds-tracking-tight);
+  font-weight: var(--sds-weight-bold);
   line-height: var(--sds-leading-snug);
 }
 
-.sds-section p {
-  margin: 0 0 var(--sds-space-4);
+.sds-lede {
   max-width: var(--sds-measure);
+  margin: var(--sds-space-4) auto var(--sds-space-8);
   color: var(--sds-text-muted);
   font-size: var(--sds-text-lead);
 }
 
-.sds-section .sds-eyebrow {
-  margin: 0 0 var(--sds-space-4);
-  color: var(--sds-accent);
+.sds-hint {
+  color: var(--sds-text-subtle);
+  font-family: var(--sds-font-mono);
   font-size: var(--sds-text-micro);
-  letter-spacing: var(--sds-tracking-wide);
-  text-transform: uppercase;
+  letter-spacing: 0.15em;
 }
 
-.sds-section .sds-hint {
+.sds-actions {
   display: flex;
-  align-items: center;
-  gap: var(--sds-space-2);
-  color: var(--sds-text-subtle);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sds-space-4);
+}
+
+.sds-btn {
+  display: inline-block;
+  padding: var(--sds-space-3) var(--sds-space-6);
+  border-radius: var(--sds-radius-md);
   font-size: var(--sds-text-small);
+  font-weight: var(--sds-weight-medium);
 }
 
-/* ---- Persistent layer -----------------------------------------------------
- * The one element that spans scene boundaries, which is what makes it the
- * mitigation for a scene registry's one real weakness: motion that has to
- * continue across a scene that just unmounted.
- */
-.sds-persistent {
-  position: fixed;
-  right: var(--sds-gutter);
-  bottom: var(--sds-space-8);
-  z-index: var(--sds-z-persistent);
+.sds-btn--primary {
+  background: var(--sds-gradient-accent);
+  color: var(--sds-text);
+}
+
+.sds-btn--secondary {
+  border: var(--sds-border-width) solid var(--sds-border);
+  color: var(--sds-accent-soft);
+}
+
+.sds-exit-list {
   display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  border: var(--sds-border-width) solid var(--sds-border-strong);
-  border-radius: var(--sds-radius-full);
-  color: var(--sds-text-subtle);
-  font-size: var(--sds-text-micro);
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sds-space-2) var(--sds-space-8);
+  margin-top: var(--sds-space-12);
+  color: var(--sds-focus-ring);
+  font-family: var(--sds-font-mono);
+  font-size: var(--sds-text-small);
+  list-style: none;
+  text-align: left;
 }
 
-/* ---- Footer --------------------------------------------------------------- */
+.sds-exit-list a:hover {
+  color: var(--sds-text);
+}
+
+.sds-persistent {
+  display: none;
+}
 
 .sds-footer {
   position: relative;
   z-index: var(--sds-z-content);
-  border-top: var(--sds-border-width) solid var(--sds-border);
-  padding: var(--sds-space-16) var(--sds-gutter);
+  padding: var(--sds-space-8);
+  background: var(--sds-bg-inset);
   color: var(--sds-text-subtle);
   font-size: var(--sds-text-small);
+  text-align: center;
 }
 
-.sds-footer > * {
-  max-width: var(--sds-content-max);
-  margin: 0 auto;
+@media (max-width: 767px) {
+  .sds-chrome {
+    padding: var(--sds-space-3) var(--sds-space-4);
+  }
+
+  .sds-section {
+    padding-right: var(--sds-space-4);
+    padding-left: var(--sds-space-4);
+  }
+
+  .sds-exit-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

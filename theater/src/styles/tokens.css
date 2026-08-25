@@ -9,9 +9,9 @@
  * element the styles are injected into a page we do not control, and an
  * unprefixed --bg or --accent would collide with the host page's own variables.
  *
- * This is a brand-neutral placeholder palette. It is meant to be replaced:
- * the animation is the identity of this page, and the shell should recede.
- * Swap the values in the PALETTE block; leave the semantic layer alone.
+ * This palette carries the portfolio site's visual identity into the theater.
+ * Swap values in the PALETTE block for future rebrands; leave the semantic
+ * layer alone.
  *
  * WHY EVERY BLOCK IS `:host, :root` AND NOT JUST `:root`
  * -----------------------------------------------------
@@ -31,22 +31,27 @@
    * Raw values. Never reference these directly outside this file — use the
    * semantic tokens below, so a rebrand touches one block.
    */
-  --sds-ink-950: #08090b;
-  --sds-ink-900: #0e1013;
-  --sds-ink-800: #16191e;
-  --sds-ink-700: #22262d;
-  --sds-ink-600: #343a44;
+  --sds-ink-950: #0a0520;
+  --sds-ink-900: #0f0a2a;
+  --sds-ink-800: #060315;
+  --sds-ink-700: rgba(124, 58, 237, 0.2);
+  --sds-ink-600: rgba(124, 58, 237, 0.35);
   --sds-ink-400: #6b7280;
-  --sds-ink-200: #a8b0bb;
-  --sds-ink-100: #d6dae1;
-  --sds-ink-050: #f2f4f7;
+  --sds-ink-200: #a0a8c8;
+  --sds-ink-100: #c4b5fd;
+  --sds-ink-050: #f0f0ff;
   --sds-ink-000: #ffffff;
 
-  --sds-signal-500: #4f7cff;
-  --sds-signal-400: #7a9bff;
-  --sds-signal-300: #a6bcff;
+  --sds-signal-500: #7c3aed;
+  --sds-signal-400: #7c8aff;
+  --sds-signal-300: #c4b5fd;
 
   --sds-warn-500: #e0a03a;
+
+  --sds-marquee: #d4a862;
+  --sds-asphalt: #14102b;
+  --sds-asphalt-far: #0a0520;
+  --sds-gradient-accent: linear-gradient(135deg, #7c3aed, #3b82f6);
 
   /* ---- Semantic colour -----------------------------------------------------
    * Dark by default: this genre of page is almost always dark, and a dark
@@ -90,16 +95,11 @@
   --sds-space-32: 8rem;
 
   /* ---- Typography ----------------------------------------------------------
-   * System stack only. No webfont: a Wix custom element runs under a host CSP
-   * we do not control, and a blocked font request would shift layout after the
-   * loader has already dismissed.
+   * The standalone page loads the portfolio's webfonts; system and monospace
+   * fallbacks keep the embedded build legible under a restrictive host CSP.
    */
-  --sds-font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --sds-font-mono:
-    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono",
-    monospace;
+  --sds-font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --sds-font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   /* Fluid where it earns it: display scales with viewport, body does not. */
   --sds-text-display: clamp(2.5rem, 7vw, 5.5rem);

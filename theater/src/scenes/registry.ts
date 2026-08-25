@@ -6,5 +6,5 @@ import { placeholder } from "../adapters/placeholder";
 import type { SceneDef } from "./types";
 
 export const scenes: SceneDef[] = [
-  { id: "lot", vh: 300, adapter: placeholder("Lot") },
+  { id: "lot", vh: 1060, adapter: placeholder("Lot") },
 ];

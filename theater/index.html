@@ -3,15 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Portfolio Theater</title>
+    <title>The Drive-In | Evan Leon</title>
     <meta
       name="description"
-      content="A scroll-driven drive-in theater experience."
+      content="Drive through Evan Leon's projects in a scroll-driven theater experience."
     />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="icon" href="/images/favicon.png" />
+    <script
+      async
+      src="https://www.googletagmanager.com/gtag/js?id=G-N6J50LX4EY"
+    ></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        dataLayer.push(arguments);
+      }
+      gtag("js", new Date());
+      gtag("config", "G-N6J50LX4EY");
+    </script>
   </head>
   <body>
     <div id="app">
-      <a class="sds-skip" href="#content">Skip animation, go to content</a>
+      <a class="sds-skip" href="#exit"
+        >Skip the drive, go to the project list</a
+      >
 
       <div
         class="sds-chrome__bar"
@@ -19,43 +40,61 @@
         aria-hidden="true"
       ></div>
       <header class="sds-chrome">
-        <span class="sds-chrome__mark">Portfolio Theater</span>
-        <span class="sds-chrome__mark" data-sds-progress-percent>0%</span>
+        <a class="sds-chrome__logo" href="/">Evan Leon</a>
+        <span class="sds-chrome__percent" data-sds-progress-percent>0%</span>
       </header>
 
       <main>
         <section class="sds-section sds-section--hero">
-          <p class="sds-eyebrow">Drive-In Theater</p>
-          <h1>The shell recedes. The animation is the page.</h1>
-          <p>
-            This placeholder preserves the vendored engine wiring while the
-            theater experience is built in later phases.
+          <p class="sds-eyebrow">Now showing · 8 projects</p>
+          <h1>The Drive-In</h1>
+          <p class="sds-lede">
+            Scroll to drive. Every screen is a project — pull up to watch it
+            run, and click the screen to go inside.
           </p>
-          <p class="sds-hint">↓ Scroll</p>
+          <p class="sds-hint">↓ SCROLL TO DRIVE</p>
         </section>
 
         <div data-scene-slot="lot"></div>
 
-        <section class="sds-section" id="content" tabindex="-1">
-          <p class="sds-eyebrow">Interleaved content</p>
-          <h2>The lot is ready for its scene.</h2>
-          <p>
-            The first phase provides the tested engine and a single placeholder
-            scene. Later phases replace its content without changing the seam.
+        <section class="sds-section sds-section--exit" id="exit" tabindex="-1">
+          <p class="sds-eyebrow">End of the lot</p>
+          <h2>That's the whole show.</h2>
+          <p class="sds-lede">
+            Head back to the site, or pick a screen from the list.
           </p>
+          <div class="sds-actions">
+            <a class="sds-btn sds-btn--primary" href="/#projects"
+              >Back to projects</a
+            >
+            <a class="sds-btn sds-btn--secondary" href="/#contact"
+              >Get in touch</a
+            >
+          </div>
+          <ul class="sds-exit-list">
+            <li><a href="/projects/budget-app.html">Leon's Budget</a></li>
+            <li><a href="/projects/nom-noms.html">Nom Nom's</a></li>
+            <li><a href="/projects/el-blackjack.html">El Blackjack</a></li>
+            <li><a href="/projects/classic-golf.html">The Classic</a></li>
+            <li><a href="/projects/spead-read.html">Spead Read</a></li>
+            <li>
+              <a href="/projects/media-cloud-web-tools.html"
+                >Media Cloud Web Tools</a
+              >
+            </li>
+            <li>
+              <a href="/projects/media-cloud-vitals.html">Media Cloud Vitals</a>
+            </li>
+            <li>
+              <a href="/projects/showrunner-digest.html">ShowRunner Digest</a>
+            </li>
+          </ul>
         </section>
       </main>
 
-      <footer class="sds-footer">
-        <div>Portfolio Theater — engine scaffold.</div>
-      </footer>
+      <footer class="sds-footer">© 2026 Evan Leon</footer>
 
-      <div
-        class="sds-persistent"
-        data-sds-persistent
-        title="Persistent layer — receives global page progress"
-        aria-hidden="true"
-      >
+      <div class="sds-persistent" data-sds-persistent aria-hidden="true">
         0%
       </div>
     </div>
