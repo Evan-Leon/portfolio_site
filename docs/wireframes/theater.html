@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wireframe — /theater/ (Drive-In)</title>
+    <!--
+      Candidate wireframe for the drive-in theater page (spec:
+      docs/superpowers/specs/2026-08-25-drive-in-theater-design.md, phases DT2–DT5).
+
+      Open this file directly in a browser (file://). It is STATIC: the lot is a
+      single composed frame at roughly progress ≈ 0.12 — the camera has just
+      passed the gate and the first screen (left) is the active one. In the
+      built page, scrolling moves the whole `.lot__world` toward the camera
+      along Z; nothing else about the composition changes.
+
+      Resize the window below 768px to see the single-file narrow layout.
+
+      Tokens: the :root block below is a COPY of assets/css/styles.css lines
+      4–48 (the site has no separate tokens file). The built theater imports the
+      same values into theater/src/styles/tokens.css. Poster images are the real
+      images/<slug>/01.png files, referenced relatively.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ---- tokens (copy of assets/css/styles.css :root) ------------------- */
+      :root {
+        --deep-space: #0a0520;
+        --void: #0f0a2a;
+        --nebula-start: #7c3aed;
+        --nebula-end: #3b82f6;
+        --nebula-gradient: linear-gradient(135deg, var(--nebula-start), var(--nebula-end));
+        --star-white: #f0f0ff;
+        --body-text: #a0a8c8;
+        --muted: #6b7280;
+        --label-blue: #7c8aff;
+        --purple-accent: #7c3aed;
+        --blue-accent: #3b82f6;
+        --light-purple: #c4b5fd;
+        --purple-bg-subtle: rgba(124, 58, 237, 0.06);
+        --purple-border-subtle: rgba(124, 58, 237, 0.2);
+        --blue-bg-subtle: rgba(59, 130, 246, 0.04);
+        --blue-border-subtle: rgba(59, 130, 246, 0.15);
+        --footer-bg: #060315;
+        --footer-text: #4a4a6a;
+        --blue-pill-text: #93c5fd;
+        --font-primary: "Inter", system-ui, -apple-system, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, monospace;
+        --container-max: 1100px;
+        --section-padding: 5rem 2rem;
+
+        /* theater-only tokens proposed for theater/src/styles/tokens.css */
+        --marquee-glow: #fbbf24; /* warm incandescent marquee bulbs */
+        --asphalt: #14102b;
+        --asphalt-far: #0a0520;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--deep-space);
+        color: var(--body-text);
+        font-family: var(--font-primary);
+        line-height: 1.6;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      /* ---- annotations (wireframe only, never shipped) -------------------- */
+      .note {
+        position: absolute;
+        z-index: 50;
+        font: 11px/1.4 var(--font-mono);
+        color: #fde68a;
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px dashed #fde68a;
+        padding: 4px 8px;
+        border-radius: 4px;
+        max-width: 280px;
+      }
+
+      /* ---- chrome (from the skeleton's page chrome, restyled) ------------- */
+      .chrome__bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 2px;
+        width: 12%; /* = global page progress */
+        background: var(--nebula-gradient);
+        z-index: 40;
+      }
+      .chrome {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        z-index: 40;
+        backdrop-filter: blur(8px);
+      }
+      .chrome__logo {
+        color: var(--star-white);
+        font-weight: 700;
+        letter-spacing: -0.01em;
+      }
+      .chrome__percent {
+        font: 12px var(--font-mono);
+        color: var(--muted);
+      }
+      .skip {
+        position: absolute;
+        left: -9999px;
+        top: 1rem;
+        padding: 0.5rem 1rem;
+        background: var(--star-white);
+        color: var(--deep-space);
+        z-index: 60;
+      }
+      .skip:focus {
+        left: 1rem;
+      }
+
+      /* ---- hero beat ------------------------------------------------------ */
+      .beat {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: var(--section-padding);
+        position: relative;
+      }
+      .eyebrow {
+        font: 12px var(--font-mono);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--label-blue);
+        margin-bottom: 1rem;
+      }
+      .beat h1 {
+        font-size: clamp(2.5rem, 6vw, 4.5rem);
+        font-weight: 800;
+        color: var(--star-white);
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+      }
+      .beat h2 {
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        font-weight: 700;
+        color: var(--star-white);
+      }
+      .beat p.lede {
+        max-width: 34rem;
+        margin: 1.25rem auto 2rem;
+        font-size: 1.125rem;
+      }
+      .hint {
+        font: 12px var(--font-mono);
+        color: var(--muted);
+        letter-spacing: 0.15em;
+      }
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin: 0 0.5rem;
+      }
+      .btn--primary {
+        background: var(--nebula-gradient);
+        color: var(--star-white);
+      }
+      .btn--secondary {
+        border: 1px solid var(--purple-border-subtle);
+        color: var(--light-purple);
+      }
+
+      /* ---- the lot (one pinned scene, 100vh) ------------------------------ */
+      .lot {
+        position: relative;
+        height: 100vh;
+        overflow: hidden;
+        perspective: 900px;
+        perspective-origin: 50% 42%;
+        background:
+          radial-gradient(1px 1px at 12% 18%, var(--star-white) 50%, transparent 51%),
+          radial-gradient(1px 1px at 28% 9%, var(--star-white) 50%, transparent 51%),
+          radial-gradient(1.5px 1.5px at 41% 22%, var(--light-purple) 50%, transparent 51%),
+          radial-gradient(1px 1px at 57% 12%, var(--star-white) 50%, transparent 51%),
+          radial-gradient(1px 1px at 66% 27%, var(--star-white) 50%, transparent 51%),
+          radial-gradient(1.5px 1.5px at 78% 8%, var(--blue-pill-text) 50%, transparent 51%),
+          radial-gradient(1px 1px at 88% 19%, var(--star-white) 50%, transparent 51%),
+          radial-gradient(1px 1px at 5% 31%, var(--star-white) 50%, transparent 51%),
+          radial-gradient(1px 1px at 94% 34%, var(--star-white) 50%, transparent 51%),
+          radial-gradient(1px 1px at 49% 4%, var(--star-white) 50%, transparent 51%),
+          linear-gradient(180deg, var(--deep-space) 0%, #0d1033 45%, #120a2e 100%);
+      }
+      .lot__world {
+        position: absolute;
+        inset: 0;
+        transform-style: preserve-3d;
+        /* In the built page this is the ONE tween: translateZ(lotZ(progress)). */
+        transform: translateZ(0);
+      }
+      .lot__ground {
+        position: absolute;
+        left: 50%;
+        top: 58%;
+        width: 4000px;
+        height: 4800px;
+        margin-left: -2000px;
+        transform-origin: 50% 0;
+        transform: rotateX(-90deg) translateZ(0);
+        background:
+          repeating-linear-gradient(
+            180deg,
+            transparent 0 780px,
+            rgba(240, 240, 255, 0.05) 780px 784px
+          ),
+          linear-gradient(180deg, var(--asphalt) 0%, var(--asphalt-far) 70%);
+        transform-style: preserve-3d;
+      }
+      .lot__ground::after {
+        /* the lane */
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        width: 420px;
+        height: 100%;
+        margin-left: -210px;
+        background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.06), transparent);
+      }
+
+      /* ---- screens -------------------------------------------------------- */
+      /* A screen is a column whose BOTTOM sits on the ground line (58% down the
+         viewport at z = 0): surface on top, then the marquee riding on two
+         posts. `bottom: 42%` = the ground line. */
+      .screen {
+        position: absolute;
+        left: 50%;
+        bottom: 42%;
+        width: 520px;
+        margin-left: -260px;
+        transform-style: preserve-3d;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        outline: none;
+      }
+      .screen__surface {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        background: #000;
+        border: 6px solid #1a1633;
+        border-radius: 4px;
+        box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+        overflow: hidden;
+        filter: brightness(0.35);
+        transition: filter 0.3s;
+      }
+      .screen__surface img,
+      .screen__surface video {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top;
+        display: block;
+      }
+      .screen__base {
+        position: relative;
+        width: 100%;
+        height: 96px;
+      }
+      .screen__post {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 14px;
+        background: linear-gradient(90deg, #26203f, #100c22);
+      }
+      .screen__post--l {
+        left: 70px;
+      }
+      .screen__post--r {
+        right: 70px;
+      }
+      .screen__marquee {
+        position: absolute;
+        left: 50%;
+        top: 14px;
+        transform: translateX(-50%);
+        width: 320px;
+        padding: 0.5rem 1rem;
+        text-align: center;
+        font-weight: 700;
+        font-size: 1.125rem;
+        color: #2b1d05;
+        background: #6b5a2a;
+        border: 3px solid #3b2f12;
+        border-radius: 6px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .screen:focus-visible .screen__surface {
+        box-shadow: 0 0 0 3px var(--star-white), 0 0 40px var(--marquee-glow);
+      }
+      /* the active (approach-band) screen */
+      .screen--lit .screen__surface {
+        filter: brightness(1);
+        box-shadow: 0 0 80px rgba(251, 191, 36, 0.18), 0 0 30px rgba(124, 58, 237, 0.25);
+      }
+      .screen--lit .screen__marquee {
+        color: #1a1200;
+        background: var(--marquee-glow);
+        border-color: #b45309;
+        box-shadow:
+          0 0 24px rgba(251, 191, 36, 0.8),
+          0 0 60px rgba(251, 191, 36, 0.35);
+      }
+
+      /* Placement = screenPlacement(i): z = -(i+1)·SPACING, x alternating ∓OFFSET, yaw ±15°.
+         SPACING = 800px, OFFSET = 480px in this composition; lotZ ≈ +200 (just past the gate). */
+      .screen:nth-of-type(1) { transform: translate3d(-480px, 0, -600px) rotateY(18deg); }
+      .screen:nth-of-type(2) { transform: translate3d(480px, 0, -1400px) rotateY(-18deg); }
+      .screen:nth-of-type(3) { transform: translate3d(-480px, 0, -2200px) rotateY(18deg); }
+      .screen:nth-of-type(4) { transform: translate3d(480px, 0, -3000px) rotateY(-18deg); }
+      .screen:nth-of-type(5) { transform: translate3d(-480px, 0, -3800px) rotateY(18deg); }
+      .screen:nth-of-type(6) { transform: translate3d(480px, 0, -4600px) rotateY(-18deg); }
+      .screen:nth-of-type(7) { transform: translate3d(-480px, 0, -5400px) rotateY(18deg); }
+      .screen:nth-of-type(8) { transform: translate3d(480px, 0, -6200px) rotateY(-18deg); }
+
+      /* ---- narrow: single file, no side offset, smaller screens ----------- */
+      @media (max-width: 767px) {
+        .lot { perspective: 600px; }
+        .screen { width: 300px; margin-left: -150px; }
+        .screen__marquee { width: 220px; font-size: 0.9rem; }
+        .screen:nth-of-type(1) { transform: translate3d(0, 0, -500px); }
+        .screen:nth-of-type(2) { transform: translate3d(0, 0, -1300px); }
+        .screen:nth-of-type(3) { transform: translate3d(0, 0, -2100px); }
+        .screen:nth-of-type(4) { transform: translate3d(0, 0, -2900px); }
+        .screen:nth-of-type(5) { transform: translate3d(0, 0, -3700px); }
+        .screen:nth-of-type(6) { transform: translate3d(0, 0, -4500px); }
+        .screen:nth-of-type(7) { transform: translate3d(0, 0, -5300px); }
+        .screen:nth-of-type(8) { transform: translate3d(0, 0, -6100px); }
+        .chrome { padding: 0.75rem 1rem; }
+      }
+
+      /* ---- exit beat ------------------------------------------------------ */
+      .exit-list {
+        list-style: none;
+        margin-top: 2.5rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem 2rem;
+        text-align: left;
+        font: 14px var(--font-mono);
+      }
+      .exit-list a {
+        color: var(--label-blue);
+      }
+      .exit-list a:hover {
+        color: var(--star-white);
+      }
+      .footer {
+        background: var(--footer-bg);
+        color: var(--footer-text);
+        text-align: center;
+        padding: 2rem;
+        font-size: 0.875rem;
+      }
+    </style>
+  </head>
+  <body>
+    <a class="skip" href="#exit">Skip the drive, go to the project list</a>
+    <div class="chrome__bar" aria-hidden="true"></div>
+    <header class="chrome">
+      <a class="chrome__logo" href="/">Evan Leon</a>
+      <span class="chrome__percent">12%</span>
+    </header>
+
+    <!-- HERO BEAT — ordinary HTML, readable with JS off -->
+    <section class="beat">
+      <span class="note" style="top: 5rem; left: 1rem"
+        >Hero beat. Same tokens/fonts as index.html. Chrome bar = global progress
+        (persistentLayer).</span
+      >
+      <p class="eyebrow">Now showing · 8 projects</p>
+      <h1>The Drive-In</h1>
+      <p class="lede">
+        Scroll to drive. Every screen is a project — pull up to watch it run, and
+        click the screen to go inside.
+      </p>
+      <p class="hint">↓ SCROLL TO DRIVE</p>
+    </section>
+
+    <!-- THE LOT — <div data-scene-slot="lot"> in the built page; one 100vh pinned scene -->
+    <div class="lot">
+      <span class="note" style="top: 4.5rem; right: 1rem"
+        >`lot` scene, pinned 100vh, ~1060vh of scroll. Static frame here at
+        progress≈0.12: screen 1 is in its approach band (lit, video playing);
+        the rest hold their poster, dim. Scroll moves the whole world toward
+        the camera along Z — the only tween.</span
+      >
+      <span class="note" style="bottom: 1rem; left: 1rem"
+        >Each screen is one &lt;a href="/projects/&lt;slug&gt;.html"&gt;: surface
+        (poster / muted looping video) + marquee (project name = accessible
+        name) + posts. Tab walks screens in drive order; focus scrolls the page
+        to that screen.</span
+      >
+      <div class="lot__world">
+        <div class="lot__ground"></div>
+
+        <a class="screen screen--lit" href="/projects/budget-app.html">
+          <span class="screen__surface"
+            ><img src="../../images/budget-app/01.png" alt=""
+          /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Leon's Budget</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/nom-noms.html">
+          <span class="screen__surface"
+            ><img src="../../images/nom-noms/01.png" alt=""
+          /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Nom Nom's</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/el-blackjack.html">
+          <span class="screen__surface"
+            ><img src="../../images/el-blackjack/01.png" alt=""
+          /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">El Blackjack</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/classic-golf.html">
+          <span class="screen__surface"
+            ><img src="../../images/classic-golf/01.png" alt=""
+          /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">The Classic</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/spead-read.html">
+          <span class="screen__surface"
+            ><img src="../../images/spead-read/01.png" alt=""
+          /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Spead Read</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/media-cloud-web-tools.html">
+          <span class="screen__surface"
+            ><img src="../../images/media-cloud-web-tools/01.png" alt=""
+          /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Media Cloud Web Tools</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/media-cloud-vitals.html">
+          <span class="screen__surface"
+            ><img src="../../images/media-cloud-vitals/01.png" alt=""
+          /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Media Cloud Vitals</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/showrunner-digest.html">
+          <span class="screen__surface"
+            ><img src="../../images/showrunner-digest/01.png" alt=""
+          /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">ShowRunner Digest</span>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <!-- EXIT BEAT — ordinary HTML; the skip link's target; the no-JS project list -->
+    <section class="beat" id="exit" tabindex="-1">
+      <span class="note" style="top: 1rem; left: 1rem"
+        >Exit beat. Skip-link target (tabindex=-1). The &lt;ul&gt; is the no-JS
+        fallback — with scripts off the lot slot is empty and this list is the
+        way in.</span
+      >
+      <p class="eyebrow">End of the lot</p>
+      <h2>That's the whole show.</h2>
+      <p class="lede">Head back to the site, or pick a screen from the list.</p>
+      <div>
+        <a class="btn btn--primary" href="/#projects">Back to projects</a>
+        <a class="btn btn--secondary" href="/#contact">Get in touch</a>
+      </div>
+      <ul class="exit-list">
+        <li><a href="/projects/budget-app.html">Leon's Budget</a></li>
+        <li><a href="/projects/nom-noms.html">Nom Nom's</a></li>
+        <li><a href="/projects/el-blackjack.html">El Blackjack</a></li>
+        <li><a href="/projects/classic-golf.html">The Classic</a></li>
+        <li><a href="/projects/spead-read.html">Spead Read</a></li>
+        <li><a href="/projects/media-cloud-web-tools.html">Media Cloud Web Tools</a></li>
+        <li><a href="/projects/media-cloud-vitals.html">Media Cloud Vitals</a></li>
+        <li><a href="/projects/showrunner-digest.html">ShowRunner Digest</a></li>
+      </ul>
+    </section>
+
+    <footer class="footer">© 2026 Evan Leon</footer>
+  </body>
+</html>

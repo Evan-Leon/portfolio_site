@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wireframe — index.html hero CTA (Enter the Drive-In)</title>
+    <!--
+      Candidate wireframe for phase DT7 (spec:
+      docs/superpowers/specs/2026-08-25-drive-in-theater-design.md).
+
+      It links the site's REAL stylesheet so the hero renders exactly as
+      index.html does today; the only additions are the one new anchor in
+      .hero__ctas and the two hide rules at the bottom of this file, which are
+      the CSS DT7 adds to assets/css/styles.css.
+
+      Resize below 768px, or set your OS to "reduce motion", and the drive-in
+      button disappears — the grid stays the path.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../assets/css/styles.css" />
+    <style>
+      .note {
+        position: absolute;
+        z-index: 50;
+        font: 11px/1.4 var(--font-mono);
+        color: #fde68a;
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px dashed #fde68a;
+        padding: 4px 8px;
+        border-radius: 4px;
+        max-width: 300px;
+      }
+
+      /* ---- DT7 adds exactly these rules to assets/css/styles.css ---------- */
+      .hero__cta--theater {
+        /* primary styling comes from .btn--primary; this class exists only so
+           the hide rules below can target the one button. */
+      }
+      @media (max-width: 767px) {
+        .hero__cta--theater {
+          display: none;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .hero__cta--theater {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body class="js-ready">
+    <main>
+      <section class="hero">
+        <span class="note" style="top: 1rem; left: 1rem"
+          >index.html hero, unchanged except .hero__ctas: "Enter the Drive-In"
+          becomes the primary; "View Projects" and "Get in Touch" are both
+          secondary. Hidden &lt;768px and under prefers-reduced-motion (CSS
+          only).</span
+        >
+        <div class="starfield"></div>
+        <div class="hero__content">
+          <p class="hero__label">Software Engineer</p>
+          <h1 class="hero__name">Evan Leon</h1>
+          <p class="hero__tagline">
+            Full-stack engineer building at the frontier of AI-augmented
+            development.
+          </p>
+          <div class="hero__ctas">
+            <a href="/theater/" class="btn btn--primary hero__cta--theater"
+              >Enter the Drive-In</a
+            >
+            <a href="#projects" class="btn btn--secondary">View Projects</a>
+            <a href="#contact" class="btn btn--secondary">Get in Touch</a>
+          </div>
+        </div>
+        <div class="hero__scroll">
+          <span>Scroll</span>
+          <div class="hero__scroll-line"></div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
