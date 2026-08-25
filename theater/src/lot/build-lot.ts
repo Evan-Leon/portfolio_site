@@ -98,6 +98,10 @@ export const SCREEN_LIT_PROPERTY = "--sds-screen-lit";
  * nothing showing (`EVO-UNI-053`).
  */
 export const POSTER_STATE_ATTRIBUTE = "data-poster";
+/** Whether the screen's clip is available or has fallen back to its poster. */
+export const CLIP_STATE_ATTRIBUTE = "data-clip";
+/** The muted loop layered over a screen's poster. */
+export const SCREEN_VIDEO_CLASS = "sds-screen__video";
 
 /**
  * Where the horizon is, as a percentage, written onto the stage element.
@@ -236,6 +240,26 @@ function buildScreen(project: TheaterProject, i: number): HTMLAnchorElement {
 
   const surface = element("span", SCREEN_SURFACE_CLASS);
   surface.setAttribute(POSTER_STATE_ATTRIBUTE, "pending");
+
+  /* Recorded SDS-006 departure: streaming clips are deliberately not declared
+   * to the asset loader. A stream is never "loaded", preload="none" fetches
+   * nothing before activation, and gating reveal on eight absent clips would
+   * leave the loading ring spinning forever. DTF recorded GO, so every source
+   * is present from construction and preload="none" supplies the deferral. */
+  const video = document.createElement("video");
+  video.className = SCREEN_VIDEO_CLASS;
+  video.muted = true;
+  video.loop = true;
+  video.playsInline = true;
+  video.preload = "none";
+  video.poster = project.poster;
+  video.setAttribute("aria-hidden", "true");
+
+  const source = document.createElement("source");
+  source.src = project.clip;
+  source.type = "video/mp4";
+  video.append(source);
+  surface.append(video);
 
   const base = element("span", SCREEN_BASE_CLASS);
   base.append(

@@ -304,7 +304,7 @@ describe("buildLot — the drive", () => {
     })(container) as LotAdapter;
     await adapter.load(() => {});
 
-    adapter.seek(midBand(0)); // already screen 0 — no crossing
+    adapter.seek(midBand(0)); // first seek establishes screen 0
     adapter.seek(midBand(1));
     adapter.seek(midBand(1)); // the same band twice is not a change
     adapter.seek(midBand(3)); // skipping a band still reports one crossing
@@ -312,6 +312,7 @@ describe("buildLot — the drive", () => {
     adapter.seek(midBand(3)); // and it reports going backwards too
 
     expect(changes).toEqual([
+      [null, 0],
       [0, 1],
       [1, 3],
       [3, null],

@@ -43,6 +43,7 @@ import { sharedAssetLoader } from "../loader/asset-loader";
 import type { TheaterProject } from "../projects";
 import {
   buildLot,
+  CLIP_STATE_ATTRIBUTE,
   LOT_WORLD_CLASS,
   POSTER_STATE_ATTRIBUTE,
   SCREEN_CLASS,
@@ -50,6 +51,7 @@ import {
   SCREEN_LIT_PROPERTY,
   SCREEN_POSTER_CLASS,
   SCREEN_SURFACE_CLASS,
+  SCREEN_VIDEO_CLASS,
 } from "./build-lot";
 import { activeScreen, lotZ } from "./geometry";
 
@@ -73,6 +75,8 @@ export interface LotSnapshot {
   timelineProgress: number | null;
   /** How many posters arrived and were big enough to use. */
   loadedPosters: number;
+  /** The screen whose clip was last told to play, or `null`. */
+  playing: number | null;
   /**
    * The world element's **inline** transform, exactly as GSAP wrote it.
    *
@@ -148,8 +152,10 @@ class LotScene implements LotAdapter {
   readonly #inner: GsapTimelineAdapter;
 
   #progress = 0;
-  #active: number | null;
+  #active: number | null = null;
+  #playing: number | null = null;
   #loadedPosters = 0;
+  #clipsWired = false;
   #destroyed = false;
 
   constructor(
@@ -160,7 +166,6 @@ class LotScene implements LotAdapter {
     this.#container = container;
     this.#projects = projects;
     this.#options = options;
-    this.#active = activeScreen(0, projects.length);
     this.#inner = gsapTimeline(buildLot(projects))(
       container,
     ) as GsapTimelineAdapter;
@@ -205,6 +210,10 @@ class LotScene implements LotAdapter {
       innerFraction = fraction;
       report();
     });
+    if (!this.#destroyed && !this.#clipsWired) {
+      this.#wireClipFallbacks();
+      this.#clipsWired = true;
+    }
 
     const arrived = await Promise.all(posters);
     if (!this.#destroyed) {
@@ -237,6 +246,7 @@ class LotScene implements LotAdapter {
     if (next !== this.#active) {
       const previous = this.#active;
       this.#active = next;
+      this.#onActiveScreenChange(previous, next);
       this.#options.onActiveScreenChange?.(previous, next);
     }
   }
@@ -254,6 +264,15 @@ class LotScene implements LotAdapter {
    */
   destroy(): void {
     this.#destroyed = true;
+
+    for (const video of this.#videos()) {
+      video.pause();
+      video.removeAttribute("src");
+      for (const source of video.querySelectorAll("source")) {
+        source.removeAttribute("src");
+      }
+    }
+    this.#playing = null;
 
     for (const project of this.#projects) {
       sharedAssetLoader.release(project.poster);
@@ -277,11 +296,62 @@ class LotScene implements LotAdapter {
       activeScreen: activeScreen(this.#progress, count),
       timelineProgress: this.#inner.snapshot().timelineProgress,
       loadedPosters: this.#loadedPosters,
+      playing: this.#playing,
       worldTransform: world?.style.transform ?? "",
       lit: [...screens].map((screen) =>
         round2(screen.style.getPropertyValue(SCREEN_LIT_PROPERTY)),
       ),
     };
+  }
+
+  /** Set clip playback from the absolute active band, never by toggling. */
+  #onActiveScreenChange(previous: number | null, next: number | null): void {
+    if (previous !== null) this.#video(previous)?.pause();
+
+    this.#playing = null;
+    if (next === null) return;
+
+    const video = this.#video(next);
+    if (!video) return;
+
+    this.#playing = next;
+    const attempt = video.play();
+    attempt?.catch(() => {});
+  }
+
+  /** Remove a failed clip candidate so the poster remains the honest state. */
+  #wireClipFallbacks(): void {
+    this.#videos().forEach((video, i) => {
+      const markMissing = (): void => {
+        if (!video.isConnected) return;
+        const screen = video.closest(`.${SCREEN_CLASS}`);
+        video.pause();
+        video.remove();
+        screen?.setAttribute(CLIP_STATE_ATTRIBUTE, "missing");
+        if (this.#playing === i) this.#playing = null;
+      };
+
+      video.addEventListener("error", markMissing, { once: true });
+      video
+        .querySelector("source")
+        ?.addEventListener("error", markMissing, { once: true });
+    });
+  }
+
+  #videos(): HTMLVideoElement[] {
+    return [
+      ...this.#container.querySelectorAll<HTMLVideoElement>(
+        `.${SCREEN_VIDEO_CLASS}`,
+      ),
+    ];
+  }
+
+  #video(i: number): HTMLVideoElement | null {
+    return (
+      this.#container
+        .querySelector(`[${SCREEN_INDEX_ATTRIBUTE}="${i}"]`)
+        ?.querySelector<HTMLVideoElement>(`.${SCREEN_VIDEO_CLASS}`) ?? null
+    );
   }
 
   /** Hang a decoded poster on its screen, or mark the surface as having none. */

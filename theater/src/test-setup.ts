@@ -1,8 +1,11 @@
 /*
- * Vitest setup for the two jsdom gaps the vendored engine still depends on:
- * window.matchMedia and ResizeObserver. The frame-sequence adapter was not
- * vendored, so no remaining source calls the canvas API and no canvas mock is
- * installed.
+ * Vitest setup for the three jsdom gaps the vendored engine still depends on:
+ * 1. window.matchMedia
+ * 2. ResizeObserver
+ * 3. HTMLMediaElement play/pause
+ *
+ * The frame-sequence adapter was not vendored, so no remaining source calls the
+ * canvas API and no canvas mock is installed.
  */
 import { beforeEach } from "vitest";
 
@@ -117,6 +120,16 @@ class FakeResizeObserver implements ResizeObserver {
 }
 
 globalThis.ResizeObserver = FakeResizeObserver;
+
+/* ------------------------------------------------------------------ *
+ * HTMLMediaElement — jsdom's methods only report "not implemented"
+ * ------------------------------------------------------------------ */
+
+/* Clips are driven by the lot adapter. A resolved play promise models the
+ * browser path without sending every activation through jsdom's missing media
+ * implementation (EVO-FE-064). Tests may spy on these shared mock methods. */
+HTMLMediaElement.prototype.play = () => Promise.resolve();
+HTMLMediaElement.prototype.pause = () => {};
 
 /* ------------------------------------------------------------------ *
  * Per-test reset
