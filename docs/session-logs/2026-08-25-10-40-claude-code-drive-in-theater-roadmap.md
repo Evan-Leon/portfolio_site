@@ -63,6 +63,7 @@ portfolio_site:
 - `df0a8d9` docs: session log (first write)
 - `2e937a8` docs(roadmap): Part 3 (Codex) triage — 8 findings, 7 accepted, 1 rescoped, 0 rejected
 - `4324fe1` docs(roadmap): two stragglers from the Part 3 triage
+- (next) feat(images): real El Blackjack screenshot; docs: prerequisite marked met
 
 docs: `8d14c31` runlog row (Parts 1–2, Part 3 handed off); `db476c2` appends
 the Part 3 outcome to that row.
@@ -94,9 +95,8 @@ exists for it; noted as `[FYI]` in the spec). Nothing else.
 - Not run: anything in `theater/` (does not exist yet); Docker builds.
 
 ## Blockers
-None. Two prerequisites are Evan's before phases run: replace
-`images/el-blackjack/01.png` (1×1 placeholder) before DT3, and DTF's browser
-measurement before DT0.
+None. Evan replaced `images/el-blackjack/01.png` (now 487×946) the same
+session; the remaining prerequisite is DTF's browser measurement before DT0.
 
 ## Open flags
 - (Resolved by Part 3 → DT10.) The image path to production did not exist at
@@ -107,6 +107,9 @@ measurement before DT0.
 - Root `pnpm-lock.yaml`/`node_modules` will grow substantially in DT0 (Vite,
   Playwright) in a repo whose only dev dep was Prettier.
 - `images/chunk-norris/` still page-less.
+- `projects/el-blackjack.html` references `02.png`–`05.png` that do not exist
+  (pre-existing; `swiper-init.js` prunes them at runtime, but the
+  `adding-project-screenshots` skill says not to leave placeholder slides).
 
 ## Rules-index candidates
 None. (Repo has no rules-index — deliberate opt-out recorded 2026-07-23.)
@@ -138,8 +141,7 @@ None. (Repo has no rules-index — deliberate opt-out recorded 2026-07-23.)
   cleanly. No edit needed.
 
 ## Next steps
-1. Evan: replace `images/el-blackjack/01.png` with a real screenshot
-   (`adding-project-screenshots`); it is a 68-byte 1×1 today.
+1. ~~Replace `images/el-blackjack/01.png`~~ — done (487×946, committed).
 2. DTF: a session builds the four-variant probe; Evan measures in Chrome +
    Firefox per the protocol and records the decision row.
 3. DT0 onward, one phase per session, in ToC order (DT10 sits after DT7).

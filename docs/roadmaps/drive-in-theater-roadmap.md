@@ -39,10 +39,9 @@ falsified first, cheaply, on a probe that reproduces the production rendering pa
 24.16.0 / pnpm 11.15.1, verified 2026-08-25); Docker with the external `evo-net` network
 (the existing `rebuild-restart` skill); ffmpeg for DT9 (host has 6.1.1); the sibling
 checkout `/home/evan/EVOsystem/scroll-driven-skeleton` at commit `7e5d44a` for DT0's
-vendoring; **DTF must record `GO` or `GO-REDUCED` before DT0 runs**; **`images/el-blackjack/01.png` is a
-68-byte 1×1 placeholder PNG (verified 2026-08-25) and must be replaced by a real screenshot
-(≥ 1280×800 landscape or the portrait shape the other pages use) via the
-`adding-project-screenshots` skill before DT3 — DT3's poster-dimension test fails until it is**;
+vendoring; **DTF must record `GO` or `GO-REDUCED` before DT0 runs**; ~~`images/el-blackjack/01.png` was a 68-byte 1×1 placeholder~~ — **replaced with a real
+487×946 portrait screenshot on 2026-08-25 (`feat(images)` commit); DT3's poster-dimension
+test now passes on all eight**;
 for DT10, droplet SSH access, the three repo secrets (`DROPLET_HOST`, `DROPLET_USER`,
 `DROPLET_SSH_KEY`) and control of `evanleon.com`'s DNS (Cloudflare); both wireframes approved 2026-08-25
 (`docs/wireframes/theater.html` @ `c9e55bd`, `docs/wireframes/index-hero-cta.html` @ `959cdb9`).
@@ -692,11 +691,11 @@ it scrubs backwards exactly.
   `classic-golf` "The Classic", `spead-read` "Spead Read", `media-cloud-web-tools`
   "Media Cloud Web Tools", `media-cloud-vitals` "Media Cloud Vitals", `showrunner-digest`
   "ShowRunner Digest" — pages at `projects/<slug>.html`, posters at `images/<slug>/01.png`.
-  **Seven posters are real screenshots (1280×794 up to 2056×1071; `classic-golf` is a
-  556×1003 portrait); `images/el-blackjack/01.png` is a 68-byte 1×1 placeholder** — it
-  decodes successfully, so the loader counts it as loaded and the ring reaches 100% over
-  a blank screen. The header Prerequisites require Evan to replace it before this phase;
-  the test below refuses to pass until he has.
+  All eight posters are real screenshots (1280×794 up to 2056×1071 landscape;
+  `classic-golf` 556×1003 and `el-blackjack` 487×946 are portrait). Until 2026-08-25
+  `images/el-blackjack/01.png` was a 68-byte 1×1 placeholder that decoded successfully —
+  the loader would have counted it as loaded and the ring reached 100% over a blank
+  screen — which is why the test below checks dimensions, not existence.
 
 **Out of scope:** `<video>` elements and playback (DT4) — this phase's screens show the
 poster `<img>` only; keyboard drive-by-focus and the narrow layout (DT5).

@@ -249,7 +249,7 @@ No external service is involved (Step 5 N/A).
 | `images/<slug>/demo.mp4` | media | **Missing** — manual production phase |
 | `Dockerfile`, `.dockerignore`, `nginx.conf` | infra | Partial — single-stage; nginx needs no change |
 | `.github/workflows/`, droplet compose, `evanleon.com` cutover | delivery | **Missing** — prod is served from the droplet root, not this container (`infra/domain-registry.md`); no workflow exists |
-| `images/el-blackjack/01.png` | media | **Placeholder** — a 68-byte 1×1 PNG; decodes "successfully", must be replaced before DT3 |
+| `images/el-blackjack/01.png` | media | Complete — was a 68-byte 1×1 placeholder until 2026-08-25; now a real 487×946 screenshot |
 | `package.json`, `pnpm-lock.yaml`, `.githooks/pre-commit`, `.prettierignore` | tooling | Partial — no workspace, hook filters `.(html\|css\|js)$` only |
 | `scroll-driven-skeleton/src/{engine,adapters,host,loader,page,styles}` | engine | Complete in the sibling repo — to be vendored |
 | `scroll-driven-skeleton/e2e/helpers/app.ts`, `playwright.config.ts` | tests | Complete in the sibling repo — to be vendored |
@@ -442,7 +442,7 @@ scopes cannot collide with anything). Rows are in execution order.
 - Docker + the `evo-net` network for DT1's integration check (existing
   `rebuild-restart` skill).
 - DTF must record `GO` or `GO-REDUCED` before DT0 runs.
-- `images/el-blackjack/01.png` replaced with a real screenshot before DT3.
+- ~~`images/el-blackjack/01.png` replaced with a real screenshot before DT3~~ — done 2026-08-25.
 - For DT10: droplet SSH access, the three deploy secrets, Cloudflare DNS control
   for `evanleon.com`.
 
