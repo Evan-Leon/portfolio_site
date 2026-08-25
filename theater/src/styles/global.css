@@ -229,6 +229,25 @@ a {
   /* The one element that actually moves. Promoting anything else — eight
    * screens each running a `filter` — is the cost centre DTF measured. */
   will-change: transform;
+  /*
+   * WITHOUT THIS, SCREEN 0 CANNOT BE CLICKED — EVER.
+   *
+   * This element is a full-stage box that the drive translates to
+   * `translateZ(lotZ)`, so for the first `perspective` (900px) of the drive it
+   * sits *between* the camera and every screen, magnified and invisible. It
+   * paints nothing, so the only thing it can do at that depth is swallow the
+   * lot's pointer events — and `lotZ < 900` is exactly `progress < 0.125`,
+   * which is the whole of screen 0's lit band plus a sliver of screen 1's.
+   * Every screen was still lit, still animated and still keyboard-reachable
+   * throughout, which is why this survived DT3 through DT5: nothing looked
+   * wrong, the click just went nowhere. Found by DT6's `click-through.spec.ts`,
+   * which is the first thing to click all eight rather than a representative
+   * one.
+   *
+   * The screens opt back in below. The ground plane and the world itself have
+   * nothing to click, so `none` here costs nothing.
+   */
+  pointer-events: none;
 }
 
 .sds-lot__ground {
@@ -276,6 +295,9 @@ a {
    are the camera's own position: a screen whose properties never arrived stands
    in the middle of the lane rather than vanishing. */
 .sds-screen {
+  /* The world above opts its whole subtree out of hit-testing; the screens are
+   * the one thing in it that is a control, so they opt back in. */
+  pointer-events: auto;
   position: absolute;
   bottom: calc(100% - var(--sds-ground-line));
   left: 50%;
