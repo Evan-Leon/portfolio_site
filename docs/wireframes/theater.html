@@ -55,7 +55,7 @@
         --section-padding: 5rem 2rem;
 
         /* theater-only tokens proposed for theater/src/styles/tokens.css */
-        --marquee-glow: #fbbf24; /* warm incandescent marquee bulbs */
+        --marquee-glow: #d4a862; /* understated warm marquee — soft amber, low glow */
         --asphalt: #14102b;
         --asphalt-far: #0a0520;
       }
@@ -332,15 +332,13 @@
       /* the active (approach-band) screen */
       .screen--lit .screen__surface {
         filter: brightness(1);
-        box-shadow: 0 0 80px rgba(251, 191, 36, 0.18), 0 0 30px rgba(124, 58, 237, 0.25);
+        box-shadow: 0 0 60px rgba(212, 168, 98, 0.1), 0 0 30px rgba(124, 58, 237, 0.2);
       }
       .screen--lit .screen__marquee {
-        color: #1a1200;
+        color: #2b1d05;
         background: var(--marquee-glow);
-        border-color: #b45309;
-        box-shadow:
-          0 0 24px rgba(251, 191, 36, 0.8),
-          0 0 60px rgba(251, 191, 36, 0.35);
+        border-color: #8a6a35;
+        box-shadow: 0 0 14px rgba(212, 168, 98, 0.3);
       }
 
       /* Placement = screenPlacement(i): z = -(i+1)·SPACING, x alternating ∓OFFSET, yaw ±15°.
