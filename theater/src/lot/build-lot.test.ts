@@ -33,6 +33,7 @@ import {
   SCREEN_YAW_PROPERTY,
   SCREEN_Z_PROPERTY,
 } from "./build-lot";
+import { SPACING } from "./geometry";
 import { lotScene, type LotAdapter } from "./lot-scene";
 
 /** A landscape screenshot, comfortably past `MIN_POSTER_PX`. */
@@ -44,7 +45,13 @@ const POSTER_SIZE = { width: 1280, height: 800 };
  * from `i / 9` to `(i + 1) / 9`, and its middle is where it is unambiguously
  * the lit one.
  */
-const midBand = (i: number): number => (i + 0.5) / 9;
+/** How many screens the registry currently holds — never a literal here. */
+const COUNT = projects.length;
+const LAST = COUNT - 1;
+const midBand = (i: number): number => (i + 0.5) / (COUNT + 1);
+/** A `lit` snapshot with exactly screen `i` on (or none, for `null`). */
+const litOnly = (i: number | null): number[] =>
+  Array.from({ length: COUNT }, (_, k) => (k === i ? 1 : 0));
 
 let fake: FakeImages;
 let container: HTMLElement;
@@ -106,13 +113,13 @@ describe("buildLot — the DOM the lot is made of", () => {
       ...container.querySelectorAll<HTMLAnchorElement>(`.${SCREEN_CLASS}`),
     ];
 
-    expect(screens).toHaveLength(8);
+    expect(screens).toHaveLength(COUNT);
     expect(screens.map((screen) => screen.getAttribute("href"))).toEqual(
       projects.map((project) => project.href),
     );
     expect(
       screens.map((screen) => screen.getAttribute(SCREEN_INDEX_ATTRIBUTE)),
-    ).toEqual(["0", "1", "2", "3", "4", "5", "6", "7"]);
+    ).toEqual(projects.map((_, i) => String(i)));
   });
 
   it("names each link with its marquee, which is the only text in it", async () => {
@@ -159,7 +166,7 @@ describe("buildLot — the DOM the lot is made of", () => {
      * the inline one wins. The lot would then keep its wide slalom on a phone,
      * silently, with every other test still green.
      */
-    expect(placements).toHaveLength(8);
+    expect(placements).toHaveLength(COUNT);
     adapter.seek(midBand(3));
     adapter.seek(midBand(0));
 
@@ -167,7 +174,7 @@ describe("buildLot — the DOM the lot is made of", () => {
       [...container.querySelectorAll<HTMLElement>(`.${SCREEN_CLASS}`)].map(
         (screen) => screen.style.transform,
       ),
-    ).toEqual(Array.from({ length: 8 }, () => ""));
+    ).toEqual(Array.from({ length: COUNT }, () => ""));
   });
 
   it("hands the stylesheet the horizon the placement was computed against", async () => {
@@ -200,14 +207,14 @@ describe("buildLot — posters", () => {
 
     expect(
       surfaces.map((surface) => surface.getAttribute(POSTER_STATE_ATTRIBUTE)),
-    ).toEqual(Array.from({ length: 8 }, () => "ready"));
+    ).toEqual(Array.from({ length: COUNT }, () => "ready"));
 
     const poster = surfaces[0]?.querySelector<HTMLImageElement>(
       `.${SCREEN_POSTER_CLASS}`,
     );
     expect(poster?.src).toBe("/images/budget-app/01.png");
     expect(poster?.alt).toBe("");
-    expect(adapter.snapshot().loadedPosters).toBe(8);
+    expect(adapter.snapshot().loadedPosters).toBe(COUNT);
   });
 
   it("still builds a screen when the poster 404s or is a placeholder", async () => {
@@ -223,21 +230,14 @@ describe("buildLot — posters", () => {
 
     expect(
       surfaces.map((surface) => surface.getAttribute(POSTER_STATE_ATTRIBUTE)),
-    ).toEqual([
-      "ready",
-      "missing",
-      "missing",
-      "ready",
-      "ready",
-      "ready",
-      "ready",
-      "ready",
-    ]);
-    expect(adapter.snapshot().loadedPosters).toBe(6);
+    ).toEqual(
+      projects.map((_, i) => (i === 1 || i === 2 ? "missing" : "ready")),
+    );
+    expect(adapter.snapshot().loadedPosters).toBe(COUNT - 2);
 
     // The screens are still there, still linked, still named — a hole in the
     // lot would read as a broken page (`EVO-UNI-053`).
-    expect(container.querySelectorAll(`.${SCREEN_CLASS}`)).toHaveLength(8);
+    expect(container.querySelectorAll(`.${SCREEN_CLASS}`)).toHaveLength(COUNT);
     expect(
       container
         .querySelector(`[${SCREEN_INDEX_ATTRIBUTE}="1"]`)
@@ -251,18 +251,18 @@ describe("buildLot — the drive", () => {
     await mountLot();
 
     adapter.seek(midBand(0));
-    expect(adapter.snapshot().lit).toEqual([1, 0, 0, 0, 0, 0, 0, 0]);
+    expect(adapter.snapshot().lit).toEqual(litOnly(0));
 
     adapter.seek(midBand(3));
-    expect(adapter.snapshot().lit).toEqual([0, 0, 0, 1, 0, 0, 0, 0]);
+    expect(adapter.snapshot().lit).toEqual(litOnly(3));
 
-    adapter.seek(midBand(7));
-    expect(adapter.snapshot().lit).toEqual([0, 0, 0, 0, 0, 0, 0, 1]);
+    adapter.seek(midBand(LAST));
+    expect(adapter.snapshot().lit).toEqual(litOnly(LAST));
 
     // Past the last screen the lot is dark, which is what makes the exit beat
     // read as the end of the drive rather than a stall.
     adapter.seek(1);
-    expect(adapter.snapshot().lit).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+    expect(adapter.snapshot().lit).toEqual(litOnly(null));
     expect(adapter.snapshot().activeScreen).toBe(null);
   });
 
@@ -271,14 +271,14 @@ describe("buildLot — the drive", () => {
 
     adapter.seek(midBand(0));
     const atScreen0 = adapter.snapshot();
-    expect(worldZ()).toBe(400);
+    expect(worldZ()).toBe(0.5 * SPACING);
 
     adapter.seek(midBand(3));
     const atScreen3 = adapter.snapshot();
-    expect(worldZ()).toBe(2800);
+    expect(worldZ()).toBe(3.5 * SPACING);
 
-    adapter.seek(midBand(7));
-    expect(worldZ()).toBe(6000);
+    adapter.seek(midBand(LAST));
+    expect(worldZ()).toBe((LAST + 0.5) * SPACING);
 
     /* The half that matters. A timeline that accumulated, or one whose tweens
      * write state outside their own window, comes back to a different frame —
@@ -300,7 +300,10 @@ describe("buildLot — the drive", () => {
       seen.push(worldZ());
     }
 
-    expect(seen).toEqual([0, 1800, 3600, 5400, 7200]);
+    // The whole drive is `(COUNT + 1)` spacings long — one past the last screen.
+    expect(seen).toEqual(
+      [0, 0.25, 0.5, 0.75, 1].map((p) => p * SPACING * (COUNT + 1)),
+    );
   });
 
   it("clamps rather than driving out of the lot", async () => {

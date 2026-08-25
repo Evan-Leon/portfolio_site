@@ -1,5 +1,5 @@
 /*
- * The eight projects the lot drives past, in drive order.
+ * The projects the lot drives past, in drive order.
  *
  * This is the theater's only piece of portfolio content, and it is written by
  * hand rather than generated: the site has no build step and no manifest to
@@ -74,6 +74,13 @@ export const projects: readonly TheaterProject[] = [
     href: "/projects/spead-read.html",
     poster: "/images/spead-read/01.png",
     clip: "/images/spead-read/demo.mp4",
+  },
+  {
+    slug: "chunk-norris",
+    name: "Chunk Norris",
+    href: "/projects/chunk-norris.html",
+    poster: "/images/chunk-norris/01.png",
+    clip: "/images/chunk-norris/demo.mp4",
   },
   {
     slug: "media-cloud-web-tools",

@@ -76,7 +76,7 @@ describe("lotScene — before the contract run", () => {
     expect(fake.inFlight().map((image) => image.src)).toEqual(
       projects.map((project) => project.poster),
     );
-    expect(adapter.snapshot().loadedPosters).toBe(8);
+    expect(adapter.snapshot().loadedPosters).toBe(projects.length);
 
     adapter.destroy();
     container.remove();
