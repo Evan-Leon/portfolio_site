@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Chunk Norris | Evan Leon</title>
+    <title>app-dash | Evan Leon</title>
     <meta
       name="description"
-      content="Knowledge manager that turns raw documents into RAG-ready vector collections for AI agents."
+      content="Self-hosted dashboard that tracks every side project through its build lifecycle."
     />
-    <meta property="og:title" content="Chunk Norris | Evan Leon" />
+    <meta property="og:title" content="app-dash | Evan Leon" />
     <meta
       property="og:description"
-      content="Knowledge manager that turns raw documents into RAG-ready vector collections for AI agents."
+      content="Self-hosted dashboard that tracks every side project through its build lifecycle."
     />
     <meta property="og:type" content="website" />
     <meta
       property="og:url"
-      content="https://evanleon.com/projects/chunk-norris.html"
+      content="https://evanleon.com/projects/app-dash.html"
     />
     <meta
       property="og:image"
@@ -113,10 +113,10 @@
             >
           </div>
 
-          <h1 class="project-detail__title">Chunk Norris</h1>
+          <h1 class="project-detail__title">app-dash</h1>
           <p class="project-detail__tagline">
-            Knowledge manager that turns raw documents into RAG-ready vector
-            collections for AI agents.
+            Self-hosted dashboard that tracks every side project through its
+            build lifecycle.
           </p>
         </div>
 
@@ -126,29 +126,29 @@
             <div class="swiper-wrapper">
               <div class="swiper-slide">
                 <img
-                  src="../images/chunk-norris/01.png"
-                  alt="Chunk Norris — screenshot 1"
+                  src="../images/app-dash/01.png"
+                  alt="app-dash — screenshot 1"
                   loading="eager"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/chunk-norris/02.png"
-                  alt="Chunk Norris — screenshot 2"
+                  src="../images/app-dash/02.png"
+                  alt="app-dash — screenshot 2"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/chunk-norris/03.png"
-                  alt="Chunk Norris — screenshot 3"
+                  src="../images/app-dash/03.png"
+                  alt="app-dash — screenshot 3"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/chunk-norris/04.png"
-                  alt="Chunk Norris — screenshot 4"
+                  src="../images/app-dash/04.png"
+                  alt="app-dash — screenshot 4"
                   loading="lazy"
                 />
               </div>
@@ -164,18 +164,20 @@
           <div>
             <h2 class="project-detail__ps-label">Problem</h2>
             <p class="project-detail__ps-text">
-              AI agents in a multi-app system need grounded, current knowledge —
-              but the source material lives in scattered docs, wikis and
-              codebases with no shared way to collect, chunk, embed or audit it.
+              Side projects sprawl across repos, notes apps and half-remembered
+              TODOs. Nothing says what phase each one is in, what to do next, or
+              which conventions it follows — so every session starts by
+              rebuilding context from scratch.
             </p>
           </div>
           <div>
             <h2 class="project-detail__ps-label">Solution</h2>
             <p class="project-detail__ps-text">
-              Chunk Norris registers document sources per AI persona, runs a
-              collect → chunk → embed → store pipeline into Qdrant, and gives
-              one dashboard for health, test queries, data-quality scans and
-              staleness review.
+              app-dash keeps one record per project: lifecycle phase, a
+              prioritised pipeline, an auto-saving scratchpad, an append-only
+              activity log, and a searchable registry of the rules that project
+              follows. It doubles as the source of project truth the rest of the
+              toolchain reads and writes over HTTP.
             </p>
           </div>
         </div>
@@ -185,11 +187,10 @@
           <h2 class="project-detail__tech-label">Tech Stack</h2>
           <div class="project-detail__tech-pills">
             <span class="tech-pill tech-pill--purple">FastAPI</span>
-            <span class="tech-pill tech-pill--purple">React</span>
-            <span class="tech-pill tech-pill--purple">TypeScript</span>
-            <span class="tech-pill tech-pill--purple">Qdrant</span>
+            <span class="tech-pill tech-pill--purple">React 19</span>
             <span class="tech-pill tech-pill--purple">PostgreSQL</span>
-            <span class="tech-pill tech-pill--purple">RAG</span>
+            <span class="tech-pill tech-pill--purple">SQLAlchemy</span>
+            <span class="tech-pill tech-pill--purple">TanStack Query</span>
           </div>
         </div>
 
@@ -198,28 +199,31 @@
           <h2 class="project-detail__features-label">Key Features</h2>
           <div class="project-detail__features-grid">
             <div class="project-detail__feature-card">
-              <h3>Source Registry & Indexing</h3>
+              <h3>Lifecycle Tracking</h3>
               <p>
-                Register directories or files per AI persona and re-index on
-                demand
+                Every project carries a phase badge, from Idea through v0
+                Complete to continued enhancements
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Collection Browser</h3>
-              <p>Inspect every chunk with its source, line range and notes</p>
-            </div>
-            <div class="project-detail__feature-card">
-              <h3>Test Query</h3>
+              <h3>Prioritised Pipeline</h3>
               <p>
-                Run a semantic search across collections and see ranked, scored
-                chunks
+                Per-project and cross-project backlogs with categories,
+                priorities and filters
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Data Quality & Staleness</h3>
+              <h3>Rules Registry</h3>
               <p>
-                Conflict, duplicate and orphan scans plus a review queue for
-                stale sources
+                Global conventions and per-project law in one searchable,
+                category-filtered list
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Notes &amp; Activity Log</h3>
+              <p>
+                An auto-saving scratchpad per project, plus an append-only audit
+                trail of every change
               </p>
             </div>
           </div>
@@ -227,16 +231,16 @@
 
         <!-- PREV / NEXT -->
         <nav class="project-detail__nav" aria-label="Project navigation">
-          <a href="spead-read.html" class="project-detail__nav-link">
+          <a href="chunk-norris.html" class="project-detail__nav-link">
             <p class="project-detail__nav-direction">← Previous</p>
-            <p class="project-detail__nav-title">Spead Read</p>
+            <p class="project-detail__nav-title">Chunk Norris</p>
           </a>
           <a
-            href="app-dash.html"
+            href="media-cloud-web-tools.html"
             class="project-detail__nav-link project-detail__nav-link--next"
           >
             <p class="project-detail__nav-direction">Next →</p>
-            <p class="project-detail__nav-title">app-dash</p>
+            <p class="project-detail__nav-title">Media Cloud Web Tools</p>
           </a>
         </nav>
       </div>

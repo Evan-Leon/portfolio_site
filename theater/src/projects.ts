@@ -83,6 +83,13 @@ export const projects: readonly TheaterProject[] = [
     clip: "/images/chunk-norris/demo.mp4",
   },
   {
+    slug: "app-dash",
+    name: "app-dash",
+    href: "/projects/app-dash.html",
+    poster: "/images/app-dash/01.png",
+    clip: "/images/app-dash/demo.mp4",
+  },
+  {
     slug: "media-cloud-web-tools",
     name: "Media Cloud Web Tools",
     href: "/projects/media-cloud-web-tools.html",
