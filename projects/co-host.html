@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Media Cloud Web Tools | Evan Leon</title>
+    <title>co-host | Evan Leon</title>
     <meta
       name="description"
-      content="Media analysis platform for researchers and journalists."
+      content="A production desk that walks a podcast episode from premise to teleprompter."
     />
-    <meta property="og:title" content="Media Cloud Web Tools | Evan Leon" />
+    <meta property="og:title" content="co-host | Evan Leon" />
     <meta
       property="og:description"
-      content="Media analysis platform for researchers and journalists."
+      content="A production desk that walks a podcast episode from premise to teleprompter."
     />
     <meta property="og:type" content="website" />
     <meta
       property="og:url"
-      content="https://evanleon.com/projects/media-cloud-web-tools.html"
+      content="https://evanleon.com/projects/co-host.html"
     />
     <meta
       property="og:image"
@@ -106,19 +106,18 @@
       <div class="container">
         <!-- HERO -->
         <div class="project-detail__hero">
-          <h1 class="project-detail__title">Media Cloud Web Tools</h1>
-          <p class="project-detail__tagline">
-            Media analysis platform for researchers and journalists.
-          </p>
-          <div class="project-detail__ctas">
-            <a
-              href="https://github.com/mitmedialab/MediaCloud-Web-Tools"
-              class="btn btn--primary"
-              target="_blank"
-              rel="noopener"
-              >View on GitHub</a
+          <div class="project-detail__badge-row">
+            <span class="project-detail__badge">AI-Built</span>
+            <span class="project-detail__badge-text"
+              >Built with Claude Code</span
             >
           </div>
+
+          <h1 class="project-detail__title">co-host</h1>
+          <p class="project-detail__tagline">
+            A production desk that walks a podcast episode from premise to
+            teleprompter.
+          </p>
         </div>
 
         <!-- DEMO -->
@@ -127,29 +126,29 @@
             <div class="swiper-wrapper">
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/01.png"
-                  alt="Media Cloud Web Tools — screenshot 1"
+                  src="../images/co-host/01.png"
+                  alt="co-host — screenshot 1"
                   loading="eager"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/02.png"
-                  alt="Media Cloud Web Tools — screenshot 2"
+                  src="../images/co-host/02.png"
+                  alt="co-host — screenshot 2"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/03.png"
-                  alt="Media Cloud Web Tools — screenshot 3"
+                  src="../images/co-host/03.png"
+                  alt="co-host — screenshot 3"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/04.png"
-                  alt="Media Cloud Web Tools — screenshot 4"
+                  src="../images/co-host/04.png"
+                  alt="co-host — screenshot 4"
                   loading="lazy"
                 />
               </div>
@@ -165,17 +164,24 @@
           <div>
             <h2 class="project-detail__ps-label">Problem</h2>
             <p class="project-detail__ps-text">
-              Researchers studying media coverage had no accessible tool for
-              searching and analyzing millions of news articles across sources
-              and time periods.
+              Writing a podcast is not one task. It is a premise, a beat sheet,
+              a draft, a read-through and a recording, and every stage has its
+              own craft rules. Point an AI chat at the whole thing and it
+              collapses into a single prompt and hands back a script that sounds
+              like nobody — and that you have to rewrite before you can read it
+              aloud.
             </p>
           </div>
           <div>
             <h2 class="project-detail__ps-label">Solution</h2>
             <p class="project-detail__ps-text">
-              A full-featured web platform for searching, filtering, and
-              visualizing news coverage — with tools for topic mapping, source
-              comparison, and trend analysis built for academic researchers.
+              co-host gives each show a versioned bible — segment contract,
+              runtime window, words per minute — and holds every episode to it
+              through seven gated stages. Generation runs as a pipeline job at
+              each gate, but the gates belong to the operator: nothing advances
+              until the story and ear passes are signed off, and every stage can
+              step back. The last stage is a teleprompter that reads the
+              marked-up script back with per-segment timing.
             </p>
           </div>
         </div>
@@ -184,11 +190,11 @@
         <div class="project-detail__tech">
           <h2 class="project-detail__tech-label">Tech Stack</h2>
           <div class="project-detail__tech-pills">
-            <span class="tech-pill tech-pill--blue">Django</span>
-            <span class="tech-pill tech-pill--blue">React</span>
-            <span class="tech-pill tech-pill--blue">Redux</span>
-            <span class="tech-pill tech-pill--blue">D3.js</span>
-            <span class="tech-pill tech-pill--blue">PostgreSQL</span>
+            <span class="tech-pill tech-pill--purple">FastAPI</span>
+            <span class="tech-pill tech-pill--purple">React 19</span>
+            <span class="tech-pill tech-pill--purple">TypeScript</span>
+            <span class="tech-pill tech-pill--purple">PostgreSQL</span>
+            <span class="tech-pill tech-pill--purple">Agentic AI</span>
           </div>
         </div>
 
@@ -197,27 +203,31 @@
           <h2 class="project-detail__features-label">Key Features</h2>
           <div class="project-detail__features-grid">
             <div class="project-detail__feature-card">
-              <h3>Media Search &amp; Analysis</h3>
-              <p>Search millions of articles across hundreds of news sources</p>
-            </div>
-            <div class="project-detail__feature-card">
-              <h3>Data Visualization</h3>
+              <h3>Channels with Versioned Bibles</h3>
               <p>
-                Interactive D3.js charts for coverage trends and source
-                breakdowns
+                Each show carries a segment contract, runtime window and words
+                per minute — every word budget downstream derives from it
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Research Tools</h3>
+              <h3>Seven Gated Stages</h3>
               <p>
-                Export data, build word clouds, and compare sources side-by-side
+                Idea, beat sheet, draft, table read, ready to record, recorded,
+                handed off — each with an explicit gate and a step-back
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Topic Mapping</h3>
+              <h3>Script Studio</h3>
               <p>
-                Identify and visualize how topics spread across the media
-                landscape
+                Marked-up script with per-segment time budgets and version
+                history, beside the story and ear passes that gate the stage
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Performance Mode</h3>
+              <p>
+                A record-trim teleprompter with segment and episode timers,
+                per-segment energy notes and stumble flags
               </p>
             </div>
           </div>
@@ -225,16 +235,16 @@
 
         <!-- PREV / NEXT -->
         <nav class="project-detail__nav" aria-label="Project navigation">
-          <a href="co-host.html" class="project-detail__nav-link">
+          <a href="chud.html" class="project-detail__nav-link">
             <p class="project-detail__nav-direction">← Previous</p>
-            <p class="project-detail__nav-title">co-host</p>
+            <p class="project-detail__nav-title">CHUD</p>
           </a>
           <a
-            href="media-cloud-vitals.html"
+            href="media-cloud-web-tools.html"
             class="project-detail__nav-link project-detail__nav-link--next"
           >
             <p class="project-detail__nav-direction">Next →</p>
-            <p class="project-detail__nav-title">Media Cloud Vitals</p>
+            <p class="project-detail__nav-title">Media Cloud Web Tools</p>
           </a>
         </nav>
       </div>
