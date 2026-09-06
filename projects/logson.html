@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Media Cloud Web Tools | Evan Leon</title>
+    <title>Logson | Evan Leon</title>
     <meta
       name="description"
-      content="Media analysis platform for researchers and journalists."
+      content="Observability for AI agents — records every run and span, replays the execution tree."
     />
-    <meta property="og:title" content="Media Cloud Web Tools | Evan Leon" />
+    <meta property="og:title" content="Logson | Evan Leon" />
     <meta
       property="og:description"
-      content="Media analysis platform for researchers and journalists."
+      content="Observability for AI agents — records every run and span, replays the execution tree."
     />
     <meta property="og:type" content="website" />
     <meta
       property="og:url"
-      content="https://evanleon.com/projects/media-cloud-web-tools.html"
+      content="https://evanleon.com/projects/logson.html"
     />
     <meta
       property="og:image"
@@ -106,19 +106,18 @@
       <div class="container">
         <!-- HERO -->
         <div class="project-detail__hero">
-          <h1 class="project-detail__title">Media Cloud Web Tools</h1>
-          <p class="project-detail__tagline">
-            Media analysis platform for researchers and journalists.
-          </p>
-          <div class="project-detail__ctas">
-            <a
-              href="https://github.com/mitmedialab/MediaCloud-Web-Tools"
-              class="btn btn--primary"
-              target="_blank"
-              rel="noopener"
-              >View on GitHub</a
+          <div class="project-detail__badge-row">
+            <span class="project-detail__badge">AI-Built</span>
+            <span class="project-detail__badge-text"
+              >Built with Claude Code</span
             >
           </div>
+
+          <h1 class="project-detail__title">Logson</h1>
+          <p class="project-detail__tagline">
+            Observability for AI agents — records every run and span, replays
+            the execution tree.
+          </p>
         </div>
 
         <!-- DEMO -->
@@ -127,29 +126,29 @@
             <div class="swiper-wrapper">
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/01.png"
-                  alt="Media Cloud Web Tools — screenshot 1"
+                  src="../images/logson/01.png"
+                  alt="Logson — screenshot 1"
                   loading="eager"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/02.png"
-                  alt="Media Cloud Web Tools — screenshot 2"
+                  src="../images/logson/02.png"
+                  alt="Logson — screenshot 2"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/03.png"
-                  alt="Media Cloud Web Tools — screenshot 3"
+                  src="../images/logson/03.png"
+                  alt="Logson — screenshot 3"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/04.png"
-                  alt="Media Cloud Web Tools — screenshot 4"
+                  src="../images/logson/04.png"
+                  alt="Logson — screenshot 4"
                   loading="lazy"
                 />
               </div>
@@ -165,17 +164,21 @@
           <div>
             <h2 class="project-detail__ps-label">Problem</h2>
             <p class="project-detail__ps-text">
-              Researchers studying media coverage had no accessible tool for
-              searching and analyzing millions of news articles across sources
-              and time periods.
+              When an AI agent finishes a task, the reasoning behind it is gone
+              — a wall of console output, or nothing at all. Debugging a
+              multi-agent pipeline means guessing which tool fired, in what
+              order, and which one quietly returned nothing.
             </p>
           </div>
           <div>
             <h2 class="project-detail__ps-label">Solution</h2>
             <p class="project-detail__ps-text">
-              A full-featured web platform for searching, filtering, and
-              visualizing news coverage — with tools for topic mapping, source
-              comparison, and trend analysis built for academic researchers.
+              Logson instruments any AIOS with a drop-in Python SDK that records
+              runs and spans over HTTP. A FastAPI backend stores the telemetry
+              in Postgres and a React viewer replays each run as an execution
+              tree — every tool call, its inputs, its outputs and its failures.
+              The SDK no-ops when the collector URL is unset, so an instrumented
+              agent never crashes because Logson is down.
             </p>
           </div>
         </div>
@@ -184,11 +187,12 @@
         <div class="project-detail__tech">
           <h2 class="project-detail__tech-label">Tech Stack</h2>
           <div class="project-detail__tech-pills">
-            <span class="tech-pill tech-pill--blue">Django</span>
-            <span class="tech-pill tech-pill--blue">React</span>
-            <span class="tech-pill tech-pill--blue">Redux</span>
-            <span class="tech-pill tech-pill--blue">D3.js</span>
-            <span class="tech-pill tech-pill--blue">PostgreSQL</span>
+            <span class="tech-pill tech-pill--purple">FastAPI</span>
+            <span class="tech-pill tech-pill--purple">PostgreSQL</span>
+            <span class="tech-pill tech-pill--purple">React 19</span>
+            <span class="tech-pill tech-pill--purple">TypeScript</span>
+            <span class="tech-pill tech-pill--purple">Python SDK</span>
+            <span class="tech-pill tech-pill--purple">Observability</span>
           </div>
         </div>
 
@@ -197,27 +201,31 @@
           <h2 class="project-detail__features-label">Key Features</h2>
           <div class="project-detail__features-grid">
             <div class="project-detail__feature-card">
-              <h3>Media Search &amp; Analysis</h3>
-              <p>Search millions of articles across hundreds of news sources</p>
-            </div>
-            <div class="project-detail__feature-card">
-              <h3>Data Visualization</h3>
+              <h3>Every Run, Every Agent</h3>
               <p>
-                Interactive D3.js charts for coverage trends and source
-                breakdowns
+                One table of every recorded run across every AIOS, with status,
+                type, start time and duration
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Research Tools</h3>
+              <h3>Filter by AIOS</h3>
               <p>
-                Export data, build word clouds, and compare sources side-by-side
+                One click narrows thousands of runs down to a single agent's
+                history
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Topic Mapping</h3>
+              <h3>Execution Tree per Run</h3>
               <p>
-                Identify and visualize how topics spread across the media
-                landscape
+                Each run opens as a span waterfall, indented by sub-agent, so
+                nested calls read at a glance
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Inspect Any Tool Call</h3>
+              <p>
+                Click a span to see the exact input and output JSON the agent
+                sent and received
               </p>
             </div>
           </div>
@@ -225,16 +233,16 @@
 
         <!-- PREV / NEXT -->
         <nav class="project-detail__nav" aria-label="Project navigation">
-          <a href="logson.html" class="project-detail__nav-link">
+          <a href="mind-palace.html" class="project-detail__nav-link">
             <p class="project-detail__nav-direction">← Previous</p>
-            <p class="project-detail__nav-title">Logson</p>
+            <p class="project-detail__nav-title">Mind Palace</p>
           </a>
           <a
-            href="media-cloud-vitals.html"
+            href="media-cloud-web-tools.html"
             class="project-detail__nav-link project-detail__nav-link--next"
           >
             <p class="project-detail__nav-direction">Next →</p>
-            <p class="project-detail__nav-title">Media Cloud Vitals</p>
+            <p class="project-detail__nav-title">Media Cloud Web Tools</p>
           </a>
         </nav>
       </div>
