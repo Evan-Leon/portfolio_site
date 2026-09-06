@@ -139,6 +139,13 @@ export const projects: readonly TheaterProject[] = [
     clip: "/images/logson/demo.mp4",
   },
   {
+    slug: "graces-tree",
+    name: "Grace's Tree",
+    href: "/projects/graces-tree.html",
+    poster: "/images/graces-tree/01.png",
+    clip: "/images/graces-tree/demo.mp4",
+  },
+  {
     slug: "media-cloud-web-tools",
     name: "Media Cloud Web Tools",
     href: "/projects/media-cloud-web-tools.html",
