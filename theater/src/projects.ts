@@ -90,6 +90,13 @@ export const projects: readonly TheaterProject[] = [
     clip: "/images/app-dash/demo.mp4",
   },
   {
+    slug: "prompt-heus",
+    name: "Prompt-heus",
+    href: "/projects/prompt-heus.html",
+    poster: "/images/prompt-heus/01.png",
+    clip: "/images/prompt-heus/demo.mp4",
+  },
+  {
     slug: "media-cloud-web-tools",
     name: "Media Cloud Web Tools",
     href: "/projects/media-cloud-web-tools.html",

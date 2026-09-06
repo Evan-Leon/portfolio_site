@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>app-dash | Evan Leon</title>
+    <title>Prompt-heus | Evan Leon</title>
     <meta
       name="description"
-      content="Self-hosted dashboard that tracks every side project through its build lifecycle."
+      content="Builds and serves versioned, LLM-refined system prompts for a fleet of AI personas."
     />
-    <meta property="og:title" content="app-dash | Evan Leon" />
+    <meta property="og:title" content="Prompt-heus | Evan Leon" />
     <meta
       property="og:description"
-      content="Self-hosted dashboard that tracks every side project through its build lifecycle."
+      content="Builds and serves versioned, LLM-refined system prompts for a fleet of AI personas."
     />
     <meta property="og:type" content="website" />
     <meta
       property="og:url"
-      content="https://evanleon.com/projects/app-dash.html"
+      content="https://evanleon.com/projects/prompt-heus.html"
     />
     <meta
       property="og:image"
@@ -113,10 +113,10 @@
             >
           </div>
 
-          <h1 class="project-detail__title">app-dash</h1>
+          <h1 class="project-detail__title">Prompt-heus</h1>
           <p class="project-detail__tagline">
-            Self-hosted dashboard that tracks every side project through its
-            build lifecycle.
+            Builds and serves versioned, LLM-refined system prompts for a fleet
+            of AI personas.
           </p>
         </div>
 
@@ -126,29 +126,36 @@
             <div class="swiper-wrapper">
               <div class="swiper-slide">
                 <img
-                  src="../images/app-dash/01.png"
-                  alt="app-dash — screenshot 1"
+                  src="../images/prompt-heus/01.png"
+                  alt="Prompt-heus — screenshot 1"
                   loading="eager"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/app-dash/02.png"
-                  alt="app-dash — screenshot 2"
+                  src="../images/prompt-heus/02.png"
+                  alt="Prompt-heus — screenshot 2"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/app-dash/03.png"
-                  alt="app-dash — screenshot 3"
+                  src="../images/prompt-heus/03.png"
+                  alt="Prompt-heus — screenshot 3"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/app-dash/04.png"
-                  alt="app-dash — screenshot 4"
+                  src="../images/prompt-heus/04.png"
+                  alt="Prompt-heus — screenshot 4"
+                  loading="lazy"
+                />
+              </div>
+              <div class="swiper-slide">
+                <img
+                  src="../images/prompt-heus/05.png"
+                  alt="Prompt-heus — screenshot 5"
                   loading="lazy"
                 />
               </div>
@@ -164,20 +171,22 @@
           <div>
             <h2 class="project-detail__ps-label">Problem</h2>
             <p class="project-detail__ps-text">
-              Side projects sprawl across repos, notes apps and half-remembered
-              TODOs. Nothing says what phase each one is in, what to do next, or
-              which conventions it follows — so every session starts by
-              rebuilding context from scratch.
+              Every app in the EVOsystem runs on an AI persona, and each
+              persona's system prompt lived as a copy-pasted string inside
+              whichever codebase used it. Nothing versioned them and nothing
+              reviewed them, so changing one gave no way to tell which app had
+              just started behaving differently.
             </p>
           </div>
           <div>
             <h2 class="project-detail__ps-label">Solution</h2>
             <p class="project-detail__ps-text">
-              app-dash keeps one record per project: lifecycle phase, a
-              prioritised pipeline, an auto-saving scratchpad, an append-only
-              activity log, and a searchable registry of the rules that project
-              follows. It doubles as the source of project truth the rest of the
-              toolchain reads and writes over HTTP.
+              Prompt-heus is the one place an AIOS is defined. A three-stage
+              builder turns identity fields into a draft prompt, refines it in
+              conversation with Claude, then gates it on a quality assessment
+              before approval. Approved versions are immutable, and a Registry
+              API serves the active prompt to every consuming app over the
+              shared Docker network.
             </p>
           </div>
         </div>
@@ -187,10 +196,11 @@
           <h2 class="project-detail__tech-label">Tech Stack</h2>
           <div class="project-detail__tech-pills">
             <span class="tech-pill tech-pill--purple">FastAPI</span>
-            <span class="tech-pill tech-pill--purple">React 19</span>
             <span class="tech-pill tech-pill--purple">PostgreSQL</span>
-            <span class="tech-pill tech-pill--purple">SQLAlchemy</span>
+            <span class="tech-pill tech-pill--purple">React 19</span>
+            <span class="tech-pill tech-pill--purple">TypeScript</span>
             <span class="tech-pill tech-pill--purple">TanStack Query</span>
+            <span class="tech-pill tech-pill--purple">Registry API</span>
           </div>
         </div>
 
@@ -199,31 +209,31 @@
           <h2 class="project-detail__features-label">Key Features</h2>
           <div class="project-detail__features-grid">
             <div class="project-detail__feature-card">
-              <h3>Lifecycle Tracking</h3>
+              <h3>AIOS Registry</h3>
               <p>
-                Every project carries a phase badge, from Idea through v0
-                Complete to continued enhancements
+                Every persona in one list with its role, approved version and
+                last change
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Prioritised Pipeline</h3>
+              <h3>Immutable Version History</h3>
               <p>
-                Per-project and cross-project backlogs with categories,
-                priorities and filters
+                Approving supersedes the previous prompt; old versions stay
+                readable and are never edited
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Rules Registry</h3>
+              <h3>Three-Stage Builder</h3>
               <p>
-                Global conventions and per-project law in one searchable,
-                category-filtered list
+                Intake the identity fields, refine the draft with Claude, then
+                pass a quality gate before approving
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Notes &amp; Activity Log</h3>
+              <h3>Persona Controls, Not Prose</h3>
               <p>
-                An auto-saving scratchpad per project, plus an append-only audit
-                trail of every change
+                Trait chips, register and formality sliders, and always/never
+                anchors compile into the prompt
               </p>
             </div>
           </div>
@@ -231,16 +241,16 @@
 
         <!-- PREV / NEXT -->
         <nav class="project-detail__nav" aria-label="Project navigation">
-          <a href="chunk-norris.html" class="project-detail__nav-link">
+          <a href="app-dash.html" class="project-detail__nav-link">
             <p class="project-detail__nav-direction">← Previous</p>
-            <p class="project-detail__nav-title">Chunk Norris</p>
+            <p class="project-detail__nav-title">app-dash</p>
           </a>
           <a
-            href="prompt-heus.html"
+            href="media-cloud-web-tools.html"
             class="project-detail__nav-link project-detail__nav-link--next"
           >
             <p class="project-detail__nav-direction">Next →</p>
-            <p class="project-detail__nav-title">Prompt-heus</p>
+            <p class="project-detail__nav-title">Media Cloud Web Tools</p>
           </a>
         </nav>
       </div>
