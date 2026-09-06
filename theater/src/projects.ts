@@ -111,6 +111,13 @@ export const projects: readonly TheaterProject[] = [
     clip: "/images/chudios/demo.mp4",
   },
   {
+    slug: "chud",
+    name: "CHUD",
+    href: "/projects/chud.html",
+    poster: "/images/chud/01.png",
+    clip: "/images/chud/demo.mp4",
+  },
+  {
     slug: "media-cloud-web-tools",
     name: "Media Cloud Web Tools",
     href: "/projects/media-cloud-web-tools.html",

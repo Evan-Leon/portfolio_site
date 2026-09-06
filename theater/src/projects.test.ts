@@ -93,9 +93,9 @@ function exitListHrefs(): string[] {
 }
 
 describe("projects — the registry itself", () => {
-  it("lists thirteen projects with unique slugs", () => {
-    expect(projects).toHaveLength(13);
-    expect(new Set(projects.map((project) => project.slug)).size).toBe(13);
+  it("lists fourteen projects with unique slugs", () => {
+    expect(projects).toHaveLength(14);
+    expect(new Set(projects.map((project) => project.slug)).size).toBe(14);
   });
 
   it("derives every path from the slug, site-absolutely", () => {
@@ -145,8 +145,8 @@ describe("projects — agreement with the no-JS exit list", () => {
 
     // Both sides asserted complete before they are compared: two brittle
     // extractions that each return nothing would otherwise agree perfectly.
-    expect(hrefs).toHaveLength(13);
-    expect(projects).toHaveLength(13);
+    expect(hrefs).toHaveLength(14);
+    expect(projects).toHaveLength(14);
 
     expect(hrefs).toEqual([
       "/projects/budget-app.html",
@@ -159,6 +159,7 @@ describe("projects — agreement with the no-JS exit list", () => {
       "/projects/prompt-heus.html",
       "/projects/voice-trainer.html",
       "/projects/chudios.html",
+      "/projects/chud.html",
       "/projects/media-cloud-web-tools.html",
       "/projects/media-cloud-vitals.html",
       "/projects/showrunner-digest.html",

@@ -3,21 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Media Cloud Web Tools | Evan Leon</title>
+    <title>CHUD | Evan Leon</title>
     <meta
       name="description"
-      content="Media analysis platform for researchers and journalists."
+      content="A local-LLM agent that runs a self-built app portfolio: briefings, approvals, telemetry."
     />
-    <meta property="og:title" content="Media Cloud Web Tools | Evan Leon" />
+    <meta property="og:title" content="CHUD | Evan Leon" />
     <meta
       property="og:description"
-      content="Media analysis platform for researchers and journalists."
+      content="A local-LLM agent that runs a self-built app portfolio: briefings, approvals, telemetry."
     />
     <meta property="og:type" content="website" />
-    <meta
-      property="og:url"
-      content="https://evanleon.com/projects/media-cloud-web-tools.html"
-    />
+    <meta property="og:url" content="https://evanleon.com/projects/chud.html" />
     <meta
       property="og:image"
       content="https://evanleon.com/images/linkedin.jpeg"
@@ -106,19 +103,18 @@
       <div class="container">
         <!-- HERO -->
         <div class="project-detail__hero">
-          <h1 class="project-detail__title">Media Cloud Web Tools</h1>
-          <p class="project-detail__tagline">
-            Media analysis platform for researchers and journalists.
-          </p>
-          <div class="project-detail__ctas">
-            <a
-              href="https://github.com/mitmedialab/MediaCloud-Web-Tools"
-              class="btn btn--primary"
-              target="_blank"
-              rel="noopener"
-              >View on GitHub</a
+          <div class="project-detail__badge-row">
+            <span class="project-detail__badge">AI-Built</span>
+            <span class="project-detail__badge-text"
+              >Built with Claude Code</span
             >
           </div>
+
+          <h1 class="project-detail__title">CHUD</h1>
+          <p class="project-detail__tagline">
+            A local-LLM agent that runs a self-built app portfolio: briefings,
+            approvals, telemetry.
+          </p>
         </div>
 
         <!-- DEMO -->
@@ -127,29 +123,29 @@
             <div class="swiper-wrapper">
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/01.png"
-                  alt="Media Cloud Web Tools — screenshot 1"
+                  src="../images/chud/01.png"
+                  alt="CHUD — screenshot 1"
                   loading="eager"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/02.png"
-                  alt="Media Cloud Web Tools — screenshot 2"
+                  src="../images/chud/02.png"
+                  alt="CHUD — screenshot 2"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/03.png"
-                  alt="Media Cloud Web Tools — screenshot 3"
+                  src="../images/chud/03.png"
+                  alt="CHUD — screenshot 3"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/04.png"
-                  alt="Media Cloud Web Tools — screenshot 4"
+                  src="../images/chud/04.png"
+                  alt="CHUD — screenshot 4"
                   loading="lazy"
                 />
               </div>
@@ -165,17 +161,23 @@
           <div>
             <h2 class="project-detail__ps-label">Problem</h2>
             <p class="project-detail__ps-text">
-              Researchers studying media coverage had no accessible tool for
-              searching and analyzing millions of news articles across sources
-              and time periods.
+              Two dozen self-built apps generate more context than one person
+              can hold — which repo moved, which service is degraded, what
+              deserves the next four hours. That context is scattered across git
+              history, docs, dashboards and half-remembered decisions, and
+              re-deriving it every morning is the biggest standing tax on
+              shipping anything.
             </p>
           </div>
           <div>
             <h2 class="project-detail__ps-label">Solution</h2>
             <p class="project-detail__ps-text">
-              A full-featured web platform for searching, filtering, and
-              visualizing news coverage — with tools for topic mapping, source
-              comparison, and trend analysis built for academic researchers.
+              CHUD is a Pydantic AI agent on FastAPI that indexes the whole
+              portfolio through a RAG service and answers from it using a local
+              model on llama-swap — no cloud inference, nothing leaving the box.
+              It opens each day with a generated briefing, routes every change
+              it wants to make into a human approval inbox instead of acting
+              unattended, and runs its scheduled work on a Temporal worker.
             </p>
           </div>
         </div>
@@ -184,11 +186,12 @@
         <div class="project-detail__tech">
           <h2 class="project-detail__tech-label">Tech Stack</h2>
           <div class="project-detail__tech-pills">
-            <span class="tech-pill tech-pill--blue">Django</span>
-            <span class="tech-pill tech-pill--blue">React</span>
-            <span class="tech-pill tech-pill--blue">Redux</span>
-            <span class="tech-pill tech-pill--blue">D3.js</span>
-            <span class="tech-pill tech-pill--blue">PostgreSQL</span>
+            <span class="tech-pill tech-pill--purple">Python 3.13</span>
+            <span class="tech-pill tech-pill--purple">FastAPI</span>
+            <span class="tech-pill tech-pill--purple">Pydantic AI</span>
+            <span class="tech-pill tech-pill--purple">React 19</span>
+            <span class="tech-pill tech-pill--purple">PostgreSQL</span>
+            <span class="tech-pill tech-pill--purple">RAG</span>
           </div>
         </div>
 
@@ -197,27 +200,31 @@
           <h2 class="project-detail__features-label">Key Features</h2>
           <div class="project-detail__features-grid">
             <div class="project-detail__feature-card">
-              <h3>Media Search &amp; Analysis</h3>
-              <p>Search millions of articles across hundreds of news sources</p>
-            </div>
-            <div class="project-detail__feature-card">
-              <h3>Data Visualization</h3>
+              <h3>EVOsystem Daily</h3>
               <p>
-                Interactive D3.js charts for coverage trends and source
-                breakdowns
+                A generated morning briefing: suggested focus, a per-project
+                plan, and every open flag across the portfolio
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Research Tools</h3>
+              <h3>Grounded Codebase Chat</h3>
               <p>
-                Export data, build word clouds, and compare sources side-by-side
+                Ask about any repo; the agent calls its own tools and RAG index,
+                and shows every tool call it made
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Topic Mapping</h3>
+              <h3>Human-in-the-Loop Reviews</h3>
               <p>
-                Identify and visualize how topics spread across the media
-                landscape
+                Flags, dev tasks and wiki drafts queue for an explicit approve
+                or reject — nothing lands unattended
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Live Hardware Telemetry</h3>
+              <p>
+                CPU, memory, GPU, disk and network for the machine the local
+                models run on, with 24-hour trends
               </p>
             </div>
           </div>
@@ -225,16 +232,16 @@
 
         <!-- PREV / NEXT -->
         <nav class="project-detail__nav" aria-label="Project navigation">
-          <a href="chud.html" class="project-detail__nav-link">
+          <a href="chudios.html" class="project-detail__nav-link">
             <p class="project-detail__nav-direction">← Previous</p>
-            <p class="project-detail__nav-title">CHUD</p>
+            <p class="project-detail__nav-title">chudios</p>
           </a>
           <a
-            href="media-cloud-vitals.html"
+            href="media-cloud-web-tools.html"
             class="project-detail__nav-link project-detail__nav-link--next"
           >
             <p class="project-detail__nav-direction">Next →</p>
-            <p class="project-detail__nav-title">Media Cloud Vitals</p>
+            <p class="project-detail__nav-title">Media Cloud Web Tools</p>
           </a>
         </nav>
       </div>
