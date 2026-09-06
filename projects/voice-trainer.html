@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Media Cloud Web Tools | Evan Leon</title>
+    <title>Voice Trainer | Evan Leon</title>
     <meta
       name="description"
-      content="Media analysis platform for researchers and journalists."
+      content="Curates LoRA training pairs for each AI persona — and casts the voice it speaks in."
     />
-    <meta property="og:title" content="Media Cloud Web Tools | Evan Leon" />
+    <meta property="og:title" content="Voice Trainer | Evan Leon" />
     <meta
       property="og:description"
-      content="Media analysis platform for researchers and journalists."
+      content="Curates LoRA training pairs for each AI persona — and casts the voice it speaks in."
     />
     <meta property="og:type" content="website" />
     <meta
       property="og:url"
-      content="https://evanleon.com/projects/media-cloud-web-tools.html"
+      content="https://evanleon.com/projects/voice-trainer.html"
     />
     <meta
       property="og:image"
@@ -106,19 +106,18 @@
       <div class="container">
         <!-- HERO -->
         <div class="project-detail__hero">
-          <h1 class="project-detail__title">Media Cloud Web Tools</h1>
-          <p class="project-detail__tagline">
-            Media analysis platform for researchers and journalists.
-          </p>
-          <div class="project-detail__ctas">
-            <a
-              href="https://github.com/mitmedialab/MediaCloud-Web-Tools"
-              class="btn btn--primary"
-              target="_blank"
-              rel="noopener"
-              >View on GitHub</a
+          <div class="project-detail__badge-row">
+            <span class="project-detail__badge">AI-Built</span>
+            <span class="project-detail__badge-text"
+              >Built with Claude Code</span
             >
           </div>
+
+          <h1 class="project-detail__title">Voice Trainer</h1>
+          <p class="project-detail__tagline">
+            Curates LoRA training pairs for each AI persona — and casts the
+            voice it speaks in.
+          </p>
         </div>
 
         <!-- DEMO -->
@@ -127,29 +126,29 @@
             <div class="swiper-wrapper">
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/01.png"
-                  alt="Media Cloud Web Tools — screenshot 1"
+                  src="../images/voice-trainer/01.png"
+                  alt="Voice Trainer — screenshot 1"
                   loading="eager"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/02.png"
-                  alt="Media Cloud Web Tools — screenshot 2"
+                  src="../images/voice-trainer/02.png"
+                  alt="Voice Trainer — screenshot 2"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/03.png"
-                  alt="Media Cloud Web Tools — screenshot 3"
+                  src="../images/voice-trainer/03.png"
+                  alt="Voice Trainer — screenshot 3"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/media-cloud-web-tools/04.png"
-                  alt="Media Cloud Web Tools — screenshot 4"
+                  src="../images/voice-trainer/04.png"
+                  alt="Voice Trainer — screenshot 4"
                   loading="lazy"
                 />
               </div>
@@ -165,17 +164,24 @@
           <div>
             <h2 class="project-detail__ps-label">Problem</h2>
             <p class="project-detail__ps-text">
-              Researchers studying media coverage had no accessible tool for
-              searching and analyzing millions of news articles across sources
-              and time periods.
+              Fine-tuning an AI persona takes hundreds of instruction/output
+              pairs in that persona's actual voice, but the raw material — real
+              conversations, drafts, transcripts — arrives as loose prose with
+              no instructions attached. Hand-writing the instruction for every
+              sample is the bottleneck, and a dataset nobody reviewed teaches
+              the model the wrong voice.
             </p>
           </div>
           <div>
             <h2 class="project-detail__ps-label">Solution</h2>
             <p class="project-detail__ps-text">
-              A full-featured web platform for searching, filtering, and
-              visualizing news coverage — with tools for topic mapping, source
-              comparison, and trend analysis built for academic researchers.
+              Voice Trainer reverse-engineers the instruction behind each pasted
+              sample with an LLM, then puts every generated pair in front of a
+              human: approve it, or send it back with feedback that drives a
+              targeted regeneration. Approved pairs export as Unsloth-ready
+              ChatML JSONL, a per-persona health panel scores when a dataset is
+              actually ready to train, and the Voice Booth auditions the voice
+              the persona will speak in.
             </p>
           </div>
         </div>
@@ -184,11 +190,12 @@
         <div class="project-detail__tech">
           <h2 class="project-detail__tech-label">Tech Stack</h2>
           <div class="project-detail__tech-pills">
-            <span class="tech-pill tech-pill--blue">Django</span>
-            <span class="tech-pill tech-pill--blue">React</span>
-            <span class="tech-pill tech-pill--blue">Redux</span>
-            <span class="tech-pill tech-pill--blue">D3.js</span>
-            <span class="tech-pill tech-pill--blue">PostgreSQL</span>
+            <span class="tech-pill tech-pill--purple">FastAPI</span>
+            <span class="tech-pill tech-pill--purple">React 19</span>
+            <span class="tech-pill tech-pill--purple">PostgreSQL</span>
+            <span class="tech-pill tech-pill--purple">Temporal</span>
+            <span class="tech-pill tech-pill--purple">PydanticAI</span>
+            <span class="tech-pill tech-pill--purple">LoRA</span>
           </div>
         </div>
 
@@ -197,27 +204,31 @@
           <h2 class="project-detail__features-label">Key Features</h2>
           <div class="project-detail__features-grid">
             <div class="project-detail__feature-card">
-              <h3>Media Search &amp; Analysis</h3>
-              <p>Search millions of articles across hundreds of news sources</p>
-            </div>
-            <div class="project-detail__feature-card">
-              <h3>Data Visualization</h3>
+              <h3>Persona Registry with Health Scoring</h3>
               <p>
-                Interactive D3.js charts for coverage trends and source
-                breakdowns
+                Every AI persona in one grid, each scored on freshness, quality,
+                coverage and volume
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Research Tools</h3>
+              <h3>Human Review Queue</h3>
               <p>
-                Export data, build word clouds, and compare sources side-by-side
+                Every AI-written instruction is approved or sent back with
+                feedback before it can train anything
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Topic Mapping</h3>
+              <h3>Staleness Is Derived, Never Stored</h3>
               <p>
-                Identify and visualize how topics spread across the media
-                landscape
+                Pairs generated against an older prompt version are flagged
+                stale and requeued in one click
+              </p>
+            </div>
+            <div class="project-detail__feature-card">
+              <h3>Voice Booth</h3>
+              <p>
+                An AIOS auditions reference voices against its own casting brief
+                and binds the one it will speak in
               </p>
             </div>
           </div>
@@ -225,16 +236,16 @@
 
         <!-- PREV / NEXT -->
         <nav class="project-detail__nav" aria-label="Project navigation">
-          <a href="voice-trainer.html" class="project-detail__nav-link">
+          <a href="prompt-heus.html" class="project-detail__nav-link">
             <p class="project-detail__nav-direction">← Previous</p>
-            <p class="project-detail__nav-title">Voice Trainer</p>
+            <p class="project-detail__nav-title">Prompt-heus</p>
           </a>
           <a
-            href="media-cloud-vitals.html"
+            href="media-cloud-web-tools.html"
             class="project-detail__nav-link project-detail__nav-link--next"
           >
             <p class="project-detail__nav-direction">Next →</p>
-            <p class="project-detail__nav-title">Media Cloud Vitals</p>
+            <p class="project-detail__nav-title">Media Cloud Web Tools</p>
           </a>
         </nav>
       </div>

@@ -97,6 +97,13 @@ export const projects: readonly TheaterProject[] = [
     clip: "/images/prompt-heus/demo.mp4",
   },
   {
+    slug: "voice-trainer",
+    name: "Voice Trainer",
+    href: "/projects/voice-trainer.html",
+    poster: "/images/voice-trainer/01.png",
+    clip: "/images/voice-trainer/demo.mp4",
+  },
+  {
     slug: "media-cloud-web-tools",
     name: "Media Cloud Web Tools",
     href: "/projects/media-cloud-web-tools.html",
