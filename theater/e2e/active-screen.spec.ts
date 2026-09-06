@@ -10,16 +10,18 @@
  * directions, and the clip is asserted to start, stop when the camera moves on,
  * and start *again* when the camera returns.
  *
- * THE CLIP THIS SPEC PLAYS IS ONE IT MAKES ITSELF
- * -----------------------------------------------
- * No project has a demo reel yet — DT9 films them — so there is nothing on disk
- * to prove playback with, and a spec that asserted only "the video element
- * exists" would pass against a lot that never plays anything. `beforeAll`
- * therefore renders three seconds of ffmpeg's `testsrc2` to
- * `images/nom-noms/demo.mp4` (960x600, H.264, no audio track) and `afterAll`
- * deletes it again — but **only if this run is what created it**. The day
- * `images/nom-noms/demo.mp4` is a real clip, this spec finds it already there,
- * leaves it entirely alone, and asserts against the real thing.
+ * THE CLIP THIS SPEC PLAYS IS ONE IT MAKES ITSELF, WHEN IT HAS TO
+ * ----------------------------------------------------------------
+ * This spec was written when no project had a demo reel — DT9 and the
+ * portfolio-showcase runs film them — so there was nothing on disk to prove
+ * playback with, and a spec that asserted only "the video element exists"
+ * would pass against a lot that never plays anything. `beforeAll` therefore
+ * renders three seconds of ffmpeg's `testsrc2` to `images/nom-noms/demo.mp4`
+ * (960x600, H.264, no audio track) and `afterAll` deletes it again — but
+ * **only if this run is what created it**. `images/nom-noms/demo.mp4` is now a
+ * real clip, so in practice this spec finds it already there, leaves it
+ * entirely alone, and asserts against the real thing; the synthetic fallback
+ * stays for a checkout that has not filmed it.
  *
  * `images/` is not gitignored, so a run that crashes between those two hooks
  * leaves an untracked 660KB `images/nom-noms/demo.mp4` behind. `git status`
@@ -28,11 +30,11 @@
  * WHY "SCREEN 0 IS NOT PLAYING" IS SPELLED AS A SET AND NOT AS `paused`
  * ---------------------------------------------------------------------
  * A screen whose clip 404s has its `<video>` *removed*, not paused — the poster
- * is then the honest state (`EVO-UNI-053`). Seven of the eight screens are in
- * that condition for as long as DT9 has not run, so "the neighbour's video is
+ * is then the honest state (`EVO-UNI-053`). Every screen DT9 and the showcase
+ * runs have not reached yet is in that condition, so "the neighbour's video is
  * paused" is a question about an element that does not exist. What is asserted
  * instead is the set of screens actually playing, which is the claim either
- * spelling was reaching for and stays true once the other seven clips land.
+ * spelling was reaching for and stays true as the remaining clips land.
  */
 // @ts-expect-error -- dependency policy excludes @types/node from this browser project.
 import { execFileSync } from "node:child_process";
@@ -138,6 +140,26 @@ async function playing(
   return states.flatMap((state, i) => (state === "playing" ? [i] : []));
 }
 
+/**
+ * The screens playing a clip *other than* screen `i`, the approached one.
+ *
+ * Not `playing()` itself. When this file was written nom-noms owned the only
+ * reel on disk, so "the camera has moved on" and "nothing at all is playing"
+ * were the same sentence — and the assertion was spelled as the second one.
+ * Each showcase run lands another clip and moves that line: el-blackjack is
+ * the screen right after nom-noms, and the day it got a reel the neighbour
+ * started playing legitimately. The claim that has to survive is about the
+ * band the camera LEFT — no screen but the approached one is still running —
+ * so derive it from which screen is approached instead of assuming the
+ * neighbour is silent.
+ */
+async function playingOtherThan(
+  page: import("@playwright/test").Page,
+  i: number,
+): Promise<number[]> {
+  return (await playing(page)).filter((index) => index !== i);
+}
+
 test("exactly the approached screen is lit, in both directions", async ({
   page,
 }) => {
@@ -173,7 +195,9 @@ test("the active screen's clip plays, stops, and plays again on the way back", a
 
   await scrollToScreen(page, WITH_CLIP + 1);
   await expect
-    .poll(() => playing(page), { message: "one screen further on" })
+    .poll(() => playingOtherThan(page, WITH_CLIP + 1), {
+      message: "one screen further on",
+    })
     .toEqual([]);
 
   /*
