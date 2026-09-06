@@ -3,20 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>jourNOW | Evan Leon</title>
+    <title>Co-Author | Evan Leon</title>
     <meta
       name="description"
-      content="Speak your journal; Whisper transcribes it and any month exports as a typeset PDF."
+      content="A story planning studio that turns scattered ideas into a timeline and a script."
     />
-    <meta property="og:title" content="jourNOW | Evan Leon" />
+    <meta property="og:title" content="Co-Author | Evan Leon" />
     <meta
       property="og:description"
-      content="Speak your journal; Whisper transcribes it and any month exports as a typeset PDF."
+      content="A story planning studio that turns scattered ideas into a timeline and a script."
     />
     <meta property="og:type" content="website" />
     <meta
       property="og:url"
-      content="https://evanleon.com/projects/journow.html"
+      content="https://evanleon.com/projects/co-author.html"
     />
     <meta
       property="og:image"
@@ -113,10 +113,10 @@
             >
           </div>
 
-          <h1 class="project-detail__title">jourNOW</h1>
+          <h1 class="project-detail__title">Co-Author</h1>
           <p class="project-detail__tagline">
-            Speak your journal; Whisper transcribes it and any month exports as
-            a typeset PDF.
+            A story planning studio that turns scattered ideas into a timeline
+            and a script.
           </p>
         </div>
 
@@ -126,36 +126,29 @@
             <div class="swiper-wrapper">
               <div class="swiper-slide">
                 <img
-                  src="../images/journow/01.png"
-                  alt="jourNOW — screenshot 1"
+                  src="../images/co-author/01.png"
+                  alt="Co-Author — screenshot 1"
                   loading="eager"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/journow/02.png"
-                  alt="jourNOW — screenshot 2"
+                  src="../images/co-author/02.png"
+                  alt="Co-Author — screenshot 2"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/journow/03.png"
-                  alt="jourNOW — screenshot 3"
+                  src="../images/co-author/03.png"
+                  alt="Co-Author — screenshot 3"
                   loading="lazy"
                 />
               </div>
               <div class="swiper-slide">
                 <img
-                  src="../images/journow/04.png"
-                  alt="jourNOW — screenshot 4"
-                  loading="lazy"
-                />
-              </div>
-              <div class="swiper-slide">
-                <img
-                  src="../images/journow/05.png"
-                  alt="jourNOW — screenshot 5"
+                  src="../images/co-author/04.png"
+                  alt="Co-Author — screenshot 4"
                   loading="lazy"
                 />
               </div>
@@ -171,21 +164,22 @@
           <div>
             <h2 class="project-detail__ps-label">Problem</h2>
             <p class="project-detail__ps-text">
-              Journaling loses to friction. The thought arrives on a walk, at 7
-              a.m., in the middle of something else — and by the time there is a
-              keyboard it is gone. Voice memos catch the moment but pile up as
-              unsearchable audio nobody plays back.
+              Writers collect characters, places and scenes across notebooks and
+              files, then lose the thread of how any of it fits together. The
+              structural work — what happens in what order, who is in which
+              scene, how long the whole thing actually runs — gets deferred
+              until it is a rewrite.
             </p>
           </div>
           <div>
             <h2 class="project-detail__ps-label">Solution</h2>
             <p class="project-detail__ps-text">
-              jourNOW is a mobile-first PWA built around one button. Tap to
-              record; the audio goes to Cloudflare R2 and a FastAPI background
-              task hands it to OpenAI Whisper, so the entry is already text by
-              the time you look at it. Entries group by day in the Journal tab,
-              and any calendar month exports as a &ldquo;Classic Journal&rdquo;
-              PDF typeset by WeasyPrint.
+              Every story element gets a quick-add and a guided detail page,
+              then the views that show how the pieces connect derive themselves:
+              a timeline assembled from the events you already wrote, and a
+              storyboard that groups beats into acts against a runtime target. A
+              research agent proposes characters, places, events and a
+              chronology — nothing is created until you approve it.
             </p>
           </div>
         </div>
@@ -194,10 +188,11 @@
         <div class="project-detail__tech">
           <h2 class="project-detail__tech-label">Tech Stack</h2>
           <div class="project-detail__tech-pills">
-            <span class="tech-pill tech-pill--purple">FastAPI</span>
-            <span class="tech-pill tech-pill--purple">React 19</span>
+            <span class="tech-pill tech-pill--purple">Django 5</span>
+            <span class="tech-pill tech-pill--purple">DRF</span>
             <span class="tech-pill tech-pill--purple">PostgreSQL</span>
-            <span class="tech-pill tech-pill--purple">Whisper</span>
+            <span class="tech-pill tech-pill--purple">React 19</span>
+            <span class="tech-pill tech-pill--purple">TypeScript</span>
             <span class="tech-pill tech-pill--purple">PWA</span>
           </div>
         </div>
@@ -207,31 +202,31 @@
           <h2 class="project-detail__features-label">Key Features</h2>
           <div class="project-detail__features-grid">
             <div class="project-detail__feature-card">
-              <h3>One-Tap Voice Capture</h3>
+              <h3>Story Dashboard</h3>
               <p>
-                Tap the mic and a live waveform and timer run until you stop;
-                the upload happens on its own
+                Every element type, its count and its latest entries on one
+                screen
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>Transcribed While You Move On</h3>
+              <h3>Guided Character Pages</h3>
               <p>
-                Whisper runs as a background task after upload, walking each
-                entry from pending to done without you waiting on it
+                Quick-add a name, then develop it through prompted craft
+                sections
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>The Day, Grouped</h3>
+              <h3>Self-Assembling Timeline</h3>
               <p>
-                Every entry lands under its own day heading, recorded and typed
-                side by side
+                Events order themselves, carrying their linked characters and
+                settings
               </p>
             </div>
             <div class="project-detail__feature-card">
-              <h3>A Month as a PDF</h3>
+              <h3>Storyboard Runtime Budget</h3>
               <p>
-                Export any calendar month as a typeset Classic Journal, and the
-                app blocks the export if a transcription in that month failed
+                Beats grouped into acts and totalled live against the story's
+                target
               </p>
             </div>
           </div>
@@ -239,16 +234,16 @@
 
         <!-- PREV / NEXT -->
         <nav class="project-detail__nav" aria-label="Project navigation">
-          <a href="graces-tree.html" class="project-detail__nav-link">
+          <a href="journow.html" class="project-detail__nav-link">
             <p class="project-detail__nav-direction">← Previous</p>
-            <p class="project-detail__nav-title">Grace's Tree</p>
+            <p class="project-detail__nav-title">jourNOW</p>
           </a>
           <a
-            href="co-author.html"
+            href="media-cloud-web-tools.html"
             class="project-detail__nav-link project-detail__nav-link--next"
           >
             <p class="project-detail__nav-direction">Next →</p>
-            <p class="project-detail__nav-title">Co-Author</p>
+            <p class="project-detail__nav-title">Media Cloud Web Tools</p>
           </a>
         </nav>
       </div>
