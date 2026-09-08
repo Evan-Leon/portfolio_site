@@ -46,6 +46,21 @@ architecture; near EVO-UNI-136), adapter-re-apply-on-`load` (this engine's
 lifecycle only), and the untagged GSAP `immediateRender` gotcha (GSAP-only, no
 fleet repo benefits today).
 
+**Nudge-count fix (`writing-skills` pass in infra) — done.** While running the
+sweeps I noticed the promote-tag count grep overstates the backlog: it recurses
+into the daily/weekly/monthly digest tiers, which reproduce raw-log tags
+verbatim, so portfolio_site's real 10 candidates read as 33. Testing the fix
+surfaced a second, latent bug in the same grep: the prose filter
+(``[a-z-]+`.``) matched any character after a closing backtick, so it silently
+dropped a real backtick-wrapped tag the moment it gained a ` — swept:` marker
+or a trailing parenthetical. Fixed both, mirrored byte-identically in
+`sweeping-session-logs` step 7 and `sweeping-rules` step 1: `--exclude-dir` for
+the digest tiers (flat archived raw logs stay in scope, preserving the
+2026-08-02 archived-logs fix) and a prose filter that matches backtick + spaces
++ a letter (drops prose, keeps real tags whose trailing content starts with
+`—`/`(`/`:`). Followed `writing-skills` TDD: RED/GREEN against a fixture, then
+re-verified on the live tree.
+
 ## Commits
 portfolio_site:
 - `dc12c0b` docs: session-log sweep through 2026-08-25
@@ -53,6 +68,7 @@ portfolio_site:
 
 infra:
 - `e6eda97` docs(rules): rules sweep 2026-09-08 — 8 promoted, 0 retired (shared-tier rows)
+- `a2b8d05` docs(skills): rules-sweep nudge counts each candidate once
 
 ## Uncommitted work left behind
 None. Both working trees clean after the two rules-sweep commits.
@@ -64,18 +80,25 @@ None. Both working trees clean after the two rules-sweep commits.
 - Max-ID scan before minting: EVO-UNI 203, EVO-FE 280, EVO-TOOL 210 (EVO-UNI minted prefix-globally across `universal.md` + `measurement.md`).
 - Citations: only additions, zero retirements → no existing citation broke; the new IDs I cite (FE-281/282/283 in the swept markers) resolve to the rows just minted.
 - `sync-rules-to-appdash.py` — exit 0; `synced 2071 rules, deleted 0 stale rows`; `react-frontend.md: 283` confirms +3.
-- Both repos `git status` clean post-commit.
+- Nudge-count fix (`writing-skills` TDD): fixture with plain / backtick /
+  backtick+parenthetical / swept / prose / ASCII-arrow tags plus a copy in each
+  digest tier — RED (old grep) = 6 (3 digest copies counted, the parenthetical
+  tag silently dropped); GREEN (new grep) = 4, the canonical set. The two edited
+  greps confirmed byte-identical. Re-run on live portfolio_site: 0 unconsumed
+  (no regression), and 10 canonical raw candidates without the swept filter
+  (was 33 under the old grep) — the real backlog number.
+- Both repos `git status` clean post-commit (portfolio_site after this log's
+  recommit; infra after `a2b8d05`).
 
 ## Blockers
 None.
 
 ## Open flags
-- The `sweeping-session-logs` step-7 nudge grep counted 33 occurrences for ~10
-  distinct candidates, because the skill mandates carrying tags up verbatim into
-  daily/weekly/monthly and the archived raw logs are also in scope — one
-  candidate appears in 3–4 places. `sweeping-rules` handles this by design ("the
-  raw log is canonical — judge once, mark every copy consumed"), which is what I
-  did, so the count is cosmetic, not a defect.
+- ~~The `sweeping-session-logs` step-7 nudge grep counted 33 occurrences for ~10
+  distinct candidates (tags carried up into every digest tier, all in grep
+  scope).~~ **Fixed this session in infra `a2b8d05`** — the grep now excludes the
+  digest tiers and counts each candidate once (10, not 33); a second latent bug
+  in the same grep's prose filter was fixed alongside it.
 - portfolio_site's `scripts/validate_codex_setup.py` `EXPECTED_HIGH_VALUE` still
   names skills the repo never had (incl. retired phase-status) — pre-existing,
   untouched (carried from the 2026-08-25 logs).
@@ -84,12 +107,15 @@ None.
 None. (Repo has a deliberate rules-index opt-out.)
 
 ## Meta-prompt / skill / doc updates
-- NO-CHANGE: `sweeping-session-logs` — drove the first-ever sweep here cleanly;
-  the catch-up cascade, the `git mv` vs plain-`mv` trap for same-run digests, and
-  the active-unattended-journal exclusion all matched reality as written.
-- NO-CHANGE: `sweeping-rules` — the one-repo scope, prefix-global EVO-UNI
-  minting, index-row-only path for candidates with no local ID, and the
-  mark-every-copy-consumed rule all applied without ambiguity.
+- APPLIED: `sweeping-session-logs` step 7 nudge grep — exclude the digest tiers
+  and fix the prose filter so it stops false-dropping real tags (see Commits:
+  `a2b8d05`, infra). The rest of the skill (catch-up cascade, `git mv` vs
+  plain-`mv` trap for same-run digests, active-unattended-journal exclusion)
+  served as written. Human authorized the `writing-skills` pass.
+- APPLIED: `sweeping-rules` step 1 collect grep — same two fixes, kept
+  byte-identical to step 7, with the dedup paragraph rewritten to match (see
+  Commits: `a2b8d05`, infra). One-repo scope, prefix-global EVO-UNI minting, and
+  the index-row-only path for candidates with no local ID all served as written.
 - NO-CHANGE: `rules-index` — Conventions (ID lifecycle, minting, table format,
   measurement.md sub-topic) were sufficient to dedupe and promote.
 
