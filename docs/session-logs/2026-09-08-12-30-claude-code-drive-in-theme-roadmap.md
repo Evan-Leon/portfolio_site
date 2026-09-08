@@ -26,6 +26,7 @@ portfolio_site:
 - (this log)
 docs:
 - `35c705e` docs(roadmap-runlog): portfolio_site drive-in-theme run — spec Codex pass, Part 2, Part 3 handed off
+- `b6c9a6a` docs(roadmap-meta-prompt): falsification-hygiene bullet in Part 2 content rules (+ changelog receipt)
 
 ## Uncommitted work left behind
 None. (Scratch renders, the Codex scratch dir and the evaluators' drafts live under /tmp/claude-1000 only.)
@@ -56,7 +57,7 @@ None. (portfolio_site has no local rules-index; the theater's `SDS-*` index is t
 
 ## Meta-prompt / skill / doc updates
 - NO-CHANGE: `roadmap-meta-prompt.md` Parts 1–2 (spec sections, phase template, writing rules, two-agent Part 2, verification-execution rule) — followed as written and served; the independent-evaluation preamble's "prescribed behaviour the prescribed code cannot produce" class is exactly what both passes found.
-- PENDING (decided-by: human): defer — candidate for `roadmap-meta-prompt.md` `<writing_rules>` "Content rules": a *falsification hygiene* bullet — (a) a stub that replaces a function must keep the original's parameter list (typed, underscore-prefixed) so a whole-program `tsc` gate does not fail the spec for the wrong reason; (b) revert falsifications by backing the file up and copying it back, never `git checkout --`, because the file is either untracked-new or holds the phase's uncommitted work; (c) check how the repo's package manager forwards `--` before writing `pnpm … -- <filter>` (pnpm 11 forwards it literally). Reason to defer: it adds an instruction and belongs to the docs repo's meta-prompt with a changelog receipt; the same two gotchas were recorded in the parent roadmap's DT6 changelog on 2026-08-25 and recurred here, which is the second receipt. Next action: Evan rules apply / materialize / defer.
+- APPLIED: falsification-hygiene bullet (typed stub parameters; backup-and-copy reverts, never `git checkout --`; check the package manager's `--` forwarding) → `/home/evan/EVOsystem/docs/meta-prompts/roadmap/roadmap-meta-prompt.md` Part 2 content rules, with its changelog receipt row (see Commits: docs `b6c9a6a`); applied on Evan's ruling ("apply the meta-prompt bullet").
 - NO-CHANGE: `writing-session-logs` skill — served as written (audit run late, noted above).
 - APPLIED: memory files under `~/.claude/projects/-home-evan-EVOsystem-portfolio-site/memory/` — `codex-spec-review-before-roadmap.md` (new: Codex on the spec before Part 2; `gpt-5.6-sol` high; launch/detach/monitor mechanics) and `drive-in-theater-roadmap.md` (theme roadmap status and decisions). Not a repo artifact; no commit hash.
 

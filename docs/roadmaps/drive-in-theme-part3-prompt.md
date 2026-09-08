@@ -17,7 +17,7 @@ mkdir -p /tmp/claude-1000/dt-theme-part3 && awk '/^````/{f=!f;next} f' /home/eva
   | tee /tmp/claude-1000/dt-theme-part3/review.md
 ```
 
-Paste the response back into the writing session (or a fresh one pointed at this file).
+Run 2026-09-08 by the writing session itself on Evan's per-instance approval ("you can orchestrate the codex adversarial part 3 using the codex CLI"); the response is triaged in that session and the receipt lands beside this file.
 
 ````
 Adversarial review of a roadmap. Do not edit any file in any repo — you are a
@@ -30,7 +30,7 @@ had checked it.
 TARGET
   Roadmap:  /home/evan/EVOsystem/portfolio_site/docs/roadmaps/drive-in-theme-roadmap.md @ a572b5e
   Spec:     /home/evan/EVOsystem/portfolio_site/docs/superpowers/specs/2026-09-08-drive-in-theme-design.md @ 14f398b
-  Standard: /home/evan/EVOsystem/docs/meta-prompts/roadmap/roadmap-meta-prompt.md @ d5f5b5f
+  Standard: /home/evan/EVOsystem/docs/meta-prompts/roadmap/roadmap-meta-prompt.md @ b6c9a6a (gains the falsification-hygiene bullet this roadmap already follows)
   Consumers / cross-repo dependencies:
     /home/evan/EVOsystem/portfolio_site/theater/** @ a572b5e — the vendored Vite/TS theater the phases edit; read src/lot/*, src/styles/*, src/main.ts, e2e/**, skills/rules-index/SKILL.md (SDS-*), vite.config.ts, playwright.config.ts, tsconfig.json.
     /home/evan/EVOsystem/portfolio_site/docs/wireframes/theater-drive-in-theme.html @ 14f398b — the approved wireframe (six palettes, road, trees from the jitter table, wagon placeholder).
