@@ -116,19 +116,19 @@ None.
   events. Nothing visual changes, so lit/animated/focusable all keep working
   and only a click reveals it. Give the moving wrapper `pointer-events: none`
   and its interactive descendants `pointer-events: auto`.
-  `promote → tooling`
+  `promote → tooling` — swept: EVO-FE-283
 - An e2e spec that imports the same module the page is built from cannot fail
   on a change to that module — both sides of the assertion move together. Pin
   at least one assertion to a witness the module does not generate (a
   hand-written fallback list in the HTML, the landed page's `<title>`, a
   server response). Specialises `EVO-UNI-061` to the imported-fixture case.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-207
 - A falsification `sed` that changes a TypeScript signature or an
   `addEventListener` event name breaks the build, not the test — the run exits
   non-zero without executing a single assertion, which reads as a successful
   falsification. Write breakages that stay type-valid, and check that the
   failure message names the assertion you meant to break.
-  `promote → tooling`
+  `promote → tooling` — swept: EVO-UNI-208
 
 ## Meta-prompt / skill / doc updates
 

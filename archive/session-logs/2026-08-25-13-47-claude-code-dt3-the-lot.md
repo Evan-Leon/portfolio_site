@@ -132,6 +132,7 @@ None.
   different frames, which is `SDS-001` broken with no error anywhere. Set
   `immediateRender: false` on every `fromTo` that does not start at position 0.
   Found in DT3 by the conformance kit's `seek-order-independent` check.
+  (untagged candidate) — swept: kept local — GSAP-specific; no fleet repo uses GSAP today
 
 - An adapter's `observe` must read state the animation library actually
   *wrote* (the inline transform, the inline custom property), not only the
@@ -140,7 +141,7 @@ None.
   misspelled property, because the arithmetic is right and only the DOM is
   wrong. DT3's snapshot carries `worldTransform` and `lit` for this reason, and
   they are what caught the `immediateRender` bug.
-  promote → universal
+  promote → universal — swept: kept local — tied to this repo's adapter/observe (SDS) architecture; the general principle is already near EVO-UNI-136
 
 - A test fake that stands in for a DOM constructor must produce a real `Node`
   when anything downstream reasons about the DOM. The conformance kit treats a
@@ -148,7 +149,7 @@ None.
   (`targetOutlivesScene`), and the asset loader adds `{ once: true }` handlers
   to every image it builds — so an `EventTarget`-subclass `Image` fake fails a
   correct adapter with sixteen findings that describe nothing real.
-  promote → universal
+  promote → universal — swept: EVO-FE-281
 
 ## Meta-prompt / skill / doc updates
 

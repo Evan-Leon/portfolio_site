@@ -130,18 +130,18 @@ None. **DT0 is unblocked** — the Decision records row reads `GO`.
   autoplayed eight clips while `lot` played one; reading `lot − flat` as "the
   transform's cost" would have inverted the real finding, which is that decode
   count dominates and the transform is nearly free.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-204
 - When a measurement's protocol is pre-registered, a verdict recorded with
   different instrumentation must state the deviation and the margin that
   absorbs it, in the same place the verdict is read. DTF cleared its threshold
   by 4.5×, which is what makes three protocol deviations survivable; at 1.2×
   the same deviations would have required a re-run.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-205
 - Write a decision row in the exact form the phase's own verification command
   greps for. DTF's row was first written as `| DTF | **GO** |`, which its
   pre-registered `(GO|GO-REDUCED|NO-GO)` regex does not match — the phase would
   have reported itself incomplete.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-206
 
 ## Meta-prompt / skill / doc updates
 

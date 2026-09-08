@@ -181,7 +181,7 @@ None.
   guard then suppresses every identical seek that would have re-delivered it.
   Silent, and invisible to any test that awaits `load()` before its first
   `seek`. Cost this project one shipped drive-in where the first screen's clip
-  only played on the way back. promote → react-frontend
+  only played on the way back. promote → react-frontend — swept: kept local — specific to this engine's construct/seek/load-in-one-pass lifecycle; no other fleet repo has this adapter pattern today
 
 - Placement a breakpoint has to override belongs in custom properties, and the
   override needs `!important`. Per-element arithmetic is written inline, and an
@@ -189,7 +189,7 @@ None.
   specificity — so moving from an inline `transform` to inline custom properties
   buys nothing on its own. The failure is silent and appears only at the
   breakpoint. Pin it with a test that the element carries no inline copy of the
-  composed property. promote → react-frontend
+  composed property. promote → react-frontend — swept: EVO-FE-282
 
 ## Meta-prompt / skill / doc updates
 
