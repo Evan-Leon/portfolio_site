@@ -47,8 +47,9 @@ visit.
 Docker + `evo-net` (`rebuild-restart`); the theater's Playwright Chromium (rendered the
 wireframe 2026-09-08); the wireframe **approved by Evan 2026-09-08** at `14f398b` (road
 markings and the wagon folded in); **DT11 must record a verdict other than `INVALID` or
-`NO-GO-ALL` before DT15 runs**; DT14's four files (or the SVG fallback) committed before
-DT15; an image model Evan can drive for DT14.
+`NO-GO-ALL` before DT14 or DT15 run** (DT12 and DT13 run under any verdict); DT14's files
+(or the SVG fallback) committed before DT15; DT15 committed before DT16; an image model
+Evan can drive for DT14.
 **Spec:** `docs/superpowers/specs/2026-09-08-drive-in-theme-design.md` (rev 2, after the
 Codex adversarial at `docs/roadmaps/drive-in-theme-spec-codex-review.md`)
 
@@ -58,7 +59,8 @@ Codex adversarial at `docs/roadmaps/drive-in-theme-spec-codex-review.md`)
 | DT12 | Period engine, `?period=` override, e2e pin | frontend | S |
 | DT13 | Sky, orb, lighting roles, road markings, geometry-sized ground, six palettes | frontend | M |
 | DT14 | Generate, accept and commit the four sprites | media [MANUAL] | — |
-| DT15 | Trees, the visitor's car, the beam; scenery and art specs; parity | frontend | M |
+| DT15 | Trees, the visitor's car, the beam — modules, DOM, loader, CSS, unit and contract tests | frontend | M |
+| DT16 | Scenery and art Playwright specs, nginx parity, wireframe match | tests | S |
 
 ## Skills and orientation, for every phase
 
@@ -106,8 +108,10 @@ not paint or the frame rate collapses, and the art phase has no other acceptance
   `lenis.raf(t)` → one `scrollY` read → `tl.progress(p, true)`, play-iff-active on band
   crossings, and an automated in-page measurement mode `?measure=all` (three 10 s runs
   per variant, lowest fps over any contiguous 1 s window, medians printed, results kept
-  in `localStorage` under `dtf-measure-results`, `&reset=1` clears them) that walks every
-  variant by navigation. Its header records the sampling protocol and the pre-registered
+  in **`sessionStorage`** under `dtf-measure-results`, `&reset=1` clears them) that walks
+  every variant by navigation (`MEASURE_ORDER`, line 815) and prints a verdict from a
+  `renderSummary()` (lines 884–905) whose bands are DTF's three outcomes — that summary
+  must be rewritten for the five outcomes below, not copied. Its header records the sampling protocol and the pre-registered
   bands. The DTF verdict was GO: `lot` 227 fps, `overload` 176, Chrome-only.
 - The production lot the probe must now reproduce (read these; do not trust this
   summary): `theater/src/lot/geometry.ts` (`SPACING = 800`, `OFFSET = 480`, `YAW_DEG = 18`,
@@ -185,11 +189,12 @@ Read these files before writing any code:
 
 <constraints>
 - **Two new files, nothing else:** `docs/spikes/2026-09-08-scenery-probe.html` and `docs/spikes/art-check.html`. Both open over `file://`; both ship nothing.
-- **The probe's variants:** `lot20` (20 screens, production CSS, production timeline shape, the DT13 ground and road, eight clips cycled `i % 8`, `preload="none"`, play iff active — nothing else), `car-only` (`lot20` + orb + beam + car with the two blurred glows), `scenery` (`car-only` + 88 tree planes at `TREE_SPACING = 400`), `scenery-half` (44 planes at `TREE_SPACING = 800`), `scenery-overload` (4× `scenery`'s planes: 352, at `TREE_SPACING = 100`). Default variant `scenery`. Tree masks are generated in-page: draw three silhouettes (deciduous, conifer, tall) on an 800×1200 canvas, `toDataURL('image/png')`, and use the data URL as `mask-image` — the probe must not depend on DT14's art. The tree fill colour and every other value come from the inlined tokens.
+- **The probe's variants:** `lot20` (20 screens, production CSS, production timeline shape, the DT13 ground and road, eight clips cycled `i % 8`, `preload="none"`, play iff active — nothing else), `car-only` (`lot20` + orb + beam + car with the two blurred glows), `scenery` (`car-only` + 88 tree planes at `TREE_SPACING = 400`), `scenery-half` (44 planes at `TREE_SPACING = 800`), `scenery-overload` (≈4× `scenery`'s planes — **351** by the same loop at `TREE_SPACING = 100`: 176 left, 175 right). Default variant `scenery`. Tree masks are generated in-page: draw three silhouettes (deciduous, conifer, tall) on an 800×1200 canvas, `toDataURL('image/png')`, and use the data URL as `mask-image` — the probe must not depend on DT14's art. The tree fill colour and every other value come from the inlined tokens.
 - **The scroll range is identical across variants** (as DTF's was), so the numbers compare; the measurement is the lowest fps over any contiguous 1 s window, median of three 10 s runs, via the copied `?measure=all` harness (store key `dt11-measure-results`, not DTF's). The header records the inherited limitation: the harness scrolls programmatically, so Lenis's wheel-smoothing path is idle during measurement.
-- **The decision procedure is written in the header before any number is taken, exactly as the spec states it:** (0) `scenery-overload` must read lower than `scenery` in every browser measured, else **INVALID** — fix the probe, record nothing; (1) trees visible as silhouettes in `scenery` in every browser measured, else **NO-GO-TREES** (go to 4); (2) in `car-only`, click on screen 3 navigates to `../../projects/classic-golf.html` and Tab reaches the screens in DOM order, else **NO-GO-ALL**; then the same in `scenery`, and a failure there with `car-only` passing is **NO-GO-TREES** (go to 4); (3) judged on the median of three per variant, every browser measured, the lowest browser deciding: `scenery ≥ 50` → **GO**; else `scenery-half ≥ 50` → **GO-REDUCED**; else step 4; (4) `car-only ≥ 50` → **NO-GO-TREES**, else **NO-GO-ALL**. Every outcome names what it changes downstream (GO: DT15 at 400; GO-REDUCED: DT15 at 800; NO-GO-TREES: DT15 car only; NO-GO-ALL: DT15 not executed; INVALID: no verdict).
-- **The checker page** (`art-check.html`): a file input (multiple) and a drop zone; per file a card with: filename, decoded dimensions, file size, the four corner alphas, transparent fraction, α > 0 bounding box (x, y, w, h), the checkerboard ratio, a composite strip of the image over white, black and the six `--sds-tree` colours from the wireframe (trees rendered as a mask: fill a canvas with the colour and `destination-in` the image; the car drawn as-is), and a verdict **PASS / WARN / FAIL** against the contract chosen by filename (`car*` → car contract, `tree*` → tree contract, anything else → "unknown contract" FAIL). SVG files are loaded through `<img>` and drawn at `naturalWidth × naturalHeight`. Two controls: **"show me a wrong fixture"** generates a 1600×900 canvas with a 160px transparent border around a 32px grey/white checkerboard, names it `car-wrong-fixture.png`, and runs it through the same cards — it must show WARN with the checkerboard ratio ≥ 0.9 while every numeric check passes; **"download placeholder set"** decodes the wireframe's four data URIs (fetch the wireframe file relative to the checker, `../wireframes/theater-drive-in-theme.html`, and extract them by the `--tree-mask` and `.lot__car img src` patterns; if the fetch is blocked under `file://`, fall back to the four URIs pasted into the checker as constants, and say so in a comment) and offers `car.svg`, `tree-1.svg`, `tree-2.svg`, `tree-3.svg` for download as standalone SVG documents with the `viewBox` preserved, `%23` decoded to `#`, and explicit `width="1600" height="900"` / `width="800" height="1200"` attributes on the root element.
+- **The decision procedure is written in the header before any number is taken, exactly as the spec states it:** (0) `scenery-overload` must read lower than `scenery` in every browser measured, else **INVALID** — fix the probe, record nothing; (1) trees visible as silhouettes in `scenery` in every browser measured, else the trees are out — go to step 4, which decides between `NO-GO-TREES` and `NO-GO-ALL`; (2) in `car-only`, click on screen 3 navigates to `../../projects/classic-golf.html` and Tab reaches the screens in DOM order, else **NO-GO-ALL**; then the same in `scenery`, and a failure there with `car-only` passing means the trees are out — go to step 4; (3) judged on the median of three per variant, every browser measured, the lowest browser deciding: `scenery ≥ 50` → **GO**; else `scenery-half ≥ 50` → **GO-REDUCED**; else step 4; (4) `car-only ≥ 50` → **NO-GO-TREES**, else **NO-GO-ALL**. Every outcome names what it changes downstream (GO: DT15 at 400; GO-REDUCED: DT15 at 800; NO-GO-TREES: DT14 needs the car only and DT15 ships the car only; NO-GO-ALL: DT14 and DT15 are not executed; INVALID: no verdict). The `renderSummary()` copied from DTF is rewritten to print this procedure's outcome.
+- **The checker page** (`art-check.html`): a file input (multiple) and a drop zone — files are decoded through `FileReader.readAsDataURL` into an `Image` (never a blob/file URL, so `getImageData()` cannot throw `SecurityError` under `file://`); per file a card with: filename, decoded dimensions, file size, the four corner alphas, transparent fraction, α > 0 bounding box (x, y, w, h), the checkerboard ratio, a composite strip of the image over white, black and the six `--sds-tree` colours from the wireframe (trees rendered as a mask: fill a canvas with the colour and `destination-in` the image; the car drawn as-is), and a verdict **PASS / WARN / FAIL** against the contract chosen by filename (`car*` → car contract, `tree*` → tree contract, anything else → "unknown contract" FAIL). SVG files are loaded through `<img>` and drawn at `naturalWidth × naturalHeight`. Two controls: **"show me a wrong fixture"** generates a 1600×900 canvas with a 160px transparent border around a 32px grey/white checkerboard, names it `car-wrong-fixture.png`, and runs it through the same cards — it must show WARN with the checkerboard ratio ≥ 0.9 while every numeric check passes; **"download placeholder set"** holds the wireframe's four data URIs **pasted in as constants** (a `fetch()` of the wireframe file is always blocked under `file://` — Chrome gives the page an opaque origin — so there is no fetch path; a comment names the wireframe as the source and the date copied) and offers `car.svg`, `tree-1.svg`, `tree-2.svg`, `tree-3.svg` for download as standalone SVG documents with the `viewBox` preserved, `%23` decoded to `#`, and explicit `width="1600" height="900"` / `width="800" height="1200"` attributes on the root element.
 - Every number the checker prints is computed from `getImageData()`; nothing is inferred from `<img>` rendering (EVO-TOOL-055).
+- **The checker is drivable without a human:** `?selftest=1` runs, on load, the wrong fixture, a generated 1×1 PNG and the four exported placeholder SVGs (each loaded back through an `Image`) through the same card logic and writes one line per case into `<pre id="selftest">` (`wrong-fixture: WARN`, `1x1: FAIL`, `car.svg: 1600x900`, `tree-1.svg: 800x1200`, …). The build order verifies it with a throwaway Playwright script under the scratch directory (never committed) that opens the page over `file://` and reads that element's text — `pnpm -C theater exec node <script>` with `chromium` from `@playwright/test`, the same way the wireframe was rendered on 2026-09-08.
 - Prettier does not run on `docs/` (`.prettierignore`), so format by hand to the DTF probe's style; the pre-commit hook will not touch these files.
 </constraints>
 
@@ -197,14 +202,17 @@ Read these files before writing any code:
 
 ### 1. The probe
 - [ ] Copy the DTF probe to `docs/spikes/2026-09-08-scenery-probe.html`; rewrite the header (what is measured, the five variants, the protocol, the inherited limitation, the decision procedure with its five outcomes, empty result slots); replace the `lot` builder with the production transcription (20 screens, `--sds-screen-lit` tweens, DT13 ground and road) and add the orb, beam, car and tree builders per variant; rename the results key.
-- [ ] Open each variant over `file://` in Chromium (`pnpm -C theater exec playwright screenshot` is available) and confirm it builds without the fatal banner and that `scenery` shows silhouettes.
+- [ ] Screenshot each variant over `file://` (`pnpm -C theater exec playwright screenshot --browser chromium --viewport-size=1440,900 "file://…?variant=<v>" <out.png>`) and confirm none shows the fatal banner and `scenery` shows silhouettes on both sides.
 
 ### 2. The checker
 - [ ] Write `docs/spikes/art-check.html` with the cards, the two contracts, the composite strip, the wrong-fixture control and the placeholder downloader.
-- [ ] Run the wrong fixture through it and confirm WARN; feed it a 1×1 PNG (generate one from a canvas) and confirm FAIL; download the four placeholders, reload them into the checker, and confirm the car reads 1600×900 and the trees 800×1200.
+- [ ] Write a throwaway Playwright driver in the scratch directory that opens `art-check.html?selftest=1` and prints `#selftest`; confirm it reports `wrong-fixture: WARN`, `1x1: FAIL`, `car.svg: 1600x900` and the three trees at `800x1200`.
 
 ### 3. Hand over
 - [ ] Commit both files (the `<commit>` below). The measurement and the verdict are Evan's (Manual Verification); the decision row is written by whoever measures.
+
+### 4. Session log
+- [ ] Write the session log per `.claude/skills/writing-session-logs/SKILL.md`.
 
 </build_order>
 
@@ -226,9 +234,13 @@ grep -n -- '--sds-screen-lit' docs/spikes/2026-09-08-scenery-probe.html | head -
 grep -n 'brightness(calc(' docs/spikes/2026-09-08-scenery-probe.html                                            # the production CSS expression, not a tweened filter
 grep -n 'INVALID\|NO-GO-TREES\|NO-GO-ALL\|GO-REDUCED' docs/spikes/2026-09-08-scenery-probe.html | head          # all five outcomes named in the header
 grep -n 'dt11-measure-results' docs/spikes/2026-09-08-scenery-probe.html                                        # its own results key
+grep -n 'dtf-measure-results\|GO-REDUCED   lot' docs/spikes/2026-09-08-scenery-probe.html ; echo "exit=$?"     # DTF's key and DTF's summary bands are gone → exit=1
 grep -n 'getImageData' docs/spikes/art-check.html                                                               # alpha read from canvas
+grep -n 'readAsDataURL' docs/spikes/art-check.html                                                              # the file→image path that cannot taint the canvas
+grep -n 'fetch(' docs/spikes/art-check.html ; echo "exit=$?"                                                    # no fetch under file:// → exit=1
 grep -n 'width="1600" height="900"\|width="800" height="1200"' docs/spikes/art-check.html                       # the exported SVGs carry intrinsic size
-grep -E '^\| DT11 \| (GO|GO-REDUCED|NO-GO-TREES|NO-GO-ALL) \|' docs/roadmaps/drive-in-theme-roadmap.md           # nothing yet; exactly one row after Manual Verification
+grep -n 'id="selftest"' docs/spikes/art-check.html                                                              # the drivable self-test
+grep -E '^\| DT11 \| (GO|GO-REDUCED|NO-GO-TREES|NO-GO-ALL|INVALID) \|' docs/roadmaps/drive-in-theme-roadmap.md   # nothing yet; exactly one row after Manual Verification
 ```
 
 Expected, for the session that builds the files: both files exist, the DTF receipt is
@@ -240,6 +252,10 @@ all five variants in the probe header, and `scenery-overload` lower than `scener
 <commit>
 ```
 docs(dt11): production-shaped scenery falsifier probe and the art checker page
+```
+Then, by whoever measures (Manual Verification step 4):
+```
+docs(dt11): decision record
 ```
 </commit>
 
@@ -306,7 +322,7 @@ since this roadmap was written.
 
 <rules>
 Applicable rules from the shared tier and the vendored law for this phase:
-- **EVO-FE-183** — the override is read with `URLSearchParams`, never by string-splitting `location.search`.
+- **EVO-FE-183** — query parameters go through `URL`/`URLSearchParams`, never string interpolation; the rule is written for *building* params and is applied here to *reading* the override, the same family — never split `location.search` by hand.
 - **EVO-UNI-017 / EVO-UNI-018** — behaviour with literal expected values: every hour 0–23 maps to a named period in the test, not a recomputed band.
 - **EVO-UNI-015** — *intentional departure, recorded:* the period tests build fixed-hour `Date`s (`new Date(2026, 0, 1, 9)`), not `Date.now()`-relative fixtures, because the unit under test is the hour band and a relative fixture would test whatever hour the suite happens to run at.
 - **EVO-FE-220** — every test file imports `describe`/`it`/`expect`/`vi` from `'vitest'`.
@@ -328,11 +344,11 @@ Read these files before writing any code:
 </reference_material>
 
 <constraints>
-- **`theater/src/page/period.ts`** exports exactly: `PERIODS = ['dawn','morning','afternoon','sunset','evening','night'] as const`, `type Period = (typeof PERIODS)[number]`, `PERIOD_ATTRIBUTE = 'data-period'`, `PERIOD_PARAM = 'period'`, `periodForHour(hour: number): Period` (throws `RangeError` unless `Number.isInteger(hour) && 0 <= hour <= 23`), `getPeriod(date: Date = new Date()): Period`, `periodFromSearch(search: string): Period | null` (exact match against `PERIODS`; absent, empty or unknown → `null`), `applyPeriod(root: HTMLElement, period: Period): void`, and `installPeriod(root: HTMLElement, options: { search: string; now?: () => Date; doc?: Document }): () => void` — applies `periodFromSearch(search) ?? getPeriod(now())` once; when there was **no** override, adds a `visibilitychange` listener on `doc` (default `root.ownerDocument`) that re-applies `getPeriod(now())` while `doc.visibilityState === 'visible'`; when overridden, adds no listener; returns a function that removes the listener. DT13's CSS and DT15's tests consume these names literally.
+- **`theater/src/page/period.ts`** exports exactly: `PERIODS = ['dawn','morning','afternoon','sunset','evening','night'] as const`, `type Period = (typeof PERIODS)[number]`, `PERIOD_ATTRIBUTE = 'data-period'`, `PERIOD_PARAM = 'period'`, `periodForHour(hour: number): Period` (throws `RangeError` unless `Number.isInteger(hour) && 0 <= hour <= 23`), `getPeriod(date: Date = new Date()): Period` — **returns `periodForHour(date.getHours())` and holds no band logic of its own** (jourNOW's inlines the bands; this port must not, because the falsification below stubs `periodForHour` and relies on the clock path going through it), `periodFromSearch(search: string): Period | null` (exact match against `PERIODS`; absent, empty or unknown → `null`), `applyPeriod(root: HTMLElement, period: Period): void`, and `installPeriod(root: HTMLElement, options: { search: string; now?: () => Date; doc?: Document }): () => void` — applies `periodFromSearch(search) ?? getPeriod(now())` once; when there was **no** override, adds a `visibilitychange` listener on `doc` (default `root.ownerDocument`) that re-applies `getPeriod(now())` while `doc.visibilityState === 'visible'`; when overridden, adds no listener; returns a function that removes the listener. DT13's CSS and DT15's tests consume these names literally.
 - **`theater/src/main.ts`**: `installPeriod(document.documentElement, { search: location.search })` runs before `createEngine` and its return value is discarded (the page never uninstalls); one comment says why it must precede the engine (the loader's curtain lifts on the first painted sky).
 - **`theater/src/page/period.test.ts`** (jsdom): every hour 0–23 against its literal period (a 24-row table, not a loop over the bands); `periodForHour(24)`, `(-1)`, `(9.5)` throw `RangeError`; `periodFromSearch` for `'?period=dawn'` … `'?period=night'` (all six), `'?period=noon'` → `null`, `'?period='` → `null`, `''` → `null`, `'?other=1&period=sunset'` → `'sunset'`; `installPeriod` on a detached `<div>` with an injected `now`: clock 09:00 → attribute `morning`; `search: '?period=night'` at 09:00 → `night`; with no override, `now` moved from 19:59 to 20:00 and a `visibilitychange` dispatched on the injected `doc` → `evening`, and the same dispatch with `now` still 19:59 leaves `sunset`; with the override, the same steps leave `night`; after the returned uninstaller runs, a dispatch changes nothing. Use a plain `document` from jsdom as `doc` and `Object.defineProperty(doc, 'visibilityState', { value: 'visible', configurable: true })` where needed. No fake timers.
-- **`theater/e2e/helpers/app.ts`**: add `PINNED_PERIOD: Period = 'night'` and `APP_URL = \`${APP_PATH}?${PERIOD_PARAM}=${PINNED_PERIOD}\`` (import `PERIOD_PARAM` and `Period` from `../../src/page/period`), switch `openPage` to `APP_URL`, add `periodAttribute(page): Promise<string | null>` reading `document.documentElement.getAttribute(PERIOD_ATTRIBUTE)`. `APP_PATH` stays exported and unchanged. `reveal.spec.ts`'s two `goto(APP_PATH)` become `goto(APP_URL)`.
-- **`theater/e2e/period.spec.ts`**: one test per period navigating to `${APP_PATH}?period=<p>` and asserting the attribute; `?period=bogus` with `page.clock.install({ time: new Date('2026-09-08T18:30:00') })` before `goto` → `sunset`; no parameter at `03:00` → `night`; no parameter with the clock at `19:59:30`, reveal, `page.clock.setFixedTime(new Date('2026-09-08T20:00:30'))`, `page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))` → `evening`; the same under `?period=sunset` → still `sunset`. Every wait is an `expect(...).toHaveAttribute(...)` poll.
+- **`theater/e2e/helpers/app.ts`**: add `PINNED_PERIOD: Period = 'night'` and `APP_URL = \`${APP_PATH}?${PERIOD_PARAM}=${PINNED_PERIOD}\`` (import `PERIOD_PARAM` and `Period` from `../../src/page/period`), switch `openPage` to `APP_URL`, add `periodAttribute(page): Promise<string | null>` reading `document.documentElement.getAttribute(PERIOD_ATTRIBUTE)`. `APP_PATH` stays exported and unchanged. `reveal.spec.ts`'s two `goto(APP_PATH)` become `goto(APP_URL)` and its now-unused `APP_PATH` import is removed (`noUnusedLocals` is on and `pnpm build` runs `tsc --noEmit` first — an unused import kills the whole e2e run).
+- **`theater/e2e/period.spec.ts`**: one test per period navigating to `${APP_PATH}?period=<p>` and asserting the attribute; `?period=bogus` with `page.clock.install({ time: new Date('2026-09-08T18:30:00') })` before `goto` → `sunset`; no parameter at `03:00` → `night`; no parameter with the clock at `19:59:30`, reveal, `page.clock.setFixedTime(new Date('2026-09-08T20:00:30'))`, `page.evaluate(() => document.dispatchEvent(new Event('visibilitychange')))` → `evening`; the same under `?period=sunset` → still `sunset`. Every assertion is `await expect.poll(() => periodAttribute(page)).toBe('<p>')` — the helper is the one reader of the attribute, so it is not dead code.
 - The full unit suite and the full e2e suite must be green with the pin in place; no other spec changes.
 </constraints>
 
@@ -347,7 +363,10 @@ Read these files before writing any code:
 - [ ] Write `e2e/period.spec.ts`.
 
 ### 3. Prove
-- [ ] Typecheck, lint, unit suite, e2e suite, build; format; run the falsification in `<verification>` and revert it.
+- [ ] Typecheck, lint, unit suite, e2e suite, build; format; run the falsification in `<verification>` and restore the file from its backup.
+
+### 4. Session log
+- [ ] Write the session log per `.claude/skills/writing-session-logs/SKILL.md`.
 
 </build_order>
 
@@ -356,22 +375,24 @@ Read these files before writing any code:
 cd /home/evan/EVOsystem/portfolio_site
 pnpm format:check
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
-pnpm -C theater test -- --reporter=verbose 2>&1 | grep -E 'period' | head -40        # the new suite, all ✓
+pnpm -C theater exec vitest run --reporter=verbose src/page 2>&1 | grep -E '✓|✗|×' | head -40   # the new suite, all ✓ (pnpm 11 forwards a `--` literally, so `exec` is the only reliable way to pass flags/filters)
 awk '/installPeriod\(document.documentElement/{a=NR} /createEngine\(\{/{b=NR} END{exit !(a && b && a<b)}' theater/src/main.ts && echo "period installed before the engine"   # must print
 grep -n "location.search.split\|indexOf('period')" theater/src/page/period.ts ; echo "exit=$?"   # EVO-FE-183: exit=1
 grep -n "APP_URL" theater/e2e/helpers/app.ts theater/e2e/reveal.spec.ts | wc -l      # ≥ 4 (definition, openPage, two reveal gotos)
-grep -n "goto(APP_PATH)" theater/e2e/*.spec.ts theater/e2e/helpers/app.ts ; echo "exit=$?"   # only period.spec.ts may build on APP_PATH with a query; bare goto(APP_PATH) → exit=1
+grep -n "goto(APP_PATH)" theater/e2e/helpers/app.ts theater/e2e/reveal.spec.ts theater/e2e/{active-screen,click-through,drive,keyboard,reduced-motion}.spec.ts ; echo "exit=$?"   # exit=1 — period.spec.ts is exempt: its clock-fallback tests navigate unpinned by design
 pnpm -C theater test:e2e                                                              # every spec green, including period
-# Falsify (EVO-UNI-061): a clock that always says night must fail period.spec, then revert
+# Falsify (EVO-UNI-061): a clock that always says night must fail period.spec. period.ts is NEW and uncommitted here —
+# `git checkout --` cannot restore an untracked file — so back it up and copy it back.
+cp theater/src/page/period.ts /tmp/dt12-period.ts.bak
 sed -i 's/^export function periodForHour(/export function periodForHour_(/' theater/src/page/period.ts && printf '\nexport function periodForHour(_hour: number): Period { return "night"; }\n' >> theater/src/page/period.ts   # typed stub: `pnpm build` (tsc) must still pass so the spec fails on behaviour, not compilation
-pnpm -C theater test:e2e -- period ; echo "period exit=$?"                            # non-zero
-git checkout -- theater/src/page/period.ts
-pnpm -C theater test:e2e -- period ; echo "period exit=$?"                            # 0
+pnpm -C theater exec playwright test period ; echo "period exit=$?"                   # non-zero (the two clock-fallback tests)
+cp /tmp/dt12-period.ts.bak theater/src/page/period.ts && cmp /tmp/dt12-period.ts.bak theater/src/page/period.ts && echo "period.ts restored"
+pnpm -C theater exec playwright test period ; echo "period exit=$?"                   # 0
 ```
 
 Expected: unit and e2e suites green with the pin; the two greps that guard string
 parsing and bare `goto(APP_PATH)` print nothing; the falsified `periodForHour` makes
-`period.spec.ts` fail and the revert restores green.
+`period.spec.ts` fail and the restored file makes it green again.
 </verification>
 
 <commit>
@@ -460,6 +481,8 @@ behind the camera a third of the way down the lot.
   The spec's tokens table lists the night values (they equal today's).
 - The Playwright suite is pinned to `?period=night`, so every existing assertion holds
   through this phase; `period.spec.ts` is where the visible consequences get asserted.
+- **This phase runs under any DT11 outcome, including `INVALID`** — nothing here depends
+  on the falsifier; do not wait for its decision row.
 
 **Out of scope:** trees, car, beam, art (DT15); any change to `--sds-screen-lit` or the
 timeline; the hero/exit beats.
@@ -495,7 +518,7 @@ Read these files before writing any code:
 <constraints>
 - **`geometry.ts`**: export `GROUND_LEAD = SPACING` and `groundDepth(count: number): number` returning `lotZ(1, count) + 5 * SPACING`. **`build-lot.ts`**: export `GROUND_LEAD_PROPERTY = '--sds-ground-lead'`, `GROUND_DEPTH_PROPERTY = '--sds-ground-depth'`, `LOT_ORB_CLASS = 'sds-lot__orb'`; write both properties on the stage in px (`800px`, `20800px` for 20 projects) beside `--sds-ground-line`; append `<div class="sds-lot__orb" aria-hidden="true">` to the stage after the world.
 - **`tokens.css`**: in the base `:host, :root` block add, at their night values, `--sds-sky-top/mid/low` (`#0a0520`, `#0d1033`, `#120a2e`), `--sds-star-alpha: 1`, `--sds-tree: #05030f`, `--sds-unlit-floor: 0.35`, `--sds-glow: 1`, `--sds-headlight: 1`, `--sds-beam`, the six `--sds-orb*` roles, and the two road roles; recompose `--sds-sky` from the three stops (`--sds-lot-sky-mid`/`-low` primitives may be retired in favour of the stops — keep the rendered gradient identical); then six `:host([data-period="…"]), :root[data-period="…"]` blocks transcribed from the wireframe, each restating only the roles the wireframe restates (night restates `--sds-star-alpha` only). `--sds-road-line`/`--sds-road-edge` are declared once and never restated.
-- **`global.css`**: `.sds-lot { background: var(--sds-sky) }`; the ten star gradients move to `.sds-lot::before` (`content: ""; position: absolute; inset: 0; pointer-events: none; opacity: var(--sds-star-alpha)`, painted behind the world — give `.sds-lot__world` and the orb explicit `z-index`es per the wireframe); `.sds-lot__orb` from the wireframe; `.sds-lot__ground { height: var(--sds-ground-depth); transform: translateZ(var(--sds-ground-lead)) rotateX(-90deg); }` with the existing gradients; `.sds-lot__ground::after` becomes the wireframe's lane; `.sds-screen__surface`'s filter becomes `brightness(calc(var(--sds-unlit-floor) + (1 - var(--sds-unlit-floor)) * var(--sds-screen-lit, 0)))`; the surface's marquee-coloured shadow and the marquee's background/border/shadow percentages gain `* var(--sds-glow)` inside their `calc()`. No other rule changes.
+- **`global.css`**: `.sds-lot { background: var(--sds-sky) }`; the ten star gradients move to `.sds-lot::before` (`content: ""; position: absolute; inset: 0; pointer-events: none; opacity: var(--sds-star-alpha)`, painted behind the world — give `.sds-lot__world` and the orb explicit `z-index`es per the wireframe); `.sds-lot__orb` from the wireframe; `.sds-lot__ground { height: var(--sds-ground-depth); transform: translateZ(var(--sds-ground-lead)) rotateX(-90deg); }` with the existing gradients; `.sds-lot__ground::after` becomes the wireframe's lane; `.sds-screen__surface`'s filter becomes `brightness(calc(var(--sds-unlit-floor) + (1 - var(--sds-unlit-floor)) * var(--sds-screen-lit, 0)))`; **only the three `box-shadow` colour mixes** gain `* var(--sds-glow)` inside their `calc()` — the surface's marquee-coloured halo, a **new second halo layer** `0 0 30px color-mix(in srgb, var(--sds-accent) calc(var(--sds-screen-lit, 0) * var(--sds-glow) * 20%), transparent)` that the approved wireframe shows on the lit screen, and the marquee's `box-shadow`; the marquee's `background` and `border` mixes stay at `calc(var(--sds-screen-lit, 0) * 100%)` so a lit marquee is fully lit in daylight too (the wireframe sets them flat). No other rule changes.
 - **Tests**: `geometry.test.ts` gains the two literal `groundDepth` values and `GROUND_LEAD` equal to `800`; `build-lot.test.ts` gains a case asserting the stage's inline `--sds-ground-lead` is `800px` and `--sds-ground-depth` is `${groundDepth(projects.length)}px`, and that exactly one `.sds-lot__orb` exists **outside** `.sds-lot__world`. `period.spec.ts` gains, for `afternoon` and `night`: `.sds-lot`'s computed `background-image` contains `rgb(59, 120, 200)` / `rgb(10, 5, 32)`; `getComputedStyle(lot, '::before').opacity` is `'0'` / `'1'`; after `scrollToScreen(page, 0)`, screen 1's `.sds-screen__surface` computed `filter` is `brightness(0.75)` / `brightness(0.35)`; plus one **unpinned daytime visit**: `page.clock.install({ time: new Date('2026-09-08T14:00:00') })`, `goto(APP_PATH)`, `waitForReveal`, `scrollToScreen(page, 1)`, click screen 1, `waitForURL` for `projects[1].href`.
 - The night rendering of the sky gradient, asphalt, brightness and marquee must be numerically identical to before this phase (the base values are today's values); confirm with the greps below.
 </constraints>
@@ -509,7 +532,10 @@ Read these files before writing any code:
 - [ ] Add the roles and six period blocks to `tokens.css` (with the departure comment); rewrite the lot rules in `global.css` per `<constraints>`.
 
 ### 3. Prove
-- [ ] Extend `period.spec.ts` with the consumer assertions and the unpinned daytime visit; typecheck, lint, unit, e2e, build; `rebuild-restart`; compare each period against the wireframe at 1440×900 and 390px; run the falsification in `<verification>` and revert.
+- [ ] Extend `period.spec.ts` with the consumer assertions and the unpinned daytime visit; typecheck, lint, unit, e2e, build; `rebuild-restart`; compare each period against the wireframe at 1440×900 and 390px; run the falsification in `<verification>` and restore the file from its backup.
+
+### 4. Session log
+- [ ] Write the session log per `.claude/skills/writing-session-logs/SKILL.md`.
 
 </build_order>
 
@@ -528,12 +554,14 @@ grep -n 'brightness(calc(var(--sds-unlit-floor)' theater/src/styles/global.css  
 grep -n 'groundDepth\|GROUND_LEAD' theater/src/lot/geometry.ts theater/src/lot/build-lot.ts | head
 pnpm -C theater test:e2e                                                               # green, including the new period assertions
 docker compose build && docker compose up -d --force-recreate
-curl -s -o /dev/null -w '%{http_code}\n' "http://portfolio-site.localhost/theater/?period=sunset"   # 200
-# Falsify (EVO-UNI-061): a sky that ignores the period must fail period.spec, then revert
+curl -s -o /dev/null -w '%{http_code}\n' "http://portfolio-site.localhost/theater/"   # 200 — the container is up (the period itself is proven by period.spec, not by curl)
+# Falsify (EVO-UNI-061): a sky that ignores the period must fail period.spec. global.css holds this phase's
+# UNCOMMITTED work — `git checkout --` would erase it — so back it up and copy it back.
+cp theater/src/styles/global.css /tmp/dt13-global.css.bak
 sed -i 's/^\.sds-lot {$/.sds-lot { background: #0a0520 !important;/' theater/src/styles/global.css
-pnpm -C theater test:e2e -- period ; echo "period exit=$?"                             # non-zero
-git checkout -- theater/src/styles/global.css
-pnpm -C theater test:e2e -- period ; echo "period exit=$?"                             # 0
+pnpm -C theater exec playwright test period ; echo "period exit=$?"                    # non-zero
+cp /tmp/dt13-global.css.bak theater/src/styles/global.css && cmp /tmp/dt13-global.css.bak theater/src/styles/global.css && echo "global.css restored"
+pnpm -C theater exec playwright test period ; echo "period exit=$?"                    # 0
 ```
 
 Manual (browser, `http://portfolio-site.localhost/theater/?period=<p>` for all six, and
@@ -542,8 +570,9 @@ with no parameter): the sky, stars, orb, asphalt, road markings and screen floor
 horizon at progress 0 and still does past the last screen; at 390px wide the narrow
 layout holds. Night with no parameter is indistinguishable from `?period=night`.
 
-Expected: every grep as noted; unit and e2e green; the falsified sky fails only
-`period.spec.ts`; six palettes visible on the served page.
+Expected: every grep as noted; unit and e2e green; the falsified sky fails
+`period.spec.ts` and the restored file makes it green again; six palettes visible on the
+served page.
 </verification>
 
 <commit>
@@ -558,13 +587,19 @@ After this phase, portfolio_site's `/theater/` shows the visitor's time of day �
 stars, sun or moon, asphalt and screen lighting — over a marked road whose ground
 reaches the end of the lot, in every period.
 
-Paste Phase DT14 (Evan; needs DT11's checker page).
+Next: if DT11's decision row is `GO`, `GO-REDUCED` or `NO-GO-TREES`, paste Phase DT14
+(Evan; needs DT11's checker page). If it is `NO-GO-ALL` the theme is complete here; if
+`INVALID`, DT11 is re-measured first.
 
 ---
 
 ## Phase DT14: Generate, accept and commit the four sprites `[MANUAL]`
 
 Executed by Evan, not an agent. This is a checklist; there is no `<build_order>`.
+
+**Gate:** runs only if DT11's decision row is `GO`, `GO-REDUCED` or `NO-GO-TREES`. Under
+`NO-GO-TREES` only the car is required (the three tree stems may be skipped; DT15 then
+declares posters + car only). Under `NO-GO-ALL` or `INVALID` this phase is not executed.
 
 **What lands:** `theater/public/art/car.png`, `tree-1.png`, `tree-2.png`, `tree-3.png`
 (or, on the fallback, the same stems as `.svg`), committed as
@@ -613,22 +648,22 @@ the rear-facing third row waving out the back.
 
 ## Done
 
-After this phase, portfolio_site has the four sprites the scenery phase places, each
-accepted per-pixel and by eye.
+After this phase, portfolio_site has the sprites the scenery phase places (four, or the
+car alone under `NO-GO-TREES`), each accepted per-pixel and by eye.
 
-Paste Phase DT15 (needs DT11's decision row and DT13).
+Paste Phase DT15 (needs DT11's decision row, DT13 and these files).
 
 ---
 
-## Phase DT15: Trees, the visitor's car, the beam; scenery and art specs; parity
+## Phase DT15: Trees, the visitor's car, the beam — modules, DOM, loader, CSS, unit and contract tests
 
 <task>
 You are executing **Phase DT15 of the Drive-In Theme Roadmap** — lining the drive with
 masked tree planes that ride the existing world tween, parking the visitor's wagon with
-its headlight beam and tail-light glows at the bottom of the stage, declaring the four
-sprites through the asset loader, and proving with Playwright that the trees paint, the
-car never steals a click, and the art meets its contract — because this is the phase
-that turns a lit lot into a drive-in.
+its headlight beam and tail-light glows at the bottom of the stage, and declaring the
+sprites through the asset loader, all proven by unit tests and the conformance kit —
+because this is the phase that turns a lit lot into a drive-in; DT16 then proves it in a
+browser.
 </task>
 
 ## Load skills first — do this before writing any code
@@ -644,9 +679,9 @@ that turns a lit lot into a drive-in.
 - **DT11's decision row** at the bottom of this roadmap says `GO`, `GO-REDUCED` or
   `NO-GO-TREES` (this phase must not run under `NO-GO-ALL` or `INVALID`; see `<branch>`).
 - **DT14's art** is committed under `theater/public/art/` as `car`, `tree-1`, `tree-2`,
-  `tree-3` with one extension for all four (`.png`, or `.svg` on the fallback). Vite
-  copies `public/` into `dist/` unhashed under `base: '/theater/'`, so the served URLs
-  are `/theater/art/<name>.<ext>`.
+  `tree-3` (car only under `NO-GO-TREES`) with one extension for all (`.png`, or `.svg`
+  on the fallback). Vite copies `public/` into `dist/` unhashed under `base: '/theater/'`,
+  so the served URLs are `/theater/art/<name>.<ext>`.
 - **DT13** landed in `theater/src/lot/geometry.ts`: `GROUND_LEAD = SPACING`,
   `groundDepth(count)`; in `theater/src/lot/build-lot.ts`: `GROUND_LEAD_PROPERTY`,
   `GROUND_DEPTH_PROPERTY`, `LOT_ORB_CLASS = 'sds-lot__orb'` (an orb `<div>` appended to
@@ -657,10 +692,9 @@ that turns a lit lot into a drive-in.
   lane, the floor/glow expressions. The narrow block (`max-width: 767px`) restates the
   screens' `--sds-screen-x`/`--sds-screen-yaw` with `!important` because `buildLot` writes
   placement as inline custom properties.
-- **DT12** landed `theater/src/page/period.ts` and the e2e pin: `theater/e2e/helpers/app.ts`
-  exports `APP_PATH = "/theater/"`, `APP_URL` (pinned to night), `openPage`,
-  `scrollToSceneProgress(page, LOT_SCENE, progress)`, `scrollToScreen`, `screenLocator`,
-  `screenBandMiddle`, `worldZ`, `screenLit`, `clipStates`.
+- **DT12** landed `theater/src/page/period.ts` and the e2e pin (`APP_URL`,
+  `PINNED_PERIOD`, `periodAttribute` in `theater/e2e/helpers/app.ts`). Nothing in this
+  phase touches `e2e/`.
 - `theater/src/lot/build-lot.ts`: `buildLot(projects): GsapTimelineBuilder` builds the
   stage, writes the stage properties, builds `.sds-lot__world` with the ground then the
   screens (`world.append(...screens)` at line 187), returns the timeline; exports the
@@ -691,20 +725,21 @@ that turns a lit lot into a drive-in.
   `createFakeImages({ autoSettle: () => ({ width: 1280, height: 800 }) })` and tests the
   clip lifecycle; `theater/src/lot/build-lot.test.ts` drives the real GSAP timeline.
 - Under Vitest `import.meta.env.BASE_URL` is `/` (probed 2026-09-08), not `/theater/`.
-- `theater/e2e/nginx-parity.sh` curls the served container for status and content type
-  (`report`, `status_of`, `content_type_of` helpers) and checks `/images/nom-noms/01.png`
-  is `image/png`.
-- `theater/e2e/click-through.spec.ts` shows the navigation assertion
-  (`waitForURL(\`**${project.href}\`)` then `new URL(page.url()).pathname`).
+- `theater/src/styles/global.css`: `.sds-screen` sits at
+  `bottom: calc(100% - var(--sds-ground-line))` (line 302 area) — the ground line is a
+  property `buildLot` writes, never the literal `42%` the wireframe uses.
 - The spec (`docs/superpowers/specs/2026-09-08-drive-in-theme-design.md`, "Scenery")
   and the approved wireframe fix the geometry and CSS: trees at `x = ±(OFFSET + TREE_SETBACK + dx)`,
   the eight-entry jitter table, `260×390` (narrow `180×270`, `x = ∓360px !important`),
   `visibility: hidden` unless `data-mask="ready"`; the car `clamp(320px, 38vw, 620px)`
   (narrow `64vw`), `aspect-ratio: 16 / 9`, `bottom: -1%`, glows on `::before/::after` at
-  `opacity: var(--sds-headlight)`; the beam trapezoid (narrow `width: 70%`).
+  `opacity: var(--sds-headlight)`; the beam trapezoid (narrow `width: 70%`). **The stage
+  `.sds-lot` does not opt out of hit-testing** (only `.sds-lot__world` does, line 224
+  area), so anything appended to the stage hit-tests unless told not to.
 
-**Out of scope:** any period/token change (DT13 owns them); parked cars; motion of any
-kind on the car or trees.
+**Out of scope:** any period/token change (DT13 owns them); every Playwright spec, the
+parity script and the served comparison (DT16); parked cars; motion of any kind on the
+car or trees.
 
 Verify this against the actual codebase before proceeding — commits may have landed
 since this roadmap was written.
@@ -712,52 +747,45 @@ since this roadmap was written.
 
 <rules>
 Applicable rules from the shared tier and the vendored law for this phase:
-- **SDS-006** — the car sprite and the three masks are declared through `sharedAssetLoader` in `load()` and released in `destroy()`; a tree's `mask-image` is set only after the loader has resolved that URL, so the CSS fetch is a cache hit and the ring's number stays true.
+- **SDS-006** — the car sprite and the tree masks are declared through `sharedAssetLoader` in `load()` and released in `destroy()`; a tree's `mask-image` is set only after the loader has resolved that URL, so the CSS fetch is a cache hit and the ring's number stays true.
 - **SDS-001** — placements come from a fixed table; a rebuilt scene is identical; nothing here animates.
 - **SDS-002** — trees, car, beam live inside the container the adapter was handed.
 - **SDS-003** — the contract run still passes with a bigger `load()`; its "nothing else" assertion is widened, not deleted.
 - **SDS-004** — no layout reads in `seek`; `snapshot()`'s new fields are DOM counts and attributes, not measurements.
 - **EVO-UNI-053** — a missing car is `data-car="missing"` with the beam and glows still drawn in a box of real height; a missing mask variant is `visibility: hidden`, never a filled rectangle.
-- **EVO-UNI-057** — `TREE_SETBACK`, `TREE_SPACING`, `TREE_LEAD`, `TREE_JITTER`, `MIN_CAR_PX` live in `scenery.ts`/`lot-scene.ts` once; the CSS receives placements as properties.
+- **EVO-UNI-057** — `TREE_SETBACK`, `TREE_SPACING`, `TREE_LEAD`, `TREE_JITTER`, `MIN_CAR_PX`, every class/attribute/property name live once; the CSS receives placements as properties and the tree's bottom is `calc(100% - var(--sds-ground-line))`, never the wireframe's `42%`.
 - **EVO-UNI-109** — placement tests assert literals (`-900`, `-100`, `940`, `-300`, `40`, `88`), never the formula.
-- **EVO-TOOL-183** — the transform assertion reads the rendered matrix; the placement properties are asserted separately.
-- **EVO-UNI-061** — each new spec is falsified once (below).
-- **EVO-TOOL-071** — waits are on outcomes (`toHaveAttribute`, `waitForURL`), never timeouts.
 - **EVO-UNI-014** — `LotSnapshot` gains fields; grep its consumers (`lot-scene.contract.test.ts`, `build-lot.test.ts`) first.
+- **EVO-FE-220** — every new test imports from `'vitest'`.
 </rules>
 
 <reference_material>
 Read these files before writing any code:
 - `theater/src/lot/lot-scene.ts` — `load()`'s ordering (queue before the inner load, place after it), `#placePoster`, `destroy()`, `snapshot()`; **the art follows the poster path exactly**; do not add a `factory.assets` manifest (the header says why).
-- `theater/src/lot/build-lot.ts` — `buildLot`, `buildScreen`, `element()`, the exported-constant convention (every class/attribute/property name is exported once, the CSS and tests spell it from there).
+- `theater/src/lot/build-lot.ts` — `buildLot`, `buildScreen`, `element()`, the exported-constant convention (every class/attribute/property name is exported once; the CSS and tests spell it from there).
 - `theater/src/lot/geometry.ts` and `geometry.test.ts` — the pure-module and literal-test style `scenery.ts` mirrors.
 - `theater/src/lot/lot-scene.contract.test.ts` line 76 and `lot-scene.test.ts` — where the widened asset assertion and the new cases go.
 - `theater/src/test-helpers/fake-image.ts` — `autoSettle(url)` keyed by URL.
-- `theater/src/styles/global.css` — the `.sds-screen` placement rule and the narrow block's `!important` pattern to mirror for `.sds-tree`.
-- `docs/wireframes/theater-drive-in-theme.html` — `.tree`, `.tree--left/right`, `.lot__car`, `.lot__car::before/::after`, `.lot__beam` and the narrow overrides; **do not copy the inline `data:` SVG masks** — masks come from the loader.
-- `theater/e2e/helpers/app.ts`, `click-through.spec.ts`, `reveal.spec.ts` — helper usage and the navigation assertion.
-- `theater/e2e/nginx-parity.sh` — the `report`/`content_type_of` helpers to extend.
+- `theater/src/styles/global.css` — the `.sds-screen` placement rule (its `bottom` expression is the one `.sds-tree` copies) and the narrow block's `!important` pattern.
+- `docs/wireframes/theater-drive-in-theme.html` — `.tree`, `.tree--left/right`, `.lot__car`, `.lot__car::before/::after`, `.lot__beam` and the narrow overrides; **do not copy the inline `data:` SVG masks** (masks come from the loader) **nor the literal `bottom: 42%`** (use the ground-line property).
 </reference_material>
 
 <constraints>
 - **`theater/src/lot/scenery.ts`** (pure, no DOM, no `import.meta`): `TREE_SETBACK = 420`, `TREE_LEAD = 100`, `TREE_VARIANTS = 3`, `TREE_SPACING` (see `<branch>`), `TREE_JITTER: readonly { dx: number; scale: number }[]` = `[{0,1.05},{60,0.9},{0,1.15},{40,0.95},{0,1.1},{80,1.0},{0,1.05},{40,0.9}]`, `interface TreePlacement { side: 'left' | 'right'; x: number; z: number; scale: number; variant: 0 | 1 | 2 }`, `treePlacements(count: number): readonly TreePlacement[]` — left trees first then right; index `i` from 0 while `z >= -(lotZ(1, count) + SPACING)`; left `z = -(TREE_LEAD + i * TREE_SPACING)` with `jitter[i % 8]`, right `z = -(TREE_LEAD + TREE_SPACING / 2 + i * TREE_SPACING)` with `jitter[(i + 3) % 8]`; `x = sign * (OFFSET + TREE_SETBACK + jitter.dx)`; `scale = jitter.scale`; `variant = (i + (right ? 1 : 0)) % 3`.
-- **`theater/src/lot/art.ts`** (pure): `export type ArtExtension = 'png' | 'svg'` and `export const ART_EXTENSION: ArtExtension = 'png'` (or `'svg'` — see `<branch>`; keep exactly this declaration form, the parity script greps it), `ART_FILES = { car: 'car', trees: ['tree-1', 'tree-2', 'tree-3'] } as const`, `artUrls(base: string): { car: string; trees: readonly [string, string, string] }` returning `${base}art/${name}.${ART_EXTENSION}`. **Only `lot-scene.ts` calls `artUrls(import.meta.env.BASE_URL)`.** Unit tests use `artUrls('/')`; e2e uses `artUrls(APP_PATH)`.
-- **`build-lot.ts`**: export `TREE_CLASS = 'sds-tree'`, `TREE_VARIANT_ATTRIBUTE = 'data-tree-variant'`, `MASK_STATE_ATTRIBUTE = 'data-mask'`, `TREE_X_PROPERTY = '--sds-tree-x'`, `TREE_Z_PROPERTY`, `TREE_SCALE_PROPERTY`, `LOT_CAR_CLASS = 'sds-lot__car'`, `LOT_BEAM_CLASS = 'sds-lot__beam'`, `CAR_STATE_ATTRIBUTE = 'data-car'`. Inside the world, after the ground and before the screens, one `<span class="sds-tree sds-tree--left|right" aria-hidden="true" data-tree-variant="k" data-mask="pending">` per placement with the three inline properties (`px`, `px`, unitless). On the stage, after the orb: `<div class="sds-lot__beam" aria-hidden="true">` then `<div class="sds-lot__car" aria-hidden="true" data-car="pending">`. No mask, no `<img>` here.
-- **`lot-scene.ts`**: `load()` queues, after the posters and in this order, `art.car`, `art.trees[0..2]` from `artUrls(import.meta.env.BASE_URL)` (`units = projects.length + 4 + 1`); after `await this.#inner.load(...)`, when the art promises resolve, `#placeCar(image)` — usable iff `naturalWidth >= MIN_CAR_PX` (`export const MIN_CAR_PX = 640`) and `naturalHeight >= 360`, then `image.className = 'sds-lot__car-sprite'`, `image.alt = ''`, appended into `.sds-lot__car`, `data-car="ready"`; else `data-car="missing"` — and `#placeMask(k, image)` — usable iff both dimensions `>= 64`, then every `.sds-tree[data-tree-variant="k"]` gets `style.setProperty('mask-image', \`url("${url}")\`)` **and** `'-webkit-mask-image'` and `data-mask="ready"`, else `data-mask="missing"`. `destroy()` releases the four URLs. `LotSnapshot` gains `trees: number` (count of `.sds-tree` in the container now) and `car: 'pending' | 'ready' | 'missing'` (from the car element's attribute; `'pending'` when the element does not exist yet).
-- **`global.css`**: `.sds-tree` per the wireframe with `visibility: hidden` and `.sds-tree[data-mask="ready"] { visibility: visible }`, `mask: … center bottom / contain no-repeat` and `-webkit-mask` likewise with no image (the inline property supplies it), `pointer-events: none`, no `filter`, no `transform-style`; `.sds-lot__car` with `aspect-ratio: 16 / 9`, its `img` at `width: 100%; height: 100%; object-fit: contain`, glows on `::before/::after`; `.sds-lot__beam`; the narrow overrides (`.sds-tree` `180px × 270px`, `margin-left: -90px`; `.sds-tree--left { --sds-tree-x: -360px !important }`, `--right` `360px`; car `64vw`; beam `70%`). All colours through roles.
-- **Unit tests**: `scenery.test.ts` — literal placements for the branch taken (GO: `treePlacements(8).length === 40`, `treePlacements(20).length === 88`, `[0]` is `{ side: 'left', x: -900, z: -100, scale: 1.05, variant: 0 }`, `[20]` is `{ side: 'right', x: 940, z: -300, scale: 0.95, variant: 1 }`, `[19].z === -7700`; GO-REDUCED: `20`, `44`, `[10]` at `z: -500`, `[9].z === -7300`); `art.test.ts` — `artUrls('/')` and `artUrls('/theater/')` literals. `lot-scene.contract.test.ts` line 76: expected list becomes `[...posters, ...[art.car, ...art.trees]]` with `art = artUrls('/')`. `lot-scene.test.ts` gains: car ready (attribute, `<img>` present, snapshot `car === 'ready'`); car missing via `autoSettle` returning `{ width: 1, height: 1 }` for the car URL only (attribute `missing`, no `<img>`, beam element present); one mask failing (`null` for `tree-2`) leaves variant-1 trees `data-mask="missing"` and variants 0/2 `ready` with inline `mask-image` set; `snapshot().trees === treePlacements(3).length`; after `destroy()` `trees === 0`. `build-lot.test.ts` gains a DOM case: tree count and order (left block then right), inline properties of the first tree (`-900px`, `-100px`, `1.05`), every tree `data-mask="pending"` before load.
-- **`e2e/scenery.spec.ts`**: `.sds-tree` count `=== treePlacements(projects.length).length` and every tree `data-mask="ready"` with computed `visibility === 'visible'`; car `data-car="ready"` with computed height > 0; the first left tree's computed `transform` parsed by `new DOMMatrixReadOnly(...)` has `m41 === -900`, `m43 === -100`, `m11 === 1.05` (to 3 dp); **click-through under the car** at `viewport: { width: 390, height: 720 }`: `scrollToSceneProgress(page, LOT_SCENE, screenProgress(0, n) + 0.75 * (screenProgress(1, n) - screenProgress(0, n)))`, assert screen 0's bounding box intersects `.sds-lot__car`'s (fail the test if not — the geometry is meant to guarantee it), pick the intersection's centre, `elementFromPoint` there `.closest('a.sds-screen')` has `data-screen-index="0"`, `page.mouse.click` there, `waitForURL` for `projects[0].href`.
-- **`e2e/art.spec.ts`**: for each URL of `artUrls(APP_PATH)`, in the page create an `Image`, await load, draw to a canvas, and assert: dimensions `1600×900` / `800×1200`; four corner alphas `0`; transparent fraction in `[0.15, 0.85]`; car α > 0 bounding box width `>= 960`; tree bounding-box bottom `>= 0.95 * height`. SVG files load through the same `Image` path at their intrinsic size.
-- **`nginx-parity.sh`**: add `report "/theater/art/car.<ext> is served" 200 …` and a content-type check for `image/png` (or `image/svg+xml`), with `<ext>` read from `theater/src/lot/art.ts` by `grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)"` so the script cannot drift from the constant (the type union on the same line is why the grep anchors on `= `).
+- **`theater/src/lot/art.ts`** (pure): `export type ArtExtension = 'png' | 'svg'` and `export const ART_EXTENSION: ArtExtension = 'png'` (or `'svg'` — see `<branch>`; keep exactly this declaration form, DT16's parity script greps it), `ART_FILES = { car: 'car', trees: ['tree-1', 'tree-2', 'tree-3'] } as const`, `artUrls(base: string): { car: string; trees: readonly [string, string, string] }` returning `${base}art/${name}.${ART_EXTENSION}`. **Only `lot-scene.ts` calls `artUrls(import.meta.env.BASE_URL)`.** Unit tests use `artUrls('/')`; DT16's specs use `artUrls(APP_PATH)`.
+- **`build-lot.ts`**: export `TREE_CLASS = 'sds-tree'`, `TREE_VARIANT_ATTRIBUTE = 'data-tree-variant'`, `MASK_STATE_ATTRIBUTE = 'data-mask'`, `TREE_X_PROPERTY = '--sds-tree-x'`, `TREE_Z_PROPERTY`, `TREE_SCALE_PROPERTY`, `LOT_CAR_CLASS = 'sds-lot__car'`, `CAR_SPRITE_CLASS = 'sds-lot__car-sprite'`, `LOT_BEAM_CLASS = 'sds-lot__beam'`, `CAR_STATE_ATTRIBUTE = 'data-car'`. Inside the world, after the ground and before the screens, one `<span class="sds-tree sds-tree--left|right" aria-hidden="true" data-tree-variant="k" data-mask="pending">` per placement with the three inline properties (`px`, `px`, unitless). On the stage, after the orb: `<div class="sds-lot__beam" aria-hidden="true">` then `<div class="sds-lot__car" aria-hidden="true" data-car="pending">`. No mask, no `<img>` here.
+- **`lot-scene.ts`**: `load()` queues, after the posters and in this order, `art.car`, `art.trees[0..2]` from `const art = artUrls(import.meta.env.BASE_URL)` (`units = projects.length + 4 + 1`); after `await this.#inner.load(...)`, when the art promises resolve, `#placeCar(url: string, image: HTMLImageElement)` — usable iff `naturalWidth >= MIN_CAR_PX` (`export const MIN_CAR_PX = 640`) and `naturalHeight >= 360`, then `image.className = CAR_SPRITE_CLASS`, `image.alt = ''`, appended into `.sds-lot__car`, `data-car="ready"`; else `data-car="missing"` — and `#placeMask(k: 0 | 1 | 2, url: string, image: HTMLImageElement)` — usable iff both dimensions `>= 64`, then every `.sds-tree[data-tree-variant="k"]` gets `style.setProperty('mask-image', \`url("${url}")\`)` **and** `'-webkit-mask-image'` (the `url` is the string the loader was given, threaded through — never read back off the element, whose `src` is absolutised) and `data-mask="ready"`, else `data-mask="missing"`. `destroy()` releases the four URLs. `LotSnapshot` gains `trees: number` (count of `.sds-tree` in the container now — `0` before the inner build and after `destroy()`) and `car: 'pending' | 'ready' | 'missing'` (from the car element's attribute; `'pending'` when the element does not exist yet; unchanged by `destroy()`).
+- **`global.css`**: `.sds-tree` — `position: absolute; left: 50%; bottom: calc(100% - var(--sds-ground-line)); width: 260px; height: 390px; margin-left: -130px; transform-origin: 50% 100%; transform: translate3d(var(--sds-tree-x, 0px), 0, var(--sds-tree-z, 0px)) scale(var(--sds-tree-scale, 1)); background: var(--sds-tree); pointer-events: none; visibility: hidden;` plus `mask: … center bottom / contain no-repeat` and `-webkit-mask` likewise with no image (the inline property supplies it), no `filter`, no `transform-style`; `.sds-tree[data-mask="ready"] { visibility: visible }`. `.sds-lot__car` — from the wireframe, with `aspect-ratio: 16 / 9` and **`pointer-events: none`**; its `img` at `width: 100%; height: 100%; object-fit: contain`; glows on `::before/::after` (they inherit `none`). `.sds-lot__beam` — from the wireframe, with **`pointer-events: none`**. The stage does not opt out, so these declarations are what make "the car never steals a click" true; DT16 falsifies exactly this. Narrow overrides: `.sds-tree` `180px × 270px`, `margin-left: -90px`; `.sds-tree--left { --sds-tree-x: -360px !important }`, `--right` `360px`; car `64vw`; beam `70%`. All colours through roles. The selector lines `.sds-lot__car {` and `.sds-tree {` stand alone (Prettier's form) — DT16's falsification `sed` anchors on them.
+- **Unit tests**: `scenery.test.ts` — literals for the branch taken, every index qualified by its call: GO: `treePlacements(8).length === 40`, `treePlacements(20).length === 88`, `treePlacements(8)[0]` is `{ side: 'left', x: -900, z: -100, scale: 1.05, variant: 0 }`, `treePlacements(8)[20]` is `{ side: 'right', x: 940, z: -300, scale: 0.95, variant: 1 }`, `treePlacements(8)[19].z === -7700` (in `treePlacements(20)` the left block is 44 long, so `[20]` there is a left tree — never reuse an index across counts); GO-REDUCED: `treePlacements(8).length === 20`, `treePlacements(20).length === 44`, `treePlacements(8)[10]` is the first right tree at `z: -500`, `treePlacements(8)[9].z === -7300`. `art.test.ts` — `artUrls('/')` and `artUrls('/theater/')` literals. `lot-scene.contract.test.ts` line 76: expected list becomes `[...posters, art.car, ...art.trees]` with `art = artUrls('/')`. `lot-scene.test.ts` gains: car ready (attribute, `<img class="sds-lot__car-sprite">` present, snapshot `car === 'ready'`); car missing via `autoSettle` returning `{ width: 1, height: 1 }` for the car URL only (attribute `missing`, no `<img>`, beam element present); one mask failing (`null` for `artUrls('/').trees[1]`) leaves variant-1 trees `data-mask="missing"` and variants 0/2 `ready` with inline `mask-image` set; `snapshot().trees === treePlacements(3).length` after load; after `destroy()` `trees === 0`. `build-lot.test.ts` gains a DOM case: tree count and order (left block then right), inline properties of the first tree (`-900px`, `-100px`, `1.05`), every tree `data-mask="pending"` before load, car and beam present on the stage outside the world.
 </constraints>
 
 <branch>
 Check the **Decision records** table at the bottom of this roadmap and `ls theater/public/art` before writing any code:
 - If DT11 says `GO` → `TREE_SPACING = SPACING / 2` (400) and the GO literals.
 - If DT11 says `GO-REDUCED` → `TREE_SPACING = SPACING` (800) and the GO-REDUCED literals; note the deviation from the wireframe's density in the session log.
-- If DT11 says `NO-GO-TREES` → omit `scenery.ts`, the tree DOM/CSS, the masks and `scenery.spec.ts`'s tree assertions; `load()` declares posters + car only (`units = projects.length + 2`); `art.spec.ts` checks the car only; `snapshot().trees` is `0`.
+- If DT11 says `NO-GO-TREES` → omit `scenery.ts`, the tree DOM/CSS and the masks; `load()` declares posters + car only (`units = projects.length + 2`); `snapshot().trees` is `0`; `ART_FILES.trees` stays declared but unused.
 - If DT11 says `NO-GO-ALL` or `INVALID`, or the row is empty → **stop**; this phase does not run.
-- If `theater/public/art/car.svg` exists (and no `car.png`) → `ART_EXTENSION = 'svg'` and the parity content type is `image/svg+xml`; otherwise `'png'` / `image/png`.
+- If `theater/public/art/car.svg` exists (and no `car.png`) → `ART_EXTENSION = 'svg'`; otherwise `'png'`.
 </branch>
 
 <build_order>
@@ -771,7 +799,10 @@ Check the **Decision records** table at the bottom of this roadmap and `ls theat
 - [ ] Write the `.sds-tree`, `.sds-lot__car`, `.sds-lot__beam` rules and the narrow overrides.
 
 ### 3. Prove
-- [ ] Write `e2e/scenery.spec.ts` and `e2e/art.spec.ts`; extend `nginx-parity.sh`; typecheck, lint, unit, e2e, build, `rebuild-restart`, parity; compare with the wireframe; run the three falsifications in `<verification>` and revert each.
+- [ ] Typecheck, lint, unit suite, build; format; `rebuild-restart`; look at the served lot once at night (the full comparison is DT16's).
+
+### 4. Session log
+- [ ] Write the session log per `.claude/skills/writing-session-logs/SKILL.md`.
 
 </build_order>
 
@@ -780,25 +811,186 @@ Check the **Decision records** table at the bottom of this roadmap and `ls theat
 cd /home/evan/EVOsystem/portfolio_site
 pnpm format:check
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
-pnpm -C theater test -- --reporter=verbose 2>&1 | grep -E 'scenery|art|lot-scene|build-lot' | head -60
-grep -n 'import.meta' theater/src/lot/art.ts theater/src/lot/build-lot.ts theater/src/lot/scenery.ts ; echo "exit=$?"   # only lot-scene may read the env → exit=1
+pnpm -C theater exec vitest run --reporter=verbose src/lot 2>&1 | grep -E '✓|✗|×' | head -80    # scenery, art, lot-scene, build-lot, contract — all ✓
+grep -rn 'import.meta' theater/src/lot/ --include='*.ts' | grep -v 'lot/lot-scene.ts' ; echo "exit=$?"   # only lot-scene may read the env → exit=1 (works whether or not scenery.ts exists)
 grep -n 'artUrls(import.meta.env.BASE_URL)' theater/src/lot/lot-scene.ts                   # exactly the one call site
 grep -n 'Math.random' theater/src/lot/*.ts ; echo "exit=$?"                                # SDS-001: exit=1
 grep -n 'getBoundingClientRect\|offsetHeight\|offsetWidth' theater/src/lot/*.ts ; echo "exit=$?"   # SDS-004: exit=1
+grep -n 'bottom: 42%' theater/src/styles/global.css ; echo "exit=$?"                        # EVO-UNI-057: the wireframe literal never lands → exit=1
 grep -n 'visibility: hidden' theater/src/styles/global.css                                 # the pending/missing tree rule
 grep -n 'aspect-ratio: 16 / 9' theater/src/styles/global.css                               # the car box keeps its height
+grep -n -A12 '^\.sds-lot__car {$' theater/src/styles/global.css | grep -c 'pointer-events: none'   # 1 — the car opts out of hit-testing
+grep -n -A8 '^\.sds-lot__beam {$' theater/src/styles/global.css | grep -c 'pointer-events: none'   # 1
+grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts               # the declaration form DT16 greps
+pnpm -C theater build
+docker compose build && docker compose up -d --force-recreate
+curl -s -o /dev/null -w '%{http_code}\n' "http://portfolio-site.localhost/theater/art/car.$(grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts | grep -oE 'png|svg')"   # 200
+```
+
+Manual (browser, `http://portfolio-site.localhost/theater/?period=night`, 1440×900):
+trees line both sides, the wagon sits bottom-centre with the beam and glows, no `[sds]`
+warnings in the console. The full per-period, per-viewport comparison against the
+wireframe is DT16's.
+
+Expected: all greps as noted; the unit suite green including the widened contract run;
+the served container answers 200 for the car sprite.
+</verification>
+
+<commit>
+```
+feat(dt15): trees, the visitor's wagon and headlight beam; art declared through the loader
+```
+</commit>
+
+## Done
+
+After this phase, portfolio_site's `/theater/` renders the trees, the wagon and its beam
+from loader-declared sprites, with the unit suite and the conformance kit green —
+unproven in a real browser until DT16.
+
+Paste Phase DT16.
+
+---
+
+## Phase DT16: Scenery and art Playwright specs, nginx parity, wireframe match
+
+<task>
+You are executing **Phase DT16 of the Drive-In Theme Roadmap** — proving in a real
+browser that the trees paint, the wagon never steals a click from a screen passing
+through it, the sprites meet their per-pixel contract, and nginx serves them, because
+DT15's unit tests cannot see rendering, hit-testing or the served image.
+</task>
+
+## Load skills first — do this before writing any code
+
+1. `AGENTS.md` — repo orientation (no `project-context` skill exists here)
+2. `/home/evan/EVOsystem/infra/skills/rules-index/references/universal.md`, `react-frontend.md`, `tooling.md`; `theater/skills/rules-index/SKILL.md`
+3. `.claude/skills/rebuild-restart/SKILL.md`
+4. `.claude/skills/writing-session-logs/SKILL.md`
+
+<context>
+## What's already built
+
+- **DT15** landed (verify against the tree): `theater/src/lot/scenery.ts` with
+  `treePlacements(count)`, `TREE_SPACING` and `TREE_JITTER` (absent under DT11's
+  `NO-GO-TREES`); `theater/src/lot/art.ts` with `ART_EXTENSION: ArtExtension`,
+  `ART_FILES`, `artUrls(base)` (pure — safe to import from `e2e/`);
+  `theater/src/lot/build-lot.ts` exporting `TREE_CLASS = 'sds-tree'`,
+  `TREE_VARIANT_ATTRIBUTE`, `MASK_STATE_ATTRIBUTE = 'data-mask'`, `TREE_X_PROPERTY`,
+  `TREE_Z_PROPERTY`, `TREE_SCALE_PROPERTY`, `LOT_CAR_CLASS = 'sds-lot__car'`,
+  `CAR_SPRITE_CLASS`, `LOT_BEAM_CLASS = 'sds-lot__beam'`, `CAR_STATE_ATTRIBUTE = 'data-car'`;
+  `theater/src/lot/lot-scene.ts` declaring the art through the loader and setting
+  `data-mask="ready|missing"` and `data-car="ready|missing"`; `theater/src/styles/global.css`
+  with `.sds-tree` (`visibility: hidden` unless `[data-mask="ready"]`, `pointer-events:
+  none`), `.sds-lot__car` (`aspect-ratio: 16 / 9`, `pointer-events: none`, glows on
+  pseudo-elements) and `.sds-lot__beam` (`pointer-events: none`); the selector lines
+  `.sds-lot__car {` and `.sds-tree {` stand alone.
+- **DT14's art** under `theater/public/art/` (served at `/theater/art/<name>.<ext>`).
+- **DT12** landed `theater/src/page/period.ts` (`PERIOD_PARAM`, `PERIODS`, …) and, in
+  `theater/e2e/helpers/app.ts`: `APP_PATH = "/theater/"`, `PINNED_PERIOD`, `APP_URL`
+  (path + `?period=night`), `openPage(page)` (navigates to `APP_URL` and waits for the
+  reveal), `periodAttribute(page)`. Pre-existing helpers in the same file: `LOT_SCENE`
+  (`'lot'`), `SCREEN` (`a.sds-screen`), `sceneScrollRange`,
+  `scrollToSceneProgress(page, sceneId, progress)`, `scrollToScreen(page, i)`,
+  `screenBandMiddle(i)`, `screenLocator(page, i)`, `worldZ`, `screenLit`, `clipStates`.
+  `screenProgress(i, count)` comes from `../../src/lot/geometry`; `projects` from
+  `../../src/projects` (20 entries; `projects[0].href` is `/projects/budget-app.html`).
+- The suite runs against `pnpm build && pnpm preview` on port 4173
+  (`theater/playwright.config.ts`, one Chromium project at Desktop Chrome, `retries: 0`);
+  `pnpm build` is `tsc --noEmit && vite build`, so a TypeScript error in any spec kills
+  the whole run. Specs assert navigation as `click-through.spec.ts` does:
+  `waitForURL(\`**${href}\`)` then `new URL(page.url()).pathname`. **pnpm 11 forwards a
+  `--` literally**, so filters and flags are passed as `pnpm -C theater exec playwright test <filter>`.
+- `theater/e2e/nginx-parity.sh` curls the served container with `report`, `status_of`,
+  `content_type_of` helpers and checks `/images/nom-noms/01.png` is `image/png`.
+- **Geometry that matters for the click test** (measured 2026-09-08 at 390×720 on the
+  current lot with the wireframe's car box): screens are anchored with their **bottom on
+  the ground line** (58 % down the stage) and grow upward; the car occupies roughly the
+  bottom 20 %. At the middle or end of a screen's own lit band its box ends ~200px above
+  the car; the two boxes first overlap only once that screen has **passed** the camera
+  plane and is exploding across the viewport — at roughly one and a half bands after its
+  band start (world `translateZ ≈ 1200` for screen 0). So the overlap position must be
+  **found by scanning**, never pinned by a formula.
+
+**Out of scope:** any change to `src/` other than what a falsification temporarily
+edits and restores; new art.
+
+Verify this against the actual codebase before proceeding — commits may have landed
+since this roadmap was written.
+</context>
+
+<rules>
+Applicable rules from the shared tier and the vendored law for this phase:
+- **EVO-UNI-061** — each new spec is shown to fail once against a deliberate breakage; a positive overlap is asserted before the click so the click cannot pass vacuously.
+- **EVO-TOOL-071** — waits are on outcomes (`toHaveAttribute`, `expect.poll`, `waitForURL`), never timeouts; the scan uses the settle helper the suite already has.
+- **EVO-TOOL-183** — the transform assertion reads the rendered matrix; the inline placement properties were asserted in DT15's unit tests.
+- **EVO-TOOL-054 / EVO-TOOL-055** — `art.spec.ts` reads alpha from `getImageData()` on a same-origin image.
+- **EVO-UNI-090** — the falsifications back files up and restore them by copy; `git checkout --` is not an undo for uncommitted work.
+- **EVO-UNI-017 / EVO-UNI-018** — behaviour with literal expected values (`-900`, `-100`, `1.05`, `1600×900`).
+- **EVO-TOOL-111** — the parity run needs `rebuild-restart`.
+</rules>
+
+<reference_material>
+Read these files before writing any code:
+- `theater/e2e/helpers/app.ts` — every helper named above and the header's rule that selectors are imported from `src`, never re-typed.
+- `theater/e2e/click-through.spec.ts` — the navigation assertion; `theater/e2e/reduced-motion.spec.ts` — a sweep over sampled progress values with `scrollToSceneProgress` (the pattern the overlap scan follows).
+- `theater/src/lot/build-lot.ts`, `theater/src/lot/scenery.ts`, `theater/src/lot/art.ts` — the constants to import.
+- `theater/e2e/nginx-parity.sh` — the `report`/`content_type_of` helpers to extend.
+- `docs/wireframes/theater-drive-in-theme.html` — the composition the manual check compares against.
+</reference_material>
+
+<constraints>
+- **`e2e/scenery.spec.ts`** (skip the tree assertions under `NO-GO-TREES`): after `openPage`, `.sds-tree` count `=== treePlacements(projects.length).length` and every tree has `data-mask="ready"` with computed `visibility === 'visible'`; the car has `data-car="ready"` and a computed height > 0; the first left tree's computed `transform` parsed by `new DOMMatrixReadOnly(...)` has `m41 === -900`, `m43 === -100`, `m11 === 1.05` (to 3 dp). **Click-through under the car**, in a test that sets `test.use({ viewport: { width: 390, height: 720 } })`: scan `progress` from `screenProgress(0, n)` to `screenProgress(2, n)` in 40 equal steps using `scrollToSceneProgress(page, LOT_SCENE, p)`, at each reading screen 0's and `.sds-lot__car`'s bounding boxes; stop at the **first** sample where they intersect and `expect` that one was found (the geometry note in `<context>` says it will be, about one and a half bands in); at that position take the intersection's centre, assert `document.elementFromPoint(x, y)?.closest('a.sds-screen')` has `data-screen-index="0"`, `page.mouse.click(x, y)`, then `waitForURL` for `projects[0].href`. Import `SCREEN`, `LOT_CAR_CLASS`, `TREE_CLASS`, `MASK_STATE_ATTRIBUTE`, `CAR_STATE_ATTRIBUTE` — never re-type them.
+- **`e2e/art.spec.ts`**: `openPage(page)` first (same origin, so the canvas is not tainted); then for each URL of `artUrls(APP_PATH)` (car only under `NO-GO-TREES`), in the page create an `Image`, await load (a load error is a failure), draw to a canvas and assert: dimensions `1600×900` / `800×1200`; four corner alphas `0`; transparent fraction in `[0.15, 0.85]`; car α > 0 bounding box width `>= 960`; tree bounding-box bottom `>= 0.95 * height`. SVG files load through the same `Image` path at their intrinsic size.
+- **`nginx-parity.sh`**: add `report "/theater/art/car.<ext> is served" 200 …` and a content-type check (`image/png` or `image/svg+xml`), with `<ext>` read by `grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts | grep -oE 'png|svg'` so the script cannot drift from the constant.
+- No spec introduces a `waitForTimeout`; the scan relies on `scrollToSceneProgress`'s settle.
+</constraints>
+
+<branch>
+Check the **Decision records** table before writing any code:
+- `GO` / `GO-REDUCED` → the full `scenery.spec.ts` (the tree count comes from `treePlacements`, so density does not change the spec).
+- `NO-GO-TREES` → no tree assertions; the click-under-the-car test and the car assertions stay; `art.spec.ts` checks the car only.
+</branch>
+
+<build_order>
+
+### 1. Specs
+- [ ] Write `e2e/scenery.spec.ts` and `e2e/art.spec.ts`; extend `nginx-parity.sh`.
+
+### 2. Prove
+- [ ] Typecheck, lint, unit, e2e; `rebuild-restart` and the parity script; compare the served lot with the wireframe in sunset and night at 1440×900 and 390px; run the three falsifications in `<verification>`, restoring each file from its backup.
+
+### 3. Session log
+- [ ] Write the session log per `.claude/skills/writing-session-logs/SKILL.md`.
+
+</build_order>
+
+<verification>
+```bash
+cd /home/evan/EVOsystem/portfolio_site
+pnpm format:check
+pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
+ls theater/e2e/scenery.spec.ts theater/e2e/art.spec.ts
+grep -n 'waitForTimeout' theater/e2e/scenery.spec.ts theater/e2e/art.spec.ts ; echo "exit=$?"     # EVO-TOOL-071: exit=1
+grep -n "closest('a.sds-screen')\|closest(SCREEN)\|closest(\`\${SCREEN}\`)" theater/e2e/scenery.spec.ts   # the positive hit-test
+grep -n 'ART_EXTENSION: ArtExtension' theater/e2e/nginx-parity.sh                          # parity reads the constant
 pnpm -C theater test:e2e                                                                   # green, including scenery and art
 docker compose build && docker compose up -d --force-recreate && bash theater/e2e/nginx-parity.sh   # every line OK, including the art line
-# Falsify (EVO-UNI-061), one per spec, revert each:
+# Falsify (EVO-UNI-061). Files are backed up and restored by copy (EVO-UNI-090): copying is the one form that is
+# safe for both committed and uncommitted files, so every falsification in this roadmap uses it.
+cp theater/src/lot/scenery.ts /tmp/dt16-scenery.ts.bak
 sed -i 's/^export function treePlacements(/export function treePlacements_(/' theater/src/lot/scenery.ts && printf '\nexport function treePlacements(_count: number): readonly TreePlacement[] { return []; }\n' >> theater/src/lot/scenery.ts   # typed stub so `pnpm build` still compiles
-pnpm -C theater test:e2e -- scenery ; echo "scenery exit=$?"                               # non-zero
-git checkout -- theater/src/lot/scenery.ts
+pnpm -C theater exec playwright test scenery ; echo "scenery exit=$?"                     # non-zero (no trees)
+cp /tmp/dt16-scenery.ts.bak theater/src/lot/scenery.ts && cmp /tmp/dt16-scenery.ts.bak theater/src/lot/scenery.ts && echo "scenery.ts restored"
+cp theater/src/styles/global.css /tmp/dt16-global.css.bak
 sed -i 's/^\.sds-lot__car {$/.sds-lot__car { pointer-events: auto !important;/' theater/src/styles/global.css
-pnpm -C theater test:e2e -- scenery ; echo "scenery(car steals click) exit=$?"             # non-zero — the click lands on the car
-git checkout -- theater/src/styles/global.css
-ext=$(grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts | grep -oE 'png|svg'); echo "ext=$ext"; cp "theater/public/art/car.$ext" /tmp/car.bak && printf '\x89PNG\r\n\x1a\n' > "theater/public/art/car.$ext"
-pnpm -C theater test:e2e -- art ; echo "art exit=$?"                                       # non-zero
-cp /tmp/car.bak "theater/public/art/car.$ext" && git diff --quiet -- theater/public/art && echo "art restored"
+pnpm -C theater exec playwright test scenery ; echo "scenery(car steals click) exit=$?"   # non-zero — elementFromPoint returns the car
+cp /tmp/dt16-global.css.bak theater/src/styles/global.css && cmp /tmp/dt16-global.css.bak theater/src/styles/global.css && echo "global.css restored"
+ext=$(grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts | grep -oE 'png|svg'); echo "ext=$ext"
+cp "theater/public/art/car.$ext" /tmp/dt16-car.bak && printf '\x89PNG\r\n\x1a\n' > "theater/public/art/car.$ext"
+pnpm -C theater exec playwright test art ; echo "art exit=$?"                             # non-zero (the image fails to load)
+cp /tmp/dt16-car.bak "theater/public/art/car.$ext" && cmp /tmp/dt16-car.bak "theater/public/art/car.$ext" && echo "car restored"
+git diff --quiet -- theater/src theater/public && echo "tree clean apart from e2e"
 pnpm -C theater test:e2e                                                                   # green again
 ```
 
@@ -809,14 +1001,16 @@ glows that fade by day; a screen passing through the car region is clickable; sc
 back restores the identical frame (`SDS-001`); no `[sds]` warnings in the console.
 Compare with `docs/wireframes/theater-drive-in-theme.html`.
 
-Expected: all greps as noted; unit, e2e and parity green; each of the three
-falsifications fails only the named spec and the reverts restore green; the lot matches
-the wireframe.
+Expected: all greps as noted; unit, e2e and parity green; the first falsification fails
+`scenery` (no trees), the second fails at least `scenery` (the click lands on the car —
+if `click-through` also fails, the car overlaps a band-middle screen at desktop width,
+which is a real finding to record in the Changelog), the third fails `art`; every
+restore prints its line; the lot matches the wireframe.
 </verification>
 
 <commit>
 ```
-feat(dt15): trees, the visitor's wagon and headlight beam; art through the loader; scenery and art specs
+test(dt16): scenery and art Playwright specs; nginx parity for the sprites
 ```
 </commit>
 
