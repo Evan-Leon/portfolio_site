@@ -129,7 +129,11 @@ not paint or the frame rate collapses, and the art phase has no other acceptance
   `filter: brightness(calc(0.35 + 0.65 * var(--sds-screen-lit, 0)))` and two
   `color-mix()` shadows, `.sds-screen__marquee` with `color-mix()` background/border/shadow,
   the 767px narrow block); `theater/src/styles/tokens.css` (the `--sds-*` values the CSS
-  reads). `theater/src/projects.ts` has **20** projects today.
+  reads). `theater/src/projects.ts` has **20** projects today, of which 16 have a real
+  `images/<slug>/demo.mp4` and four (`spead-read`, `media-cloud-web-tools`,
+  `media-cloud-vitals`, `showrunner-digest`) fall back to the poster — so a probe that
+  cycles eight clips across all twenty screens is slightly heavier than production on
+  decoders, which is the right side to err on.
 - The spec (`docs/superpowers/specs/2026-09-08-drive-in-theme-design.md`) fixes what the
   scenery will be, so the probe can build the same thing: trees at
   `x = ±(480 + 420 + dx)`, one per `TREE_SPACING = 400` of Z from `z = -100` (left) and
@@ -375,7 +379,7 @@ Read these files before writing any code:
 cd /home/evan/EVOsystem/portfolio_site
 pnpm format:check
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
-pnpm -C theater exec vitest run --reporter=verbose src/page 2>&1 | grep -E '✓|✗|×' | head -40   # the new suite, all ✓ (pnpm 11 forwards a `--` literally, so `exec` is the only reliable way to pass flags/filters)
+(cd theater && ./node_modules/.bin/vitest run --reporter=verbose src/page) 2>&1 | grep -E '✓|✗|×' | head -40   # the new suite, all ✓ — the binary directly: `pnpm exec vitest … --reporter=verbose` exits 1 with no output because pnpm parses `--reporter` as its OWN flag (measured 2026-09-08), and a `--` is forwarded literally
 awk '/installPeriod\(document.documentElement/{a=NR} /createEngine\(\{/{b=NR} END{exit !(a && b && a<b)}' theater/src/main.ts && echo "period installed before the engine"   # must print
 grep -n "location.search.split\|indexOf('period')" theater/src/page/period.ts ; echo "exit=$?"   # EVO-FE-183: exit=1
 grep -n "APP_URL" theater/e2e/helpers/app.ts theater/e2e/reveal.spec.ts | wc -l      # ≥ 4 (definition, openPage, two reveal gotos)
@@ -385,9 +389,9 @@ pnpm -C theater test:e2e                                                        
 # `git checkout --` cannot restore an untracked file — so back it up and copy it back.
 cp theater/src/page/period.ts /tmp/dt12-period.ts.bak
 sed -i 's/^export function periodForHour(/export function periodForHour_(/' theater/src/page/period.ts && printf '\nexport function periodForHour(_hour: number): Period { return "night"; }\n' >> theater/src/page/period.ts   # typed stub: `pnpm build` (tsc) must still pass so the spec fails on behaviour, not compilation
-pnpm -C theater exec playwright test period ; echo "period exit=$?"                   # non-zero (the two clock-fallback tests)
+(cd theater && ./node_modules/.bin/playwright test period) ; echo "period exit=$?"                   # non-zero (the two clock-fallback tests)
 cp /tmp/dt12-period.ts.bak theater/src/page/period.ts && cmp /tmp/dt12-period.ts.bak theater/src/page/period.ts && echo "period.ts restored"
-pnpm -C theater exec playwright test period ; echo "period exit=$?"                   # 0
+(cd theater && ./node_modules/.bin/playwright test period) ; echo "period exit=$?"                   # 0
 ```
 
 Expected: unit and e2e suites green with the pin; the two greps that guard string
@@ -559,9 +563,9 @@ curl -s -o /dev/null -w '%{http_code}\n' "http://portfolio-site.localhost/theate
 # UNCOMMITTED work — `git checkout --` would erase it — so back it up and copy it back.
 cp theater/src/styles/global.css /tmp/dt13-global.css.bak
 sed -i 's/^\.sds-lot {$/.sds-lot { background: #0a0520 !important;/' theater/src/styles/global.css
-pnpm -C theater exec playwright test period ; echo "period exit=$?"                    # non-zero
+(cd theater && ./node_modules/.bin/playwright test period) ; echo "period exit=$?"                    # non-zero
 cp /tmp/dt13-global.css.bak theater/src/styles/global.css && cmp /tmp/dt13-global.css.bak theater/src/styles/global.css && echo "global.css restored"
-pnpm -C theater exec playwright test period ; echo "period exit=$?"                    # 0
+(cd theater && ./node_modules/.bin/playwright test period) ; echo "period exit=$?"                    # 0
 ```
 
 Manual (browser, `http://portfolio-site.localhost/theater/?period=<p>` for all six, and
@@ -811,7 +815,7 @@ Check the **Decision records** table at the bottom of this roadmap and `ls theat
 cd /home/evan/EVOsystem/portfolio_site
 pnpm format:check
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
-pnpm -C theater exec vitest run --reporter=verbose src/lot 2>&1 | grep -E '✓|✗|×' | head -80    # scenery, art, lot-scene, build-lot, contract — all ✓
+(cd theater && ./node_modules/.bin/vitest run --reporter=verbose src/lot) 2>&1 | grep -E '✓|✗|×' | head -80    # scenery, art, lot-scene, build-lot, contract — all ✓ (binary directly: pnpm swallows `--reporter`)
 grep -rn 'import.meta' theater/src/lot/ --include='*.ts' | grep -v 'lot/lot-scene.ts' ; echo "exit=$?"   # only lot-scene may read the env → exit=1 (works whether or not scenery.ts exists)
 grep -n 'artUrls(import.meta.env.BASE_URL)' theater/src/lot/lot-scene.ts                   # exactly the one call site
 grep -n 'Math.random' theater/src/lot/*.ts ; echo "exit=$?"                                # SDS-001: exit=1
@@ -819,8 +823,8 @@ grep -n 'getBoundingClientRect\|offsetHeight\|offsetWidth' theater/src/lot/*.ts 
 grep -n 'bottom: 42%' theater/src/styles/global.css ; echo "exit=$?"                        # EVO-UNI-057: the wireframe literal never lands → exit=1
 grep -n 'visibility: hidden' theater/src/styles/global.css                                 # the pending/missing tree rule
 grep -n 'aspect-ratio: 16 / 9' theater/src/styles/global.css                               # the car box keeps its height
-grep -n -A12 '^\.sds-lot__car {$' theater/src/styles/global.css | grep -c 'pointer-events: none'   # 1 — the car opts out of hit-testing
-grep -n -A8 '^\.sds-lot__beam {$' theater/src/styles/global.css | grep -c 'pointer-events: none'   # 1
+awk '/^\.sds-lot__car \{$/,/^\}/' theater/src/styles/global.css | grep -c 'pointer-events: none'    # 1 — the car opts out of hit-testing (the whole rule block, so Prettier's line wrapping cannot push the declaration out of a fixed -A window)
+awk '/^\.sds-lot__beam \{$/,/^\}/' theater/src/styles/global.css | grep -c 'pointer-events: none'   # 1
 grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts               # the declaration form DT16 greps
 pnpm -C theater build
 docker compose build && docker compose up -d --force-recreate
@@ -900,7 +904,7 @@ DT15's unit tests cannot see rendering, hit-testing or the served image.
   `pnpm build` is `tsc --noEmit && vite build`, so a TypeScript error in any spec kills
   the whole run. Specs assert navigation as `click-through.spec.ts` does:
   `waitForURL(\`**${href}\`)` then `new URL(page.url()).pathname`. **pnpm 11 forwards a
-  `--` literally**, so filters and flags are passed as `pnpm -C theater exec playwright test <filter>`.
+  `--` literally and parses flags such as `--reporter` as its own**, so filters and flags go to the binaries directly: `(cd theater && ./node_modules/.bin/playwright test <filter>)`, `(cd theater && ./node_modules/.bin/vitest run --reporter=verbose <path>)`.
 - `theater/e2e/nginx-parity.sh` curls the served container with `report`, `status_of`,
   `content_type_of` helpers and checks `/images/nom-noms/01.png` is `image/png`.
 - **Geometry that matters for the click test** (measured 2026-09-08 at 390×720 on the
@@ -909,8 +913,12 @@ DT15's unit tests cannot see rendering, hit-testing or the served image.
   bottom 20 %. At the middle or end of a screen's own lit band its box ends ~200px above
   the car; the two boxes first overlap only once that screen has **passed** the camera
   plane and is exploding across the viewport — at roughly one and a half bands after its
-  band start (world `translateZ ≈ 1200` for screen 0). So the overlap position must be
-  **found by scanning**, never pinned by a formula.
+  band start. Measured with a 30-sample scan on 2026-09-08: first overlap at progress
+  ≈ 0.069 (world `translateZ ≈ 1160`), where `elementFromPoint` at the intersection's
+  centre returns `span.sds-screen__base` inside screen 0's link and
+  `.closest('a.sds-screen')` is index 0; with the car forced to `pointer-events: auto`
+  the same point returns `div.sds-lot__car`. So the overlap position must be **found by
+  scanning**, never pinned by a formula, and the scan reliably finds it.
 
 **Out of scope:** any change to `src/` other than what a falsification temporarily
 edits and restores; new art.
@@ -940,7 +948,7 @@ Read these files before writing any code:
 </reference_material>
 
 <constraints>
-- **`e2e/scenery.spec.ts`** (skip the tree assertions under `NO-GO-TREES`): after `openPage`, `.sds-tree` count `=== treePlacements(projects.length).length` and every tree has `data-mask="ready"` with computed `visibility === 'visible'`; the car has `data-car="ready"` and a computed height > 0; the first left tree's computed `transform` parsed by `new DOMMatrixReadOnly(...)` has `m41 === -900`, `m43 === -100`, `m11 === 1.05` (to 3 dp). **Click-through under the car**, in a test that sets `test.use({ viewport: { width: 390, height: 720 } })`: scan `progress` from `screenProgress(0, n)` to `screenProgress(2, n)` in 40 equal steps using `scrollToSceneProgress(page, LOT_SCENE, p)`, at each reading screen 0's and `.sds-lot__car`'s bounding boxes; stop at the **first** sample where they intersect and `expect` that one was found (the geometry note in `<context>` says it will be, about one and a half bands in); at that position take the intersection's centre, assert `document.elementFromPoint(x, y)?.closest('a.sds-screen')` has `data-screen-index="0"`, `page.mouse.click(x, y)`, then `waitForURL` for `projects[0].href`. Import `SCREEN`, `LOT_CAR_CLASS`, `TREE_CLASS`, `MASK_STATE_ATTRIBUTE`, `CAR_STATE_ATTRIBUTE` — never re-type them.
+- **`e2e/scenery.spec.ts`** (skip the tree assertions under `NO-GO-TREES`): after `openPage`, `.sds-tree` count `=== treePlacements(projects.length).length` and every tree has `data-mask="ready"` with computed `visibility === 'visible'`; **the first tree's computed `mask-image` (and `-webkit-mask-image`) contains `art/tree-1.`** — the attribute and visibility alone cannot see a mask that was later lost (a tree forced to `mask-image: none` still reads `ready` and `visible`, measured 2026-09-08) and a lost mask paints a filled rectangle; the car has `data-car="ready"` and a computed height > 0; the first left tree's computed `transform` parsed by `new DOMMatrixReadOnly(...)` has `m41 === -900`, `m43 === -100`, `m11 === 1.05` (to 3 dp). **Click-through under the car**, in a test that sets `test.use({ viewport: { width: 390, height: 720 } })`: scan `progress` from `screenProgress(0, n)` to `screenProgress(2, n)` in 40 equal steps using `scrollToSceneProgress(page, LOT_SCENE, p)`, at each reading screen 0's and `.sds-lot__car`'s bounding boxes; stop at the **first** sample where they intersect and `expect` that one was found (the geometry note in `<context>` says it will be, about one and a half bands in); at that position take the intersection's centre, assert `document.elementFromPoint(x, y)?.closest('a.sds-screen')` has `data-screen-index="0"`, `page.mouse.click(x, y)`, then `waitForURL` for `projects[0].href`. Import `SCREEN`, `LOT_CAR_CLASS`, `TREE_CLASS`, `MASK_STATE_ATTRIBUTE`, `CAR_STATE_ATTRIBUTE` — never re-type them.
 - **`e2e/art.spec.ts`**: `openPage(page)` first (same origin, so the canvas is not tainted); then for each URL of `artUrls(APP_PATH)` (car only under `NO-GO-TREES`), in the page create an `Image`, await load (a load error is a failure), draw to a canvas and assert: dimensions `1600×900` / `800×1200`; four corner alphas `0`; transparent fraction in `[0.15, 0.85]`; car α > 0 bounding box width `>= 960`; tree bounding-box bottom `>= 0.95 * height`. SVG files load through the same `Image` path at their intrinsic size.
 - **`nginx-parity.sh`**: add `report "/theater/art/car.<ext> is served" 200 …` and a content-type check (`image/png` or `image/svg+xml`), with `<ext>` read by `grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts | grep -oE 'png|svg'` so the script cannot drift from the constant.
 - No spec introduces a `waitForTimeout`; the scan relies on `scrollToSceneProgress`'s settle.
@@ -980,15 +988,15 @@ docker compose build && docker compose up -d --force-recreate && bash theater/e2
 # safe for both committed and uncommitted files, so every falsification in this roadmap uses it.
 cp theater/src/lot/scenery.ts /tmp/dt16-scenery.ts.bak
 sed -i 's/^export function treePlacements(/export function treePlacements_(/' theater/src/lot/scenery.ts && printf '\nexport function treePlacements(_count: number): readonly TreePlacement[] { return []; }\n' >> theater/src/lot/scenery.ts   # typed stub so `pnpm build` still compiles
-pnpm -C theater exec playwright test scenery ; echo "scenery exit=$?"                     # non-zero (no trees)
+(cd theater && ./node_modules/.bin/playwright test scenery) ; echo "scenery exit=$?"                     # non-zero (no trees)
 cp /tmp/dt16-scenery.ts.bak theater/src/lot/scenery.ts && cmp /tmp/dt16-scenery.ts.bak theater/src/lot/scenery.ts && echo "scenery.ts restored"
 cp theater/src/styles/global.css /tmp/dt16-global.css.bak
 sed -i 's/^\.sds-lot__car {$/.sds-lot__car { pointer-events: auto !important;/' theater/src/styles/global.css
-pnpm -C theater exec playwright test scenery ; echo "scenery(car steals click) exit=$?"   # non-zero — elementFromPoint returns the car
+(cd theater && ./node_modules/.bin/playwright test scenery) ; echo "scenery(car steals click) exit=$?"   # non-zero — elementFromPoint returns the car
 cp /tmp/dt16-global.css.bak theater/src/styles/global.css && cmp /tmp/dt16-global.css.bak theater/src/styles/global.css && echo "global.css restored"
 ext=$(grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts | grep -oE 'png|svg'); echo "ext=$ext"
 cp "theater/public/art/car.$ext" /tmp/dt16-car.bak && printf '\x89PNG\r\n\x1a\n' > "theater/public/art/car.$ext"
-pnpm -C theater exec playwright test art ; echo "art exit=$?"                             # non-zero (the image fails to load)
+(cd theater && ./node_modules/.bin/playwright test art) ; echo "art exit=$?"                             # non-zero (the image fails to load)
 cp /tmp/dt16-car.bak "theater/public/art/car.$ext" && cmp /tmp/dt16-car.bak "theater/public/art/car.$ext" && echo "car restored"
 git diff --quiet -- theater/src theater/public && echo "tree clean apart from e2e"
 pnpm -C theater test:e2e                                                                   # green again
@@ -1019,7 +1027,10 @@ test(dt16): scenery and art Playwright specs; nginx parity for the sprites
 After this phase, portfolio_site's `/theater/` is a drive-in: the visitor's wagon on a
 marked road, trees lining the lot, a sky and lighting that follow the visitor's clock,
 every screen still a link — proven by unit tests, the conformance kit, Playwright and
-the nginx parity check.
+the nginx parity check. What the browser proof covers, exactly: the click-through under
+the car is measured for **screen 0 at a 390×720 viewport in Chromium**; it generalises to
+the other screens and viewports only through the `pointer-events: none` rule that the
+falsification shows is load-bearing, not through a per-screen sweep.
 
 This is the final phase. The completed roadmap gives the portfolio a drive-in that
 changes with the hour; a later roadmap could add ambient sound or a period toggle, both
