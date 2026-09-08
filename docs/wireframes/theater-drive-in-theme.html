@@ -105,6 +105,9 @@
         --sds-orb-size: 56px;
         --sds-orb-halo-size: 40px;
         --sds-beam: rgba(255, 236, 190, 0.42);
+        /* road markings — period-independent */
+        --sds-road-line: #e8c547;
+        --sds-road-edge: rgba(240, 240, 255, 0.35);
       }
 
       /* ---- DAWN 05:00–07:59 — indigo giving way to peach; sun just up, low
@@ -446,6 +449,9 @@
         transform-style: preserve-3d;
       }
       .lot__ground::after {
+        /* THE ROAD (Evan, wireframe review 2026-09-08): a darker asphalt lane,
+           two edge lines and a dashed yellow centre line. All on the ground plane,
+           so they recede with the perspective. Dash length 140px of Z, gap 180px. */
         content: "";
         position: absolute;
         left: 50%;
@@ -453,7 +459,11 @@
         width: 420px;
         height: 100%;
         margin-left: -210px;
-        background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.06), transparent);
+        background:
+          repeating-linear-gradient(180deg, var(--sds-road-line) 0 140px, transparent 140px 320px)
+            center top / 14px 100% no-repeat,
+          linear-gradient(90deg, var(--sds-road-edge) 0 4px, transparent 4px calc(100% - 4px), var(--sds-road-edge) calc(100% - 4px)),
+          color-mix(in srgb, var(--sds-asphalt) 78%, black);
       }
 
       /* ---- trees ----------------------------------------------------------
@@ -721,42 +731,51 @@
       <div class="lot__world">
         <div class="lot__ground"></div>
 
-        <!-- trees: left column then right column; z folds in the same +200 depicted lotZ -->
-        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -100px; --tree-scale: 1.05"></span>
-        <span class="tree tree--2 tree--left" style="--tree-x: -960px; --tree-z: -500px; --tree-scale: 0.9"></span>
-        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -900px; --tree-scale: 1.15"></span>
-        <span class="tree tree--1 tree--left" style="--tree-x: -940px; --tree-z: -1300px; --tree-scale: 0.95"></span>
-        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -1700px; --tree-scale: 1.1"></span>
-        <span class="tree tree--3 tree--left" style="--tree-x: -980px; --tree-z: -2100px; --tree-scale: 1"></span>
-        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -2500px; --tree-scale: 1.05"></span>
-        <span class="tree tree--2 tree--left" style="--tree-x: -940px; --tree-z: -2900px; --tree-scale: 0.9"></span>
-        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -3300px; --tree-scale: 1.15"></span>
-        <span class="tree tree--1 tree--left" style="--tree-x: -960px; --tree-z: -3700px; --tree-scale: 1"></span>
-        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -4100px; --tree-scale: 1.05"></span>
-        <span class="tree tree--3 tree--left" style="--tree-x: -940px; --tree-z: -4500px; --tree-scale: 0.95"></span>
-        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -4900px; --tree-scale: 1.1"></span>
-        <span class="tree tree--2 tree--left" style="--tree-x: -980px; --tree-z: -5300px; --tree-scale: 1"></span>
-        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -5700px; --tree-scale: 1.05"></span>
-        <span class="tree tree--1 tree--left" style="--tree-x: -940px; --tree-z: -6100px; --tree-scale: 0.9"></span>
-        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -6500px; --tree-scale: 1.15"></span>
+        <!-- trees: generated from the spec's TREE_JITTER table for count = 8
+             (treePlacements(8) is 20 left + 20 right); z carries the same +200
+             depicted lotZ the screens do, so the first left tree sits just behind
+             the camera. -->
+        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: 100px; --tree-scale: 1.05"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -960px; --tree-z: -300px; --tree-scale: 0.9"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -700px; --tree-scale: 1.15"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -940px; --tree-z: -1100px; --tree-scale: 0.95"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -1500px; --tree-scale: 1.1"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -980px; --tree-z: -1900px; --tree-scale: 1.0"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -2300px; --tree-scale: 1.05"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -940px; --tree-z: -2700px; --tree-scale: 0.9"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -3100px; --tree-scale: 1.05"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -960px; --tree-z: -3500px; --tree-scale: 0.9"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -3900px; --tree-scale: 1.15"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -940px; --tree-z: -4300px; --tree-scale: 0.95"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -4700px; --tree-scale: 1.1"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -980px; --tree-z: -5100px; --tree-scale: 1.0"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -5500px; --tree-scale: 1.05"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -940px; --tree-z: -5900px; --tree-scale: 0.9"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -6300px; --tree-scale: 1.05"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -960px; --tree-z: -6700px; --tree-scale: 0.9"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -7100px; --tree-scale: 1.15"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -940px; --tree-z: -7500px; --tree-scale: 0.95"></span>
 
-        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -300px; --tree-scale: 1"></span>
-        <span class="tree tree--3 tree--right" style="--tree-x: 950px; --tree-z: -700px; --tree-scale: 1.1"></span>
-        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -1100px; --tree-scale: 0.95"></span>
-        <span class="tree tree--2 tree--right" style="--tree-x: 980px; --tree-z: -1500px; --tree-scale: 1.05"></span>
-        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -1900px; --tree-scale: 0.9"></span>
-        <span class="tree tree--1 tree--right" style="--tree-x: 940px; --tree-z: -2300px; --tree-scale: 1.15"></span>
-        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -2700px; --tree-scale: 1"></span>
-        <span class="tree tree--3 tree--right" style="--tree-x: 960px; --tree-z: -3100px; --tree-scale: 1.05"></span>
-        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -3500px; --tree-scale: 0.95"></span>
-        <span class="tree tree--2 tree--right" style="--tree-x: 940px; --tree-z: -3900px; --tree-scale: 1.1"></span>
-        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -4300px; --tree-scale: 1"></span>
-        <span class="tree tree--1 tree--right" style="--tree-x: 980px; --tree-z: -4700px; --tree-scale: 0.9"></span>
-        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -5100px; --tree-scale: 1.15"></span>
-        <span class="tree tree--3 tree--right" style="--tree-x: 950px; --tree-z: -5500px; --tree-scale: 1.05"></span>
-        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -5900px; --tree-scale: 1"></span>
-        <span class="tree tree--2 tree--right" style="--tree-x: 940px; --tree-z: -6300px; --tree-scale: 0.95"></span>
-        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -6700px; --tree-scale: 1.1"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 940px; --tree-z: -100px; --tree-scale: 0.95"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -500px; --tree-scale: 1.1"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 980px; --tree-z: -900px; --tree-scale: 1.0"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -1300px; --tree-scale: 1.05"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 940px; --tree-z: -1700px; --tree-scale: 0.9"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -2100px; --tree-scale: 1.05"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 960px; --tree-z: -2500px; --tree-scale: 0.9"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -2900px; --tree-scale: 1.15"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 940px; --tree-z: -3300px; --tree-scale: 0.95"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -3700px; --tree-scale: 1.1"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 980px; --tree-z: -4100px; --tree-scale: 1.0"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -4500px; --tree-scale: 1.05"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 940px; --tree-z: -4900px; --tree-scale: 0.9"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -5300px; --tree-scale: 1.05"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 960px; --tree-z: -5700px; --tree-scale: 0.9"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -6100px; --tree-scale: 1.15"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 940px; --tree-z: -6500px; --tree-scale: 0.95"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -6900px; --tree-scale: 1.1"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 980px; --tree-z: -7300px; --tree-scale: 1.0"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -7700px; --tree-scale: 1.05"></span>
 
         <a class="screen screen--lit" href="/projects/budget-app.html">
           <span class="screen__surface"><img src="../../images/budget-app/01.png" alt="" /></span>
@@ -829,7 +848,7 @@
         <!-- placeholder rear-view car at the art contract's 16:9 canvas -->
         <img
           alt=""
-          src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'><defs><linearGradient id='b' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%236b3fb0'/><stop offset='1' stop-color='%23241540'/></linearGradient></defs><rect x='330' y='790' width='160' height='90' rx='20' fill='%23120c1c'/><rect x='1110' y='790' width='160' height='90' rx='20' fill='%23120c1c'/><path d='M420 330 C480 260 560 230 800 230 C1040 230 1120 260 1180 330 L1250 470 L1290 500 C1350 520 1380 560 1380 620 L1380 780 C1380 810 1360 830 1330 830 L270 830 C240 830 220 810 220 780 L220 620 C220 560 250 520 310 500 L350 470 Z' fill='url(%23b)'/><path d='M470 340 C520 290 590 270 800 270 C1010 270 1080 290 1130 340 L1185 460 L415 460 Z' fill='%230b0616'/><rect x='250' y='560' width='230' height='70' rx='18' fill='%23ff4a44'/><rect x='1120' y='560' width='230' height='70' rx='18' fill='%23ff4a44'/><rect x='730' y='690' width='140' height='70' rx='8' fill='%23e8e6f5'/><rect x='200' y='760' width='1200' height='40' rx='12' fill='%2318102a'/></svg>"
+          src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'><rect x='330' y='790' width='170' height='90' rx='22' fill='%23120c1c'/><rect x='1100' y='790' width='170' height='90' rx='22' fill='%23120c1c'/><rect x='470' y='150' width='660' height='34' rx='10' fill='%23c9c3b8'/><rect x='520' y='120' width='14' height='40' fill='%23c9c3b8'/><rect x='1066' y='120' width='14' height='40' fill='%23c9c3b8'/><path d='M300 330 C310 250 360 190 440 180 L1160 180 C1240 190 1290 250 1300 330 L1320 560 L1320 790 C1320 815 1300 830 1275 830 L325 830 C300 830 280 815 280 790 L280 560 Z' fill='%23b9a38a'/><rect x='280' y='150' width='1040' height='50' rx='14' fill='%23e9e2d6'/><rect x='320' y='560' width='960' height='170' rx='10' fill='%237a4b26'/><rect x='320' y='560' width='960' height='170' rx='10' fill='none' stroke='%23e0c99a' stroke-width='8'/><rect x='380' y='215' width='840' height='300' rx='22' fill='%230b0616'/><path d='M540 515 C540 440 600 420 640 420 C690 420 740 445 740 515 Z' fill='%232a1a30'/><circle cx='640' cy='392' r='48' fill='%23e8c5a0'/><path d='M860 515 C860 440 920 420 960 420 C1010 420 1060 445 1060 515 Z' fill='%232a1a30'/><circle cx='960' cy='392' r='48' fill='%23e8c5a0'/><path d='M1035 372 L1075 300 L1095 320 L1070 380 Z' fill='%23e8c5a0'/><rect x='300' y='560' width='60' height='170' rx='8' fill='%23ff4a44'/><rect x='1240' y='560' width='60' height='170' rx='8' fill='%23ff4a44'/><rect x='260' y='740' width='1080' height='56' rx='14' fill='%23d9d6d2'/><rect x='700' y='752' width='200' height='34' rx='6' fill='%23f2efe8'/></svg>"
         />
       </div>
     </div>
