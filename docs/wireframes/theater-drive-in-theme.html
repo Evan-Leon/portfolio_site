@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="en" data-period="night">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wireframe — /theater/ drive-in theme (car, trees, time of day)</title>
+    <!--
+      Candidate wireframe for the drive-in THEME overhaul (spec:
+      docs/superpowers/specs/2026-09-08-drive-in-theme-design.md, phases DT12 and
+      DT14). It extends the approved docs/wireframes/theater.html — same lot, same
+      screens, same static frame at progress ≈ 0.12 — and adds:
+
+        1. SIX TIME-OF-DAY PERIODS. `data-period` on <html> selects a token block
+           (dawn / morning / afternoon / sunset / evening / night — jourNOW's hour
+           bands: 05–07 / 08–11 / 12–16 / 17–19 / 20–21 / 22–04). The built page
+           sets the attribute from the visitor's clock, or from `?period=` when
+           present. The base :root values ARE night, so a root with no attribute
+           renders today's theater unchanged. The switcher in the top-right is
+           WIREFRAME-ONLY (never shipped) — it just sets the attribute so every sky
+           can be reviewed from one file. `?period=<name>` also works here.
+        2. TREES: one masked plane per half-band on each side of the lane, set back
+           beyond the screens' x offset so they frame the drive and never sit in
+           front of a screen. Each is a `mask-image` PNG (here: an inline SVG
+           placeholder — DT13's generated silhouettes replace it) filled with the
+           period's `--sds-tree` colour. They live INSIDE .lot__world, so the one
+           drive tween moves them with the screens. pointer-events: none.
+        3. THE VISITOR'S CAR: a rear-view sprite anchored to the bottom centre of
+           the STAGE (not the world) — the lot drives past it. A headlight beam on
+           the road ahead and two tail-light glows are CSS gradients whose opacity
+           is the period's `--sds-headlight` token (1 at night, 0 at noon).
+           pointer-events: none, aria-hidden. The car image here is an inline SVG
+           placeholder at the contract's 16:9 canvas; DT13's generated sprite
+           replaces it at theater/public/art/car.png.
+        4. A SUN / MOON ORB (`.lot__orb`) on the stage, positioned per period.
+        5. LIGHTING ROLES: `--sds-unlit-floor` (an unlit screen's brightness — 0.35
+           at night, up to 0.75 in daylight so switched-off screens are not black
+           holes in a bright lot), `--sds-glow` (marquee/screen halo strength),
+           `--sds-star-alpha` (the star layer's opacity).
+
+      Open directly (file://). Resize below 768px for the narrow layout. Poster
+      images are the real images/<slug>/01.png files, referenced relatively.
+
+      Tokens: the :root block is a COPY of theater/src/styles/tokens.css's lot
+      roles (night), plus the NEW roles and the six period blocks proposed for
+      DT12. DT12 transcribes these values into tokens.css; this file is the
+      approved source for them.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ---- tokens: site palette (copy of assets/css/styles.css :root) ------ */
+      :root {
+        --deep-space: #0a0520;
+        --void: #0f0a2a;
+        --nebula-gradient: linear-gradient(135deg, #7c3aed, #3b82f6);
+        --star-white: #f0f0ff;
+        --body-text: #a0a8c8;
+        --muted: #6b7280;
+        --label-blue: #7c8aff;
+        --purple-accent: #7c3aed;
+        --light-purple: #c4b5fd;
+        --purple-border-subtle: rgba(124, 58, 237, 0.2);
+        --footer-bg: #060315;
+        --footer-text: #4a4a6a;
+        --blue-pill-text: #93c5fd;
+        --font-primary: "Inter", system-ui, -apple-system, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, monospace;
+        --section-padding: 5rem 2rem;
+
+        /* ---- lot roles as they exist in theater/src/styles/tokens.css ----- */
+        --sds-marquee: #d4a862;
+        --sds-marquee-dim: #6b5a2a;
+        --sds-marquee-ink: #2b1d05;
+        --sds-marquee-edge: #3b2f12;
+        --sds-marquee-edge-lit: #8a6a35;
+        --sds-screen-dark: #000000;
+        --sds-screen-bezel: #1a1633;
+        --sds-screen-post: linear-gradient(90deg, #26203f, #100c22);
+        --sds-star: #f0f0ff;
+        --sds-star-warm: #c4b5fd;
+        --sds-star-cool: #93c5fd;
+        --sds-accent: #7c3aed;
+
+        /* ---- NIGHT = the base. These are today's values (sky stops from the
+         *      existing --sds-sky gradient; asphalt unchanged) plus the NEW roles.
+         *      Every period block below restates ONLY these. ------------------ */
+        --sds-sky-top: #0a0520;
+        --sds-sky-mid: #0d1033;
+        --sds-sky-low: #120a2e;
+        --sds-asphalt: #14102b;
+        --sds-asphalt-far: #0a0520;
+        --sds-star-alpha: 1;
+        --sds-tree: #05030f;
+        --sds-unlit-floor: 0.35;
+        --sds-glow: 1;
+        --sds-headlight: 1;
+        --sds-orb: #e9e7f7;
+        --sds-orb-halo: rgba(233, 231, 247, 0.35);
+        --sds-orb-x: 78%;
+        --sds-orb-y: 13%;
+        --sds-orb-size: 56px;
+        --sds-orb-halo-size: 40px;
+        --sds-beam: rgba(255, 236, 190, 0.42);
+      }
+
+      /* ---- DAWN 05:00–07:59 — indigo giving way to peach; sun just up, low
+       *      left; stars fading; headlights still on. ---------------------- */
+      :root[data-period="dawn"] {
+        --sds-sky-top: #3a3a6e;
+        --sds-sky-mid: #d88a9a;
+        --sds-sky-low: #fbd3b8;
+        --sds-asphalt: #3a3048;
+        --sds-asphalt-far: #201a2c;
+        --sds-star-alpha: 0.35;
+        --sds-tree: #1e2438;
+        --sds-unlit-floor: 0.5;
+        --sds-glow: 0.6;
+        --sds-headlight: 0.8;
+        --sds-orb: #ffc8a0;
+        --sds-orb-halo: rgba(255, 200, 160, 0.55);
+        --sds-orb-x: 20%;
+        --sds-orb-y: 46%;
+        --sds-orb-size: 96px;
+        --sds-orb-halo-size: 90px;
+      }
+
+      /* ---- MORNING 08:00–11:59 — clear blue with a golden haze at the
+       *      horizon; sun mid-left; no stars, no headlights. --------------- */
+      :root[data-period="morning"] {
+        --sds-sky-top: #5b93d8;
+        --sds-sky-mid: #a6cdf0;
+        --sds-sky-low: #f6e7b8;
+        --sds-asphalt: #48485a;
+        --sds-asphalt-far: #2c2c3c;
+        --sds-star-alpha: 0;
+        --sds-tree: #2e5a34;
+        --sds-unlit-floor: 0.7;
+        --sds-glow: 0.3;
+        --sds-headlight: 0;
+        --sds-orb: #fff0a0;
+        --sds-orb-halo: rgba(255, 240, 160, 0.5);
+        --sds-orb-x: 22%;
+        --sds-orb-y: 20%;
+        --sds-orb-size: 84px;
+        --sds-orb-halo-size: 80px;
+      }
+
+      /* ---- AFTERNOON 12:00–16:59 — high pale sun, washed sky, grey asphalt;
+       *      screens at their brightest floor. --------------------------- */
+      :root[data-period="afternoon"] {
+        --sds-sky-top: #3b78c8;
+        --sds-sky-mid: #8ec0ea;
+        --sds-sky-low: #d8e8f4;
+        --sds-asphalt: #4a4a58;
+        --sds-asphalt-far: #2e2e3a;
+        --sds-star-alpha: 0;
+        --sds-tree: #234a2a;
+        --sds-unlit-floor: 0.75;
+        --sds-glow: 0.2;
+        --sds-headlight: 0;
+        --sds-orb: #fff8d0;
+        --sds-orb-halo: rgba(255, 248, 208, 0.45);
+        --sds-orb-x: 32%;
+        --sds-orb-y: 7%;
+        --sds-orb-size: 90px;
+        --sds-orb-halo-size: 70px;
+      }
+
+      /* ---- SUNSET 17:00–19:59 — the signature drive-in sky: plum to coral to
+       *      amber; big low sun right; headlights half on. --------------- */
+      :root[data-period="sunset"] {
+        --sds-sky-top: #2a1440;
+        --sds-sky-mid: #c2502e;
+        --sds-sky-low: #f0a050;
+        --sds-asphalt: #2a1c24;
+        --sds-asphalt-far: #140c14;
+        --sds-star-alpha: 0;
+        --sds-tree: #1a0e14;
+        --sds-unlit-floor: 0.5;
+        --sds-glow: 0.6;
+        --sds-headlight: 0.5;
+        --sds-orb: #ffb060;
+        --sds-orb-halo: rgba(255, 176, 96, 0.6);
+        --sds-orb-x: 50%;
+        --sds-orb-y: 36%;
+        --sds-orb-size: 112px;
+        --sds-orb-halo-size: 120px;
+      }
+
+      /* ---- EVENING 20:00–21:59 — warm indigo, an amber band at the horizon,
+       *      moon low right, stars coming out. --------------------------- */
+      :root[data-period="evening"] {
+        --sds-sky-top: #0e1020;
+        --sds-sky-mid: #241a3a;
+        --sds-sky-low: #4a2a3a;
+        --sds-asphalt: #16122c;
+        --sds-asphalt-far: #0c0818;
+        --sds-star-alpha: 0.6;
+        --sds-tree: #0b0818;
+        --sds-unlit-floor: 0.4;
+        --sds-glow: 0.9;
+        --sds-headlight: 1;
+        --sds-orb: #f2e9c8;
+        --sds-orb-halo: rgba(242, 233, 200, 0.35);
+        --sds-orb-x: 84%;
+        --sds-orb-y: 28%;
+        --sds-orb-size: 44px;
+        --sds-orb-halo-size: 36px;
+      }
+
+      /* ---- NIGHT 22:00–04:59 — the base :root above. Restated so the
+       *      attribute is never "missing" in the built page's CSS either. --- */
+      :root[data-period="night"] {
+        --sds-star-alpha: 1;
+      }
+
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        background: var(--deep-space);
+        color: var(--body-text);
+        font-family: var(--font-primary);
+        line-height: 1.6;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      /* ---- annotations + switcher (wireframe only, never shipped) --------- */
+      .note {
+        position: absolute;
+        z-index: 50;
+        font: 11px/1.4 var(--font-mono);
+        color: #fde68a;
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px dashed #fde68a;
+        padding: 4px 8px;
+        border-radius: 4px;
+        max-width: 280px;
+      }
+      .switcher {
+        position: fixed;
+        top: 3.5rem;
+        right: 1rem;
+        z-index: 60;
+        display: flex;
+        gap: 4px;
+        padding: 6px;
+        background: rgba(0, 0, 0, 0.7);
+        border: 1px dashed #fde68a;
+        border-radius: 6px;
+        font: 11px var(--font-mono);
+      }
+      .switcher button {
+        font: inherit;
+        color: #fde68a;
+        background: transparent;
+        border: 1px solid #fde68a;
+        border-radius: 4px;
+        padding: 2px 6px;
+        cursor: pointer;
+      }
+      .switcher button[aria-pressed="true"] {
+        background: #fde68a;
+        color: #000;
+      }
+
+      /* ---- chrome ---------------------------------------------------------- */
+      .chrome__bar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 2px;
+        width: 12%;
+        background: var(--nebula-gradient);
+        z-index: 40;
+      }
+      .chrome {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 2rem;
+        z-index: 40;
+        backdrop-filter: blur(8px);
+      }
+      .chrome__logo {
+        color: var(--star-white);
+        font-weight: 700;
+      }
+      .chrome__percent {
+        font: 12px var(--font-mono);
+        color: var(--muted);
+      }
+
+      /* ---- beats (unchanged from theater.html) ---------------------------- */
+      .beat {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        padding: var(--section-padding);
+        position: relative;
+      }
+      .eyebrow {
+        font: 12px var(--font-mono);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--label-blue);
+        margin-bottom: 1rem;
+      }
+      .beat h1 {
+        font-size: clamp(2.5rem, 6vw, 4.5rem);
+        font-weight: 800;
+        color: var(--star-white);
+        letter-spacing: -0.02em;
+        line-height: 1.05;
+      }
+      .beat h2 {
+        font-size: clamp(1.75rem, 4vw, 2.5rem);
+        font-weight: 700;
+        color: var(--star-white);
+      }
+      .beat p.lede {
+        max-width: 34rem;
+        margin: 1.25rem auto 2rem;
+        font-size: 1.125rem;
+      }
+      .hint {
+        font: 12px var(--font-mono);
+        color: var(--muted);
+        letter-spacing: 0.15em;
+      }
+      .btn {
+        display: inline-block;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        margin: 0 0.5rem;
+      }
+      .btn--primary {
+        background: var(--nebula-gradient);
+        color: var(--star-white);
+      }
+      .btn--secondary {
+        border: 1px solid var(--purple-border-subtle);
+        color: var(--light-purple);
+      }
+
+      /* ---- the lot ---------------------------------------------------------
+       * Sky is the three period stops. The stars moved off the background
+       * stack onto ::before so their opacity is one token. --------------- */
+      .lot {
+        position: relative;
+        height: 100vh;
+        overflow: hidden;
+        perspective: 900px;
+        perspective-origin: 50% 42%;
+        background: linear-gradient(
+          180deg,
+          var(--sds-sky-top) 0%,
+          var(--sds-sky-mid) 45%,
+          var(--sds-sky-low) 100%
+        );
+      }
+      .lot::before {
+        /* the star layer — `.sds-lot__stars` role; opacity = --sds-star-alpha */
+        content: "";
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        opacity: var(--sds-star-alpha);
+        background:
+          radial-gradient(1px 1px at 12% 18%, var(--sds-star) 50%, transparent 51%),
+          radial-gradient(1px 1px at 28% 9%, var(--sds-star) 50%, transparent 51%),
+          radial-gradient(1.5px 1.5px at 41% 22%, var(--sds-star-warm) 50%, transparent 51%),
+          radial-gradient(1px 1px at 57% 12%, var(--sds-star) 50%, transparent 51%),
+          radial-gradient(1px 1px at 66% 27%, var(--sds-star) 50%, transparent 51%),
+          radial-gradient(1.5px 1.5px at 78% 8%, var(--sds-star-cool) 50%, transparent 51%),
+          radial-gradient(1px 1px at 88% 19%, var(--sds-star) 50%, transparent 51%),
+          radial-gradient(1px 1px at 5% 31%, var(--sds-star) 50%, transparent 51%),
+          radial-gradient(1px 1px at 94% 34%, var(--sds-star) 50%, transparent 51%),
+          radial-gradient(1px 1px at 49% 4%, var(--sds-star) 50%, transparent 51%);
+      }
+      .lot__orb {
+        /* sun or moon: one element, per-period position/size/colour/halo */
+        position: absolute;
+        z-index: 0;
+        left: var(--sds-orb-x);
+        top: var(--sds-orb-y);
+        width: var(--sds-orb-size);
+        height: var(--sds-orb-size);
+        margin: calc(var(--sds-orb-size) / -2) 0 0 calc(var(--sds-orb-size) / -2);
+        border-radius: 50%;
+        background: var(--sds-orb);
+        box-shadow: 0 0 var(--sds-orb-halo-size) var(--sds-orb-halo);
+        pointer-events: none;
+      }
+      .lot__world {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        transform-style: preserve-3d;
+        transform: translateZ(0);
+        pointer-events: none;
+      }
+      .lot__ground {
+        position: absolute;
+        left: 50%;
+        top: 58%;
+        width: 4000px;
+        /* DEPTH FROM GEOMETRY, NOT 4800px. theater.html's plane is 4800px deep and
+           starts at the camera (z = 0): below the horizon at progress 0, and under
+           the whole back half of a 20-screen lot (16 800px deep), the viewport shows
+           sky-low, not asphalt — invisible at night because the two colours match,
+           glaring under a daylight sky. The built page writes --sds-ground-depth
+           (lotZ(1, count) + 5·SPACING) and --sds-ground-lead (SPACING, how far in
+           front of the camera the near edge starts) from lot/geometry.ts. */
+        height: 20800px;
+        margin-left: -2000px;
+        transform-origin: 50% 0;
+        transform: translateZ(800px) rotateX(-90deg);
+        background:
+          repeating-linear-gradient(180deg, transparent 0 780px, rgba(240, 240, 255, 0.05) 780px 784px),
+          linear-gradient(180deg, var(--sds-asphalt) 0%, var(--sds-asphalt-far) 70%);
+        transform-style: preserve-3d;
+      }
+      .lot__ground::after {
+        content: "";
+        position: absolute;
+        left: 50%;
+        top: 0;
+        width: 420px;
+        height: 100%;
+        margin-left: -210px;
+        background: linear-gradient(90deg, transparent, rgba(124, 58, 237, 0.06), transparent);
+      }
+
+      /* ---- trees ----------------------------------------------------------
+       * `.sds-tree` in the built page. Bottom on the ground line, placed by
+       * three custom properties exactly like screens are. The mask is the
+       * silhouette; the fill is the period's tree colour. ----------------- */
+      .tree {
+        position: absolute;
+        left: 50%;
+        bottom: 42%;
+        width: 260px;
+        height: 390px;
+        margin-left: -130px;
+        transform-origin: 50% 100%;
+        transform: translate3d(var(--tree-x, 0px), 0, var(--tree-z, 0px)) scale(var(--tree-scale, 1));
+        background: var(--sds-tree);
+        -webkit-mask: var(--tree-mask) center bottom / contain no-repeat;
+        mask: var(--tree-mask) center bottom / contain no-repeat;
+        pointer-events: none;
+      }
+      /* Three placeholder silhouettes (inline SVG). DT13's PNGs replace the
+         url()s; nothing else changes. */
+      .tree--1 {
+        --tree-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'><path d='M100 0 L150 90 L128 90 L172 170 L146 170 L196 260 L112 260 L112 300 L88 300 L88 260 L4 260 L54 170 L28 170 L72 90 L50 90 Z' fill='black'/></svg>");
+      }
+      .tree--2 {
+        --tree-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'><path d='M100 20 C150 20 190 70 185 130 C200 160 190 210 150 225 L112 232 L112 300 L88 300 L88 232 L50 225 C10 210 0 160 15 130 C10 70 50 20 100 20 Z' fill='black'/></svg>");
+      }
+      .tree--3 {
+        --tree-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 300'><path d='M100 0 C130 40 140 70 135 110 C160 130 165 180 150 220 L112 236 L112 300 L88 300 L88 236 L50 220 C35 180 40 130 65 110 C60 70 70 40 100 0 Z' fill='black'/></svg>");
+      }
+
+      /* ---- screens (unchanged except the two lighting roles) -------------- */
+      .screen {
+        position: absolute;
+        left: 50%;
+        bottom: 42%;
+        width: 520px;
+        margin-left: -260px;
+        transform-style: preserve-3d;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        outline: none;
+        pointer-events: auto;
+      }
+      .screen__surface {
+        display: block;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        background: var(--sds-screen-dark);
+        border: 6px solid var(--sds-screen-bezel);
+        border-radius: 4px;
+        box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+        overflow: hidden;
+        /* unlit floor is a period role: 0.35 at night, 0.75 at noon */
+        filter: brightness(var(--sds-unlit-floor));
+      }
+      .screen__surface img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top;
+        display: block;
+      }
+      .screen__base {
+        position: relative;
+        width: 100%;
+        height: 96px;
+      }
+      .screen__post {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 14px;
+        background: var(--sds-screen-post);
+      }
+      .screen__post--l {
+        left: 70px;
+      }
+      .screen__post--r {
+        right: 70px;
+      }
+      .screen__marquee {
+        position: absolute;
+        left: 50%;
+        top: 14px;
+        transform: translateX(-50%);
+        width: 320px;
+        padding: 0.5rem 1rem;
+        text-align: center;
+        font-weight: 700;
+        font-size: 1.125rem;
+        color: var(--sds-marquee-ink);
+        background: var(--sds-marquee-dim);
+        border: 3px solid var(--sds-marquee-edge);
+        border-radius: 6px;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .screen--lit .screen__surface {
+        filter: brightness(1);
+        box-shadow:
+          0 0 60px color-mix(in srgb, var(--sds-marquee) calc(var(--sds-glow) * 10%), transparent),
+          0 0 30px color-mix(in srgb, var(--sds-accent) calc(var(--sds-glow) * 20%), transparent);
+      }
+      .screen--lit .screen__marquee {
+        background: var(--sds-marquee);
+        border-color: var(--sds-marquee-edge-lit);
+        box-shadow: 0 0 14px color-mix(in srgb, var(--sds-marquee) calc(var(--sds-glow) * 30%), transparent);
+      }
+
+      /* Placement = screenPlacement(i) + depicted lotZ ≈ 200 (as theater.html). */
+      .screen:nth-of-type(1) { transform: translate3d(-480px, 0, -600px) rotateY(18deg); }
+      .screen:nth-of-type(2) { transform: translate3d(480px, 0, -1400px) rotateY(-18deg); }
+      .screen:nth-of-type(3) { transform: translate3d(-480px, 0, -2200px) rotateY(18deg); }
+      .screen:nth-of-type(4) { transform: translate3d(480px, 0, -3000px) rotateY(-18deg); }
+      .screen:nth-of-type(5) { transform: translate3d(-480px, 0, -3800px) rotateY(18deg); }
+      .screen:nth-of-type(6) { transform: translate3d(480px, 0, -4600px) rotateY(-18deg); }
+      .screen:nth-of-type(7) { transform: translate3d(-480px, 0, -5400px) rotateY(18deg); }
+      .screen:nth-of-type(8) { transform: translate3d(480px, 0, -6200px) rotateY(-18deg); }
+
+      /* ---- the car (stage-anchored; the world drives past it) ------------- */
+      .lot__beam {
+        /* headlights on the road ahead: a trapezoid narrowing to the horizon */
+        position: absolute;
+        z-index: 2;
+        left: 50%;
+        bottom: 22%;
+        width: 46%;
+        height: 20%;
+        transform: translateX(-50%);
+        clip-path: polygon(30% 100%, 70% 100%, 56% 0, 44% 0);
+        background: linear-gradient(to top, var(--sds-beam), transparent);
+        opacity: var(--sds-headlight);
+        pointer-events: none;
+      }
+      .lot__car {
+        position: absolute;
+        z-index: 3;
+        left: 50%;
+        bottom: -1%;
+        width: clamp(320px, 38vw, 620px);
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+      .lot__car img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      .lot__car::before,
+      .lot__car::after {
+        /* tail-light glows, riding the period's headlight token */
+        content: "";
+        position: absolute;
+        bottom: 34%;
+        width: 22%;
+        height: 18%;
+        border-radius: 50%;
+        background: radial-gradient(closest-side, rgba(255, 70, 60, 0.55), transparent);
+        opacity: var(--sds-headlight);
+        filter: blur(6px);
+      }
+      .lot__car::before {
+        left: 9%;
+      }
+      .lot__car::after {
+        right: 9%;
+      }
+
+      /* ---- narrow: single file, smaller screens, wider car ----------------- */
+      @media (max-width: 767px) {
+        .lot { perspective: 600px; }
+        .screen { width: 300px; margin-left: -150px; }
+        .screen__marquee { width: 220px; font-size: 0.9rem; }
+        .screen:nth-of-type(1) { transform: translate3d(0, 0, -500px); }
+        .screen:nth-of-type(2) { transform: translate3d(0, 0, -1300px); }
+        .screen:nth-of-type(3) { transform: translate3d(0, 0, -2100px); }
+        .screen:nth-of-type(4) { transform: translate3d(0, 0, -2900px); }
+        .screen:nth-of-type(5) { transform: translate3d(0, 0, -3700px); }
+        .screen:nth-of-type(6) { transform: translate3d(0, 0, -4500px); }
+        .screen:nth-of-type(7) { transform: translate3d(0, 0, -5300px); }
+        .screen:nth-of-type(8) { transform: translate3d(0, 0, -6100px); }
+        /* trees hug the corridor more tightly: x is restated, z is the drive */
+        .tree { --tree-x: 0px !important; width: 180px; height: 270px; margin-left: -90px; }
+        .tree--left { transform: translate3d(-360px, 0, var(--tree-z, 0px)) scale(var(--tree-scale, 1)); }
+        .tree--right { transform: translate3d(360px, 0, var(--tree-z, 0px)) scale(var(--tree-scale, 1)); }
+        .lot__car { width: 64vw; }
+        .lot__beam { width: 70%; }
+        .chrome { padding: 0.75rem 1rem; }
+      }
+
+      /* ---- exit beat ------------------------------------------------------ */
+      .exit-list {
+        list-style: none;
+        margin-top: 2.5rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.5rem 2rem;
+        text-align: left;
+        font: 14px var(--font-mono);
+      }
+      .exit-list a { color: var(--label-blue); }
+      .footer {
+        background: var(--footer-bg);
+        color: var(--footer-text);
+        text-align: center;
+        padding: 2rem;
+        font-size: 0.875rem;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chrome__bar" aria-hidden="true"></div>
+    <header class="chrome">
+      <a class="chrome__logo" href="/">Evan Leon</a>
+      <span class="chrome__percent">12%</span>
+    </header>
+
+    <div class="switcher" role="group" aria-label="Wireframe-only period switcher">
+      <button data-period="dawn">dawn</button>
+      <button data-period="morning">morning</button>
+      <button data-period="afternoon">afternoon</button>
+      <button data-period="sunset">sunset</button>
+      <button data-period="evening">evening</button>
+      <button data-period="night">night</button>
+    </div>
+
+    <section class="beat">
+      <span class="note" style="top: 5rem; left: 1rem"
+        >Hero beat: UNCHANGED (portfolio palette). Only the lot below responds to
+        the period. Switcher top-right is wireframe-only; the built page sets
+        data-period from the clock or ?period=.</span
+      >
+      <p class="eyebrow">Now showing · 8 projects</p>
+      <h1>The Drive-In</h1>
+      <p class="lede">
+        Scroll to drive. Every screen is a project — pull up to watch it run, and
+        click the screen to go inside.
+      </p>
+      <p class="hint">↓ SCROLL TO DRIVE</p>
+    </section>
+
+    <div class="lot">
+      <span class="note" style="top: 4.5rem; left: 1rem"
+        >Sky = 3 period stops; stars on ::before at --sds-star-alpha; orb = sun or
+        moon per period. Ground asphalt re-tinted per period. Unlit screens sit at
+        --sds-unlit-floor; glow scaled by --sds-glow.</span
+      >
+      <span class="note" style="bottom: 1rem; left: 1rem"
+        >Trees: masked planes INSIDE the world (ride the drive tween), x = ±900,
+        one per 400px of Z, three silhouettes, filled with --sds-tree.
+        pointer-events: none. Never in front of a screen.</span
+      >
+      <span class="note" style="bottom: 1rem; right: 1rem"
+        >Car: rear-view sprite anchored to the STAGE bottom-centre (does not move
+        with the world). Headlight beam + tail-light glows at --sds-headlight.
+        pointer-events: none; aria-hidden. Placeholder SVG → DT13's car.png.</span
+      >
+      <div class="lot__orb" aria-hidden="true"></div>
+      <div class="lot__world">
+        <div class="lot__ground"></div>
+
+        <!-- trees: left column then right column; z folds in the same +200 depicted lotZ -->
+        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -100px; --tree-scale: 1.05"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -960px; --tree-z: -500px; --tree-scale: 0.9"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -900px; --tree-scale: 1.15"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -940px; --tree-z: -1300px; --tree-scale: 0.95"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -1700px; --tree-scale: 1.1"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -980px; --tree-z: -2100px; --tree-scale: 1"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -2500px; --tree-scale: 1.05"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -940px; --tree-z: -2900px; --tree-scale: 0.9"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -3300px; --tree-scale: 1.15"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -960px; --tree-z: -3700px; --tree-scale: 1"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -4100px; --tree-scale: 1.05"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -940px; --tree-z: -4500px; --tree-scale: 0.95"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -900px; --tree-z: -4900px; --tree-scale: 1.1"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -980px; --tree-z: -5300px; --tree-scale: 1"></span>
+        <span class="tree tree--3 tree--left" style="--tree-x: -900px; --tree-z: -5700px; --tree-scale: 1.05"></span>
+        <span class="tree tree--1 tree--left" style="--tree-x: -940px; --tree-z: -6100px; --tree-scale: 0.9"></span>
+        <span class="tree tree--2 tree--left" style="--tree-x: -900px; --tree-z: -6500px; --tree-scale: 1.15"></span>
+
+        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -300px; --tree-scale: 1"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 950px; --tree-z: -700px; --tree-scale: 1.1"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -1100px; --tree-scale: 0.95"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 980px; --tree-z: -1500px; --tree-scale: 1.05"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -1900px; --tree-scale: 0.9"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 940px; --tree-z: -2300px; --tree-scale: 1.15"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -2700px; --tree-scale: 1"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 960px; --tree-z: -3100px; --tree-scale: 1.05"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -3500px; --tree-scale: 0.95"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 940px; --tree-z: -3900px; --tree-scale: 1.1"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -4300px; --tree-scale: 1"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 980px; --tree-z: -4700px; --tree-scale: 0.9"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 900px; --tree-z: -5100px; --tree-scale: 1.15"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 950px; --tree-z: -5500px; --tree-scale: 1.05"></span>
+        <span class="tree tree--1 tree--right" style="--tree-x: 900px; --tree-z: -5900px; --tree-scale: 1"></span>
+        <span class="tree tree--2 tree--right" style="--tree-x: 940px; --tree-z: -6300px; --tree-scale: 0.95"></span>
+        <span class="tree tree--3 tree--right" style="--tree-x: 900px; --tree-z: -6700px; --tree-scale: 1.1"></span>
+
+        <a class="screen screen--lit" href="/projects/budget-app.html">
+          <span class="screen__surface"><img src="../../images/budget-app/01.png" alt="" /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Leon's Budget</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/nom-noms.html">
+          <span class="screen__surface"><img src="../../images/nom-noms/01.png" alt="" /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Nom Nom's</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/el-blackjack.html">
+          <span class="screen__surface"><img src="../../images/el-blackjack/01.png" alt="" /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">El Blackjack</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/classic-golf.html">
+          <span class="screen__surface"><img src="../../images/classic-golf/01.png" alt="" /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">The Classic</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/spead-read.html">
+          <span class="screen__surface"><img src="../../images/spead-read/01.png" alt="" /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Spead Read</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/chunk-norris.html">
+          <span class="screen__surface"><img src="../../images/chunk-norris/01.png" alt="" /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Chunk Norris</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/app-dash.html">
+          <span class="screen__surface"><img src="../../images/app-dash/01.png" alt="" /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">app-dash</span>
+          </span>
+        </a>
+        <a class="screen" href="/projects/prompt-heus.html">
+          <span class="screen__surface"><img src="../../images/prompt-heus/01.png" alt="" /></span>
+          <span class="screen__base">
+            <span class="screen__post screen__post--l"></span>
+            <span class="screen__post screen__post--r"></span>
+            <span class="screen__marquee">Prompt-heus</span>
+          </span>
+        </a>
+      </div>
+
+      <div class="lot__beam" aria-hidden="true"></div>
+      <div class="lot__car" aria-hidden="true">
+        <!-- placeholder rear-view car at the art contract's 16:9 canvas -->
+        <img
+          alt=""
+          src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1600 900'><defs><linearGradient id='b' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='%236b3fb0'/><stop offset='1' stop-color='%23241540'/></linearGradient></defs><rect x='330' y='790' width='160' height='90' rx='20' fill='%23120c1c'/><rect x='1110' y='790' width='160' height='90' rx='20' fill='%23120c1c'/><path d='M420 330 C480 260 560 230 800 230 C1040 230 1120 260 1180 330 L1250 470 L1290 500 C1350 520 1380 560 1380 620 L1380 780 C1380 810 1360 830 1330 830 L270 830 C240 830 220 810 220 780 L220 620 C220 560 250 520 310 500 L350 470 Z' fill='url(%23b)'/><path d='M470 340 C520 290 590 270 800 270 C1010 270 1080 290 1130 340 L1185 460 L415 460 Z' fill='%230b0616'/><rect x='250' y='560' width='230' height='70' rx='18' fill='%23ff4a44'/><rect x='1120' y='560' width='230' height='70' rx='18' fill='%23ff4a44'/><rect x='730' y='690' width='140' height='70' rx='8' fill='%23e8e6f5'/><rect x='200' y='760' width='1200' height='40' rx='12' fill='%2318102a'/></svg>"
+        />
+      </div>
+    </div>
+
+    <section class="beat" id="exit" tabindex="-1">
+      <span class="note" style="top: 1rem; left: 1rem"
+        >Exit beat: UNCHANGED (portfolio palette).</span
+      >
+      <p class="eyebrow">End of the lot</p>
+      <h2>That's the whole show.</h2>
+      <p class="lede">Head back to the site, or pick a screen from the list.</p>
+      <div>
+        <a class="btn btn--primary" href="/#projects">Back to projects</a>
+        <a class="btn btn--secondary" href="/#contact">Get in touch</a>
+      </div>
+      <ul class="exit-list">
+        <li><a href="/projects/budget-app.html">Leon's Budget</a></li>
+        <li><a href="/projects/nom-noms.html">Nom Nom's</a></li>
+        <li><a href="/projects/el-blackjack.html">El Blackjack</a></li>
+        <li><a href="/projects/classic-golf.html">The Classic</a></li>
+        <li><a href="/projects/spead-read.html">Spead Read</a></li>
+        <li><a href="/projects/chunk-norris.html">Chunk Norris</a></li>
+        <li><a href="/projects/app-dash.html">app-dash</a></li>
+        <li><a href="/projects/prompt-heus.html">Prompt-heus</a></li>
+      </ul>
+    </section>
+
+    <footer class="footer">© 2026 Evan Leon</footer>
+
+    <script>
+      /* WIREFRAME ONLY. The built page's page/period.ts does the clock/override
+         logic; this just lets a reviewer flip skies. ?period= is honoured so a
+         link can open a specific one. */
+      const PERIODS = ["dawn", "morning", "afternoon", "sunset", "evening", "night"];
+      const requested = new URLSearchParams(location.search).get("period");
+      const set = (p) => {
+        document.documentElement.dataset.period = p;
+        for (const b of document.querySelectorAll(".switcher button")) {
+          b.setAttribute("aria-pressed", String(b.dataset.period === p));
+        }
+      };
+      set(PERIODS.includes(requested) ? requested : "night");
+      for (const b of document.querySelectorAll(".switcher button")) {
+        b.addEventListener("click", () => set(b.dataset.period));
+      }
+    </script>
+  </body>
+</html>
