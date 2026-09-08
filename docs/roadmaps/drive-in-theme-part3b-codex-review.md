@@ -35,9 +35,36 @@ predecessor's scratch build (`/tmp/claude-1000/dt-theme-part3/sim/`) on `vite pr
 | 11 | MAJOR | DT12/DT15 glyph pipelines, roadmap 379, 815 | `… \| grep -E '✓\|✗\|×' \| head -40` returns `head`'s status: a Vite startup failure and a nonexistent filter both gave `pipeline_exit=0 pipe_statuses=1 1 0` | V |
 | 12 | MINOR | DT11 GO-REDUCED, roadmap 196–198, 225–228 | `scenery-half` is measured for fps only; the reduced layout is never opened for paint/click/Tab before it is selected | V |
 | 13 | MINOR | DT11 clip bias, roadmap 129–136, 196–198 | The probe cycles eight URLs across twenty elements, which can gain cache reuse sixteen distinct production clips cannot — "errs heavy" has no established direction | U |
-| 14 | MINOR | DT11 commit path, roadmap 208–264 | DT11 creates and stages two `.html` files but never runs `pnpm format`/`format:check`, so the Prettier hook stops a correct implementation at commit time (the only phase with this gap) | V |
+| 14 | MINOR | DT11 commit path, roadmap 208–264 | ~~DT11 creates and stages two `.html` files but never runs `pnpm format`/`format:check`, so the Prettier hook stops a correct implementation at commit time~~ — **REJECTED, measured false** (see below) | ✗ |
 | 15 | MINOR | SVG timing/order, roadmap 196–201, 951–952 | DT11 benchmarks PNG data-URL masks; the likely external-SVG-mask path first appears in DT15 and is browser-checked only in DT16 | V |
 
+## Disposition: 14 accepted, 1 rejected
+
+**Finding 14 is REJECTED — the claim was measured and is false.** Codex read
+`.githooks/pre-commit` lines 59–63 (which select staged `.html|.css|.js|.ts` and run
+`prettier --check` over them) but not Prettier's own handling of `.prettierignore`, which
+is applied even to paths passed explicitly on the command line. `.prettierignore` contains
+`docs/`, so the hook's check cannot fire on `docs/spikes/*.html`. Measured 2026-09-08 with
+identical misformatted content in two places:
+
+```text
+$ ./node_modules/.bin/prettier --check docs/spikes/__fmt-probe.html
+Checking formatting...
+All matched files use Prettier code style!
+exit=0
+$ ./node_modules/.bin/prettier --check __fmt-probe-root.html
+[warn] __fmt-probe-root.html
+[warn] Code style issues found in the above file. Run Prettier with --write to fix.
+exit=1
+```
+
+The roadmap's original claim ("the pre-commit hook will not touch these files") was
+correct, and now carries this measurement so it is not re-litigated. Note the trap:
+`prettier --check` prints "All matched files use Prettier code style!" and exits 0 both
+when files pass *and* when every file was ignored — the ambiguity is what makes this
+worth measuring rather than reading.
+
+The other 14 findings were accepted and folded in at the commit that follows this receipt.
 Three of the five `7579eed` triage edits are themselves defective (findings 11, 10, 9);
 the other two — the `awk` rule-block guards and the DT11 clip-residency note — came back
 clean and UNVERIFIED-neutral respectively (finding 13 downgrades the note's claim, not
