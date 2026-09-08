@@ -1,0 +1,2101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spike — DT11 scenery falsifier probe (production-shaped)</title>
+
+    <!--
+    ===========================================================================
+    DT11 — FALSIFIER: do ~88 masked tree planes and a blurred car overlay keep
+    the twenty-screen drive fast enough and still clickable?
+    ===========================================================================
+
+    Roadmap: docs/roadmaps/drive-in-theme-roadmap.md, phase DT11.
+    Spec:    docs/superpowers/specs/2026-09-08-drive-in-theme-design.md,
+             "Core assumption".
+
+    This file SHIPS NOTHING. It is a throwaway measurement rig, kept as the
+    receipt for one decision line. Open it directly over file://:
+
+        file:///home/evan/EVOsystem/portfolio_site/docs/spikes/2026-09-08-scenery-probe.html?variant=scenery
+
+    It is a copy of DTF's probe (docs/spikes/2026-08-25-transformed-video-probe.html,
+    a FROZEN receipt — copied from, never edited) with its lot replaced by a
+    transcription of the shipped lot, and its three-outcome verdict replaced by
+    the five-outcome procedure below.
+
+    ---------------------------------------------------------------------------
+    WHAT IS MEASURED
+    ---------------------------------------------------------------------------
+    The drive-in THEME rests on one never-measured assumption: that roughly
+    ninety static masked planes inside the transformed world, plus a
+    stage-anchored car overlay carrying two blurred radial glows, keep the
+    twenty-screen drive at >= 50 fps (DTF's band, lowest contiguous 1 s window)
+    and leave every screen clickable and Tab-reachable — and that `mask-image`
+    actually paints on a plane under `preserve-3d` in Chromium.
+
+    DTF's transfer argument does not carry it. DTF found that decoder count
+    dominates and the transform stack is close to free, and trees add neither
+    decoders nor filters — but DTF measured a workload that is no longer
+    production (eight screens, `filter` tweened directly, a 4800px ground), each
+    masked plane is its own compositor layer, 88 of them exceed DTF's 32 screens,
+    and the car's `filter: blur()` on two pseudo-elements is a per-frame raster
+    cost DTF never had. So this probe runs BEFORE any scenery code is written.
+
+    ---------------------------------------------------------------------------
+    BROWSER SCOPE: CHROMIUM ONLY, DELIBERATELY
+    ---------------------------------------------------------------------------
+    Evan's ruling, 2026-09-08, after the Part 3B adversarial: the spec's core
+    assumption named Chrome and Firefox while this phase said "Firefox if
+    installed" and DT16 is Chromium-only — and there is no Firefox on this host,
+    so the likely path was to ship having never tested the second browser. The
+    supported-browser claim is narrowed rather than left unhonoured: this feature
+    is verified on Chromium, the spec says so, and nothing here claims Firefox
+    evidence. Firefox support, if wanted, is a later phase with its own
+    measurement.
+
+    ---------------------------------------------------------------------------
+    THE FIVE VARIANTS  (?variant=… , or set VARIANT_OVERRIDE below)
+    ---------------------------------------------------------------------------
+    lot20             THE BASELINE (EVO-UNI-021), measured before anything is
+                      added to it. Twenty screens, the lot CSS transcribed from
+                      theater/src/styles/global.css lines 196-470 (class names
+                      kept, so the comparison is honest), the timeline shape of
+                      theater/src/lot/build-lot.ts (one world tween, per-screen
+                      `--sds-screen-lit` fromTos, `immediateRender: false` on the
+                      ramp-down), the DT13 ground and road, and the production
+                      media pattern below. Nothing else.
+
+    car-only          lot20 + the orb, the headlight beam and the car with its
+                      two blurred (`filter: blur(6px)`) radial tail-light glows.
+                      No trees.
+
+    scenery           car-only + 88 masked tree planes — `treePlacements(20)` at
+                      TREE_SPACING = 400. THE DEFAULT VARIANT.
+
+    scenery-half      car-only + 44 planes — TREE_SPACING = 800. The GO-REDUCED
+                      layout, measured rather than hoped for.
+
+    scenery-overload  THE FAILING CONTROL (EVO-UNI-120). The same loop at
+                      TREE_SPACING = 100, which yields 351 planes (176 left, 175
+                      right) — about 4x `scenery`. A metric that cannot report a
+                      bad number is not a measurement: if `scenery-overload` does
+                      NOT read lower than `scenery`, the meter is not moving and
+                      NO verdict may be drawn from this probe (step 0 below).
+
+    ---------------------------------------------------------------------------
+    THE PRODUCTION MEDIA PATTERN — in lot20, and therefore in every variant
+    ---------------------------------------------------------------------------
+    The whole GO decision rests on this being the shipped page's workload and not
+    a lighter sketch of it.
+
+    theater/src/lot/build-lot.ts (lines 270-291) gives every screen a video AND a
+    poster URL; theater/src/lot/lot-scene.ts (lines 441-476) appends a DECODED
+    poster <img> to every surface once the asset loader resolves. So production
+    keeps twenty decoded raster textures resident inside the transformed world at
+    all times. DTF's builder has videos, surfaces and marquees but no poster
+    <img> at all, so a straight copy would measure a lot with twenty transformed
+    raster textures missing — a materially lighter GPU-memory and paint workload
+    than the shipped page, on which GO would be a false positive.
+
+    Nor is "eight synthetic clips cycled across twenty screens errs heavy" safe
+    in the other direction: cycling eight URLs lets the second and third use hit
+    cache in a way sixteen distinct production URLs cannot, so the direction of
+    that bias is unknown, not conservative. DTF's own eight probe clips are
+    therefore NOT used here.
+
+    What this probe builds is the POST-REVEAL PRODUCTION DOM:
+      * the twenty real slugs, read from theater/src/projects.ts and hardcoded
+        below (see the EVO-UNI-128 note);
+      * every screen gets `video.poster` = its real poster;
+      * the SIXTEEN slugs that have a clip on disk get a real <source>; the four
+        that do not (spead-read, media-cloud-web-tools, media-cloud-vitals,
+        showrunner-digest — re-probed on disk 2026-09-08) get NO <source> at all,
+        exactly as production falls back to the poster;
+      * all twenty posters are decoded through an Image and appended as
+        <img class="sds-screen__poster"> BEFORE the measurement harness starts.
+
+    THE GATE: the HUD prints `posters resident: N/20`. If N is not 20 the probe
+    REFUSES to measure and shows a fatal banner, rather than reporting a light
+    number from a lot that is missing textures (EVO-UNI-120).
+
+    ---------------------------------------------------------------------------
+    TWO MEASUREMENT PROTOCOLS, AND WHAT EACH ONE MAY DECIDE
+    ---------------------------------------------------------------------------
+    (1) THE IN-PAGE HARNESS  (?measure=all)  —  RELATIVE COST ONLY.
+        Three 10 s runs per variant; the metric is the lowest number of frames in
+        any contiguous 1 s window; the median of the three is the variant's
+        number. The page scrolls itself (`window.scrollTo()` on every measurement
+        rAF) so the trajectory is identical in every variant.
+
+        WHAT IT CANNOT CARRY: the scene loop still calls `lenis.raf(time)`, but
+        Lenis is never moving the page from wheel input, so production's actual
+        frame path — Lenis under real wheel deltas, then the engine update
+        (theater/src/engine.ts lines 323-350) — is idle for the whole
+        measurement. All five variants share that bias, so comparing them against
+        each other is sound and the EVO-UNI-120 control is sound. Reading an
+        ABSOLUTE `>= 50` off it is not: a `scenery = 50` harness run would yield
+        GO without ever measuring the interaction the number is promising.
+
+    (2) THE NATURAL-WHEEL RUN  —  OWNS EVERY ABSOLUTE `>= 50`.
+        Chrome DevTools performance panel recording, real wheel scrolling through
+        the full lot at a natural reading pace, lowest fps over any contiguous
+        1 s window. Recorded for `car-only` and for whichever scenery variant
+        step 5 is about to select. A harness median never decides an absolute
+        threshold.
+
+    Sampling conditions for both: Chromium, 1440x900 at 100% zoom, mains power,
+    no other tab playing media. A result straddling a band boundary is resolved
+    by the median, never by re-running until it passes.
+
+    ---------------------------------------------------------------------------
+    THE DECISION PROCEDURE (EVO-UNI-091) — WRITTEN BEFORE ANY NUMBER WAS TAKEN
+    ---------------------------------------------------------------------------
+    Ordered, exhaustive and mutually exclusive. THE CAR IS GATED BEFORE ANY TREE
+    BRANCH: an earlier draft jumped from "trees do not paint" straight to the
+    frame-rate step, so the vector (control valid, trees invisible, car-only
+    60 fps, car-only click/Tab FAILS) returned NO-GO-TREES and shipped a car
+    already known to be unusable. Found by the Part 3B adversarial, 2026-09-08.
+
+      0. INSTRUMENT VALIDITY.  `scenery-overload` must read LOWER than `scenery`
+         on the harness. If not -> INVALID: fix the probe, record nothing.
+
+      1. THE CAR MUST BE USABLE.  In `car-only`: a click on screen 3 navigates to
+         ../../projects/classic-golf.html, and Tab reaches the screens in DOM
+         order. Either failing -> NO-GO-ALL. Nothing downstream ships a car that
+         cannot be clicked, so this is checked before anything about trees.
+
+      2. THE CAR MUST BE FAST ENOUGH.  `car-only >= 50` on the NATURAL-WHEEL run,
+         else -> NO-GO-ALL.
+
+      3. THE TREES MUST PAINT.  Trees visible as silhouettes on both sides in
+         `scenery`, else -> NO-GO-TREES. (Steps 1-2 have already established the
+         car is fine, so every failure from here down is NO-GO-TREES, never
+         NO-GO-ALL.)
+
+      4. THE TREES MUST NOT BREAK INTERACTION.  Click and Tab in `scenery` as in
+         step 1, else -> NO-GO-TREES.
+
+      5. DENSITY.  On the harness medians, with the absolute floor confirmed on
+         the natural-wheel run for whichever variant is selected:
+           `scenery >= 50`                                            -> GO
+           else if `scenery-half >= 50` AND the reduced layout itself
+             passes steps 3 and 4 when opened at ?variant=scenery-half -> GO-REDUCED
+           else                                                       -> NO-GO-TREES
+         (fps alone never selects a layout nobody has looked at.)
+
+      Under GO or GO-REDUCED, also record the &masksrc=svg smoke: trees paint
+      with SVG masks, fps within noise of the PNG run.
+
+    WHAT EACH OUTCOME CHANGES DOWNSTREAM
+      GO            DT15 as specified, TREE_SPACING = 400.
+      GO-REDUCED    DT15 with TREE_SPACING = 800 and the reduced literals.
+      NO-GO-TREES   DT14 needs the car only; DT15 and DT16 take their car-only
+                    branch (no scenery.ts, no trees, no tree masks).
+      NO-GO-ALL     DT14, DT15 and DT16 are not executed; the theme is DT12 +
+                    DT13 (period, sky, ground, road).
+      INVALID       No verdict, and no downstream change, until re-measured.
+
+    ---------------------------------------------------------------------------
+    THE VERDICT IS COMPUTED, AND THE COMPUTER IS TESTED
+    ---------------------------------------------------------------------------
+    A grep for the outcome words proves only that the words appear in this
+    header — an implementation that unconditionally printed GO while naming all
+    five outcomes in prose would satisfy it (EVO-UNI-120). So:
+
+      * one pure `classify()` function implements the procedure above, and
+        `renderSummary()` delegates to it. It is FAIL-CLOSED: any missing or
+        non-numeric input returns INVALID rather than falling through.
+      * `?selftest=verdict` runs `classify()` over a case table written into this
+        file and prints `case: EXPECTED/ACTUAL` per row into <pre
+        id="verdict-selftest">. A throwaway Playwright driver reads that element.
+      * THE PROBE REFUSES TO RENDER A VERDICT unless that self-test printed
+        all-match in the same session.
+
+    To get the verdict once the manual inputs exist, open (medians are read from
+    this session's sessionStorage, so run the harness in the same tab first):
+
+        ?verdict=1&carFps=<n>&carInteraction=<0|1>&treesPaint=<0|1>
+                  &sceneryInteraction=<0|1>&halfPaint=<0|1>&halfInteraction=<0|1>
+
+    `renderSummary()` prints that URL, pre-filled, at the end of the harness walk.
+
+    ---------------------------------------------------------------------------
+    RESULTS — HARNESS MEDIANS (relative cost only; never an absolute threshold)
+    Lowest fps over any contiguous 1 s window; three 10 s runs; median.
+    ---------------------------------------------------------------------------
+    Chromium <version>, viewport <w>x<h>, dpr <n>
+
+      variant             run 1     run 2     run 3     MEDIAN
+      lot20                   .         .         .         .
+      car-only                .         .         .         .
+      scenery                 .         .         .         .
+      scenery-half            .         .         .         .
+      scenery-overload        .         .         .         .
+
+    Control check (EVO-UNI-120): scenery-overload median < scenery median?
+      <YES / NO — no verdict may be drawn>
+
+    Posters resident at measurement time:  <N>/20
+    Verdict self-test (?selftest=verdict): <all-match / MISMATCH>
+
+    ---------------------------------------------------------------------------
+    RESULTS — NATURAL-WHEEL RUNS (these own every absolute >= 50 comparison)
+    DevTools performance panel, real wheel scrolling, lowest contiguous 1 s
+    window. Kept apart from the harness slots above on purpose.
+    ---------------------------------------------------------------------------
+      car-only                     <n> fps
+      selected scenery variant     <n> fps   (variant: <scenery | scenery-half>)
+
+    ---------------------------------------------------------------------------
+    HIT-TESTING (per the procedure's steps 1 and 4)
+    ---------------------------------------------------------------------------
+      car-only      click SCREEN 3 -> ../../projects/classic-golf.html?  <>
+                    Tab walks the screens in DOM order?                  <>
+      scenery       click SCREEN 3 navigates?                            <>
+                    Tab in DOM order?                                    <>
+      scenery-half  (only if the procedure reaches GO-REDUCED)           <>
+
+    Trees paint as silhouettes on both sides:
+      scenery       <>
+      scenery-half  <>   (only if reached)
+      &masksrc=svg  <>   (only under GO / GO-REDUCED; fps within noise of PNG)
+
+    DECISION: <GO | GO-REDUCED | NO-GO-TREES | NO-GO-ALL | INVALID>
+    Date: <>   Decided by: <>
+
+    Copy this row into the roadmap's "Decision records" table.
+
+    ---------------------------------------------------------------------------
+    THE TWO MASK SOURCES  (&masksrc=png | svg — default png)
+    ---------------------------------------------------------------------------
+    png (default)  Three silhouettes drawn in-page on an 800x1200 canvas and
+                   taken as `toDataURL('image/png')`. The probe must not depend
+                   on DT14's art existing.
+
+    svg            The SAME three silhouettes as the exported intrinsic-size SVG
+                   placeholders — the identical constants docs/spikes/art-check.html
+                   offers under "download placeholder set", carrying explicit
+                   width="800" height="1200" — applied through
+                   `mask-image: url(...)` on an SVG document instead of a raster
+                   PNG. This exists because the SVG branch is the LIKELY art
+                   outcome (the spec's recorded fallback) and the roadmap
+                   otherwise first exercises SVG masks under `preserve-3d` in
+                   DT15 — after the manual art phase and an implementation
+                   commit. It does not need the full performance matrix: one
+                   `?variant=scenery&masksrc=svg` run showing the trees paint and
+                   fps within noise of the PNG run retires the risk.
+
+                   RECORDED DEVIATION: DT15 will serve those SVGs as files under
+                   theater/public/art/. This phase ships exactly two files, so
+                   there is no third file to point at and the SVG is carried as a
+                   `data:image/svg+xml,...` URL instead. What differs is the
+                   transport; what is under test — an SVG document rasterised by
+                   the CSS engine as a mask on a plane inside `preserve-3d` — is
+                   the same path either way. The mask images are also mapped to
+                   variant indices in the two sources' own order (the wireframe's
+                   tree--1 is the conifer, the canvas variant 0 is the
+                   deciduous), which is irrelevant to what is measured: three
+                   distinct masks over the same number of planes. DT15 owns the
+                   final silhouette-to-variant mapping.
+
+    ---------------------------------------------------------------------------
+    KNOWN LIMITS OF THIS RIG — read before interpreting the numbers
+    ---------------------------------------------------------------------------
+    1. THE HARNESS IS RELATIVE. Stated twice on purpose; see "Two measurement
+       protocols" above. Do not read an absolute >= 50 off a harness median.
+    2. SCREEN_COUNT IS HARDCODED AT 20 (EVO-UNI-128). It is a SNAPSHOT of
+       `theater/src/projects.ts`'s length on 2026-09-08, not an input read from
+       the registry — a file:// page cannot import a TypeScript module. If this
+       probe is ever re-run, RE-READ the registry first and update SCREEN_COUNT,
+       the twenty slugs, and which of them have a clip on disk. The tree counts
+       (88 / 44 / 351) are all derived from it, so a stale 20 makes every plane
+       count wrong too.
+    3. The scroll range is 2500vh in every variant — production's own
+       `100 + VH_PER_SCREEN * projects.length` for twenty screens. That is more
+       than twice DTF's 1060vh, so the harness's 10 s traversal moves the world
+       further per frame than a human wheel does. Identical in all five variants,
+       so it does not distort the comparison; it is one more reason the absolute
+       floor comes from the wheel run.
+    4. The stage is `position: fixed` here, standing in for the pin the built
+       page uses. `.sds-lot` itself keeps its shipped `position: relative;
+       height: 100%` so the transcription stays verbatim.
+    5. GSAP's own rAF ticker runs in every variant (importing gsap wakes it).
+       That is also true in production and constant across the five, so it does
+       not distort their comparison.
+    6. gsap and lenis are pinned to the versions the vendored engine uses
+       (gsap 3.15.0, lenis 1.3.26) and load from jsdelivr. With no network the
+       probe refuses to run rather than silently measuring a static page.
+    7. Only the lot is reproduced. There is no loader ring, no reveal, no exit
+       beat and no period engine (DT12) — the sky and tokens are night, the base
+       values. What is being measured is the lot's per-frame cost.
+    ===========================================================================
+    -->
+
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lenis@1.3.26/dist/lenis.min.js"></script>
+
+    <style>
+      /* Lenis owns the scroll; a smooth scroll-behavior would fight it. */
+      html {
+        scroll-behavior: auto;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: #0a0520;
+        color: #a0a8c8;
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      /* ===================================================================
+       * TOKENS — inlined from theater/src/styles/tokens.css (the night / base
+       * values, resolved one level so the transcribed rules below read the same
+       * names they read in the shipped stylesheet). The orb / beam / road roles
+       * are DT12's and DT13's, taken from
+       * docs/wireframes/theater-drive-in-theme.html's :root.
+       * =================================================================== */
+      :root {
+        --sds-marquee: #d4a862;
+        --sds-asphalt: #14102b;
+        --sds-asphalt-far: #0a0520;
+
+        --sds-sky: linear-gradient(
+          180deg,
+          #0a0520 0%,
+          #0d1033 45%,
+          #120a2e 100%
+        );
+        --sds-star: #f0f0ff;
+        --sds-star-warm: #c4b5fd;
+        --sds-star-cool: #93c5fd;
+
+        --sds-screen-dark: #000000;
+        --sds-screen-bezel: #1a1633;
+        --sds-screen-post: linear-gradient(90deg, #26203f, #100c22);
+
+        --sds-marquee-dim: #6b5a2a;
+        --sds-marquee-ink: #2b1d05;
+        --sds-marquee-edge: #3b2f12;
+        --sds-marquee-edge-lit: #8a6a35;
+
+        --sds-accent: #7c3aed;
+        --sds-radius-sm: 4px;
+        --sds-space-2: 0.5rem;
+        --sds-space-4: 1rem;
+        --sds-weight-bold: 700;
+
+        /* DT12 roles the car / beam / orb need. Night values. */
+        --sds-tree: #05030f;
+        --sds-headlight: 1;
+        --sds-orb: #e9e7f7;
+        --sds-orb-halo: rgba(233, 231, 247, 0.35);
+        --sds-orb-x: 78%;
+        --sds-orb-y: 13%;
+        --sds-orb-size: 56px;
+        --sds-orb-halo-size: 40px;
+        --sds-beam: rgba(255, 236, 190, 0.42);
+
+        /* DT13 road markings — period-independent. */
+        --sds-road-line: #e8c547;
+        --sds-road-edge: rgba(240, 240, 255, 0.35);
+      }
+
+      /* --- the scroll range. Production's own 100 + 120 * 20 vh, identical for
+             every variant so the five numbers compare. --------------------- */
+      .spacer {
+        height: 2500vh;
+      }
+
+      /* --- rig chrome. Static: nothing here updates per frame. ------------- */
+      .hud {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 60;
+        padding: 6px 10px;
+        font: 11px/1.5 ui-monospace, monospace;
+        color: #7c8aff;
+        background: rgba(0, 0, 0, 0.75);
+        border-bottom-right-radius: 4px;
+      }
+      .hud a {
+        color: #6b7280;
+        margin-left: 8px;
+      }
+      .hud a[aria-current="true"] {
+        color: #f0f0ff;
+        font-weight: 700;
+      }
+      .hud b {
+        color: #f0f0ff;
+      }
+      .hud .bad {
+        color: #fde68a;
+      }
+      .fatal {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 2rem;
+        background: #0a0520;
+        color: #fde68a;
+        font: 14px/1.7 ui-monospace, monospace;
+      }
+      #verdict-selftest {
+        position: fixed;
+        inset: 0;
+        z-index: 95;
+        overflow: auto;
+        padding: 20px;
+        background: #0a0520;
+        color: #f0f0ff;
+        font: 13px/1.6 ui-monospace, monospace;
+        white-space: pre;
+      }
+
+      /* --- the pin. The built page pins the scene inside a scroll container;
+             here a fixed wrapper stands in for it, so `.sds-lot` below can keep
+             its shipped `position: relative; height: 100%` verbatim. -------- */
+      .pin {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+      }
+
+      /* ===================================================================
+       * THE LOT — transcribed from theater/src/styles/global.css lines 196-470.
+       * Class names kept so the comparison is honest. Two DT13 edits are marked
+       * inline; everything else is verbatim.
+       * =================================================================== */
+      .sds-lot {
+        position: relative;
+        height: 100%;
+        overflow: hidden;
+        perspective: 900px;
+        perspective-origin: 50% calc(100% - var(--sds-ground-line));
+        background:
+          radial-gradient(
+            1px 1px at 12% 18%,
+            var(--sds-star) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1px 1px at 28% 9%,
+            var(--sds-star) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1.5px 1.5px at 41% 22%,
+            var(--sds-star-warm) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1px 1px at 57% 12%,
+            var(--sds-star) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1px 1px at 66% 27%,
+            var(--sds-star) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1.5px 1.5px at 78% 8%,
+            var(--sds-star-cool) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1px 1px at 88% 19%,
+            var(--sds-star) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1px 1px at 5% 31%,
+            var(--sds-star) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1px 1px at 94% 34%,
+            var(--sds-star) 50%,
+            transparent 51%
+          ),
+          radial-gradient(
+            1px 1px at 49% 4%,
+            var(--sds-star) 50%,
+            transparent 51%
+          ),
+          var(--sds-sky);
+      }
+
+      .sds-lot__world {
+        position: absolute;
+        inset: 0;
+        transform-style: preserve-3d;
+        transform: translateZ(0);
+        will-change: transform;
+        /* Without this, screen 0 cannot be clicked for the first 900px of the
+           drive: this full-stage box sits between the camera and every screen
+           and swallows the lot's pointer events. The screens opt back in. */
+        pointer-events: none;
+      }
+
+      /* DT13 EDIT (docs/wireframes/theater-drive-in-theme.html, and the spec's
+         "The sky, the ground and the lighting"): the shipped rule is
+         `height: 4800px` with `transform: rotateX(-90deg) translateZ(0)`, which
+         was written for eight screens. With twenty the lot is 16 800px deep, so
+         the plane ends up entirely behind the camera and the screens stand on
+         sky. Depth and lead now come from the geometry:
+           --sds-ground-depth = lotZ(1, count) + 5 * SPACING  = 20800px
+           --sds-ground-lead  = SPACING                       =   800px  */
+      .sds-lot__ground {
+        position: absolute;
+        top: var(--sds-ground-line);
+        left: 50%;
+        width: 4000px;
+        height: var(--sds-ground-depth);
+        margin-left: -2000px;
+        background:
+          repeating-linear-gradient(
+            180deg,
+            transparent 0 780px,
+            color-mix(in srgb, var(--sds-star) 5%, transparent) 780px 784px
+          ),
+          linear-gradient(
+            180deg,
+            var(--sds-asphalt) 0%,
+            var(--sds-asphalt-far) 70%
+          );
+        transform: translateZ(var(--sds-ground-lead)) rotateX(-90deg);
+        transform-origin: 50% 0;
+        transform-style: preserve-3d;
+      }
+
+      /* DT13 EDIT: the shipped ::after is a faint 420px purple band; it becomes
+         THE ROAD — darker asphalt, 4px edge lines, a 14px dashed centre line
+         (dashes 140px of Z, gaps 180px). All on the ground plane, so it recedes
+         with the perspective. Exactly the wireframe's rule. */
+      .sds-lot__ground::after {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 420px;
+        height: 100%;
+        margin-left: -210px;
+        background:
+          repeating-linear-gradient(
+              180deg,
+              var(--sds-road-line) 0 140px,
+              transparent 140px 320px
+            )
+            center top / 14px 100% no-repeat,
+          linear-gradient(
+            90deg,
+            var(--sds-road-edge) 0 4px,
+            transparent 4px calc(100% - 4px),
+            var(--sds-road-edge) calc(100% - 4px)
+          ),
+          color-mix(in srgb, var(--sds-asphalt) 78%, black);
+        content: "";
+      }
+
+      .sds-screen {
+        pointer-events: auto;
+        position: absolute;
+        bottom: calc(100% - var(--sds-ground-line));
+        left: 50%;
+        display: flex;
+        width: 520px;
+        flex-direction: column;
+        align-items: center;
+        margin-left: -260px;
+        transform: translate3d(
+            var(--sds-screen-x, 0px),
+            0px,
+            var(--sds-screen-z, 0px)
+          )
+          rotateY(var(--sds-screen-yaw, 0deg));
+        transform-style: preserve-3d;
+      }
+
+      .sds-screen__surface {
+        position: relative;
+        display: block;
+        overflow: hidden;
+        width: 100%;
+        aspect-ratio: 16 / 10;
+        border: 6px solid var(--sds-screen-bezel);
+        border-radius: var(--sds-radius-sm);
+        background: var(--sds-screen-dark);
+        box-shadow:
+          0 0 60px color-mix(in srgb, var(--sds-screen-dark) 60%, transparent),
+          0 0 60px
+            color-mix(
+              in srgb,
+              var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 10%),
+              transparent
+            );
+        /* The production expression. The timeline tweens the NUMBER; the CSS
+           derives the look. DTF tweened `filter` directly — not this. */
+        filter: brightness(calc(0.35 + 0.65 * var(--sds-screen-lit, 0)));
+      }
+
+      .sds-screen__surface[data-poster="missing"] {
+        background:
+          repeating-linear-gradient(
+            135deg,
+            transparent 0 12px,
+            color-mix(in srgb, var(--sds-star) 3%, transparent) 12px 24px
+          ),
+          var(--sds-screen-dark);
+      }
+
+      .sds-screen__poster,
+      .sds-screen__video {
+        position: absolute;
+        inset: 0;
+        display: block;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        object-position: top;
+      }
+
+      .sds-screen__video {
+        z-index: 1;
+      }
+
+      .sds-screen__base {
+        position: relative;
+        width: 100%;
+        height: 96px;
+      }
+
+      .sds-screen__post {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 14px;
+        background: var(--sds-screen-post);
+      }
+
+      .sds-screen__post--l {
+        left: 70px;
+      }
+
+      .sds-screen__post--r {
+        right: 70px;
+      }
+
+      .sds-screen__marquee {
+        position: absolute;
+        top: 14px;
+        left: 50%;
+        overflow: hidden;
+        width: 320px;
+        padding: var(--sds-space-2) var(--sds-space-4);
+        border: 3px solid
+          color-mix(
+            in srgb,
+            var(--sds-marquee-edge-lit) calc(var(--sds-screen-lit, 0) * 100%),
+            var(--sds-marquee-edge)
+          );
+        border-radius: 6px;
+        background: color-mix(
+          in srgb,
+          var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 100%),
+          var(--sds-marquee-dim)
+        );
+        box-shadow: 0 0 14px
+          color-mix(
+            in srgb,
+            var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 30%),
+            transparent
+          );
+        color: var(--sds-marquee-ink);
+        font-size: 1.125rem;
+        font-weight: var(--sds-weight-bold);
+        letter-spacing: 0.02em;
+        text-align: center;
+        text-overflow: ellipsis;
+        text-transform: uppercase;
+        transform: translateX(-50%);
+        white-space: nowrap;
+      }
+
+      /* The Tab half of the hit test. The shipped rule is `outline: none` plus a
+         box-shadow ring; kept, and made loud enough to see on a far screen. */
+      .sds-screen:focus-visible {
+        outline: none;
+      }
+
+      .sds-screen:focus-visible .sds-screen__surface {
+        box-shadow:
+          0 0 0 3px var(--sds-star),
+          0 0 40px var(--sds-marquee);
+      }
+
+      /* ===================================================================
+       * SCENERY — from the spec's "Scenery" section and the wireframe's rules.
+       * `.sds-tree` is a plain masked plane: no filter, no transform-style of
+       * its own.
+       * =================================================================== */
+      .sds-tree {
+        position: absolute;
+        bottom: calc(100% - var(--sds-ground-line));
+        left: 50%;
+        width: 260px;
+        height: 390px;
+        margin-left: -130px;
+        background: var(--sds-tree);
+        /* Longhands, not the `mask` shorthand: the mask IMAGE is written from JS
+           once the source is built, and a shorthand in this rule would reset it
+           back to `none` depending on order. */
+        -webkit-mask-position: center bottom;
+        -webkit-mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-position: center bottom;
+        mask-size: contain;
+        mask-repeat: no-repeat;
+        transform: translate3d(
+            var(--sds-tree-x, 0px),
+            0,
+            var(--sds-tree-z, 0px)
+          )
+          scale(var(--sds-tree-scale, 1));
+        transform-origin: 50% 100%;
+        pointer-events: none;
+        /* An unset mask-image computes to `none` and paints the plane's whole
+           RECTANGLE in --sds-tree. A pending or failed mask must be invisible,
+           never a grey box (the spec's measured note). */
+        visibility: hidden;
+      }
+
+      .sds-tree[data-mask="ready"] {
+        visibility: visible;
+      }
+
+      /* ===================================================================
+       * THE CAR — anchored to the STAGE, not the world, so the lot drives past
+       * it. From the wireframe's `.lot__orb` / `.lot__beam` / `.lot__car`.
+       * =================================================================== */
+      .sds-lot__orb {
+        position: absolute;
+        z-index: 0;
+        top: var(--sds-orb-y);
+        left: var(--sds-orb-x);
+        width: var(--sds-orb-size);
+        height: var(--sds-orb-size);
+        margin: calc(var(--sds-orb-size) / -2) 0 0 calc(var(--sds-orb-size) / -2);
+        border-radius: 50%;
+        background: var(--sds-orb);
+        box-shadow: 0 0 var(--sds-orb-halo-size) var(--sds-orb-halo);
+        pointer-events: none;
+      }
+
+      .sds-lot__beam {
+        position: absolute;
+        z-index: 2;
+        bottom: 22%;
+        left: 50%;
+        width: 46%;
+        height: 20%;
+        background: linear-gradient(to top, var(--sds-beam), transparent);
+        clip-path: polygon(30% 100%, 70% 100%, 56% 0, 44% 0);
+        opacity: var(--sds-headlight);
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+
+      .sds-lot__car {
+        position: absolute;
+        z-index: 3;
+        bottom: -1%;
+        left: 50%;
+        width: clamp(320px, 38vw, 620px);
+        /* Keeps the wrapper's height (and therefore the glows' box) when the
+           sprite is missing — the review measured 0px without it. */
+        aspect-ratio: 16 / 9;
+        transform: translateX(-50%);
+        pointer-events: none;
+      }
+
+      .sds-lot__car img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+
+      /* The two blurred tail-light glows — the per-frame raster cost DTF never
+         had, and one of the three reasons this probe exists. */
+      .sds-lot__car::before,
+      .sds-lot__car::after {
+        position: absolute;
+        bottom: 34%;
+        width: 22%;
+        height: 18%;
+        border-radius: 50%;
+        background: radial-gradient(
+          closest-side,
+          rgba(255, 70, 60, 0.55),
+          transparent
+        );
+        opacity: var(--sds-headlight);
+        filter: blur(6px);
+        content: "";
+      }
+
+      .sds-lot__car::before {
+        left: 9%;
+      }
+
+      .sds-lot__car::after {
+        right: 9%;
+      }
+
+      /* Narrow layout, transcribed from global.css's 767px block plus the
+         wireframe's scenery lines. Not measured — the protocol is 1440x900 —
+         but present so the transcription is complete. */
+      @media (max-width: 767px) {
+        .sds-lot {
+          perspective: 600px;
+        }
+
+        .sds-screen {
+          --sds-screen-x: 0px !important;
+          --sds-screen-yaw: 0deg !important;
+
+          width: 300px;
+          margin-left: -150px;
+        }
+
+        .sds-screen__marquee {
+          width: 220px;
+          font-size: 0.9rem;
+        }
+
+        .sds-tree {
+          --sds-tree-x: 0px !important;
+
+          width: 180px;
+          height: 270px;
+          margin-left: -90px;
+        }
+
+        .sds-tree--left {
+          transform: translate3d(-360px, 0, var(--sds-tree-z, 0px))
+            scale(var(--sds-tree-scale, 1));
+        }
+
+        .sds-tree--right {
+          transform: translate3d(360px, 0, var(--sds-tree-z, 0px))
+            scale(var(--sds-tree-scale, 1));
+        }
+
+        .sds-lot__car {
+          width: 64vw;
+        }
+
+        .sds-lot__beam {
+          width: 70%;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="hud">
+      <span id="hud-label">variant</span>
+      <a href="?variant=lot20" data-v="lot20">lot20</a>
+      <a href="?variant=car-only" data-v="car-only">car-only</a>
+      <a href="?variant=scenery" data-v="scenery">scenery</a>
+      <a href="?variant=scenery-half" data-v="scenery-half">scenery-half</a>
+      <a href="?variant=scenery-overload" data-v="scenery-overload"
+        >scenery-overload</a
+      >
+      <span id="hud-status"></span>
+    </div>
+
+    <!-- The drivable classifier self-test. Empty and hidden until
+         ?selftest=verdict fills it; present in the markup so a driver can wait
+         on the element rather than on a script having run. -->
+    <pre id="verdict-selftest" hidden></pre>
+
+    <div id="stage"></div>
+    <div class="spacer"></div>
+
+    <script>
+      /* -------------------------------------------------------------------
+       * Set this to one of VARIANTS to pin a variant regardless of the query
+       * string. null = use ?variant= (default 'scenery').
+       * ----------------------------------------------------------------- */
+      const VARIANT_OVERRIDE = null;
+
+      const VARIANTS = [
+        "lot20",
+        "car-only",
+        "scenery",
+        "scenery-half",
+        "scenery-overload",
+      ];
+      const PARAMS = new URLSearchParams(location.search);
+      const requested = PARAMS.get("variant");
+      const VARIANT =
+        VARIANT_OVERRIDE || (VARIANTS.includes(requested) ? requested : "scenery");
+
+      /* Which mask source the tree planes use. See the header. */
+      const MASK_SRC = PARAMS.get("masksrc") === "svg" ? "svg" : "png";
+
+      /* ===================================================================
+       * GEOMETRY — inlined from theater/src/lot/geometry.ts. A file:// page
+       * cannot import the module, so these are copies; if geometry.ts changes,
+       * this probe is stale.
+       * =================================================================== */
+      const SPACING = 800; // px of Z between screens
+      const OFFSET = 480; // px of X, alternating sides
+      const YAW_DEG = 18; // degrees, alternating sign
+      const GROUND_LINE = 0.58; // fraction of the stage height
+      const VH_PER_SCREEN = 120; // matches the .spacer height above
+
+      /*
+       * EVO-UNI-128: a SNAPSHOT of theater/src/projects.ts's length on
+       * 2026-09-08, not a value read from the registry. A re-run must re-read
+       * the registry first — every tree count below is derived from this.
+       */
+      const SCREEN_COUNT = 20;
+
+      const screenPlacement = (i) => ({
+        x: i % 2 === 0 ? -OFFSET : OFFSET,
+        z: -(i + 1) * SPACING,
+        yaw: i % 2 === 0 ? YAW_DEG : -YAW_DEG,
+      });
+      const lotZ = (progress, count) =>
+        Math.min(1, Math.max(0, progress)) * SPACING * (count + 1);
+      const screenProgress = (i, count) => (i * SPACING) / (SPACING * (count + 1));
+
+      const BAND_EPSILON = 1e-9;
+      const activeScreen = (progress, count) => {
+        const i = Math.floor(
+          Math.min(1, Math.max(0, progress)) * (count + 1) + BAND_EPSILON,
+        );
+        return i >= 0 && i < count ? i : -1;
+      };
+
+      /* DT13's two ground numbers, from the spec. */
+      const GROUND_LEAD = SPACING; // 800
+      const GROUND_DEPTH = lotZ(1, SCREEN_COUNT) + 5 * SPACING; // 20800
+
+      /* ===================================================================
+       * SCENERY ARITHMETIC — from the spec's "Scenery" section. A table, never
+       * Math.random: a rebuilt scene must look identical (SDS-001).
+       * =================================================================== */
+      const TREE_SETBACK = 420;
+      const TREE_LEAD = 100;
+      const TREE_VARIANTS = 3;
+      const TREE_JITTER = [
+        { dx: 0, scale: 1.05 },
+        { dx: 60, scale: 0.9 },
+        { dx: 0, scale: 1.15 },
+        { dx: 40, scale: 0.95 },
+        { dx: 0, scale: 1.1 },
+        { dx: 80, scale: 1.0 },
+        { dx: 0, scale: 1.05 },
+        { dx: 40, scale: 0.9 },
+      ];
+
+      /* Left trees first, then right; the rows alternate by half a spacing. */
+      function treePlacements(count, spacing) {
+        const limit = -(lotZ(1, count) + SPACING);
+        const out = [];
+        for (const side of ["left", "right"]) {
+          const right = side === "right";
+          const lead = TREE_LEAD + (right ? spacing / 2 : 0);
+          for (let i = 0; ; i++) {
+            const z = -(lead + i * spacing);
+            if (z < limit) break;
+            const jitter = TREE_JITTER[(i + (right ? 3 : 0)) % TREE_JITTER.length];
+            out.push({
+              side,
+              x: (right ? 1 : -1) * (OFFSET + TREE_SETBACK + jitter.dx),
+              z,
+              scale: jitter.scale,
+              variant: (i + (right ? 1 : 0)) % TREE_VARIANTS,
+            });
+          }
+        }
+        return out;
+      }
+
+      /* 400 -> 88 planes, 800 -> 44, 100 -> 351 (176 left + 175 right). */
+      const TREE_SPACING_BY_VARIANT = {
+        scenery: 400,
+        "scenery-half": 800,
+        "scenery-overload": 100,
+      };
+      const TREE_SPACING = TREE_SPACING_BY_VARIANT[VARIANT] || null;
+      const HAS_CAR = VARIANT !== "lot20";
+
+      /* ===================================================================
+       * THE TWENTY PROJECTS — hardcoded from theater/src/projects.ts as of
+       * 2026-09-08 (EVO-UNI-128; see the note above). `clip: null` is a screen
+       * that has no images/<slug>/demo.mp4 on disk and falls back to its poster
+       * in production; re-probed on disk 2026-09-08 and there are four.
+       * =================================================================== */
+      const PROJECTS = [
+        {
+          slug: "budget-app",
+          name: "Leon's Budget",
+          href: "../../projects/budget-app.html",
+          poster: "../../images/budget-app/01.png",
+          clip: "../../images/budget-app/demo.mp4",
+        },
+        {
+          slug: "nom-noms",
+          name: "Nom Nom's",
+          href: "../../projects/nom-noms.html",
+          poster: "../../images/nom-noms/01.png",
+          clip: "../../images/nom-noms/demo.mp4",
+        },
+        {
+          slug: "el-blackjack",
+          name: "El Blackjack",
+          href: "../../projects/el-blackjack.html",
+          poster: "../../images/el-blackjack/01.png",
+          clip: "../../images/el-blackjack/demo.mp4",
+        },
+        {
+          slug: "classic-golf",
+          name: "The Classic",
+          href: "../../projects/classic-golf.html",
+          poster: "../../images/classic-golf/01.png",
+          clip: "../../images/classic-golf/demo.mp4",
+        },
+        {
+          slug: "spead-read",
+          name: "Spead Read",
+          href: "../../projects/spead-read.html",
+          poster: "../../images/spead-read/01.png",
+          clip: null,
+        },
+        {
+          slug: "chunk-norris",
+          name: "Chunk Norris",
+          href: "../../projects/chunk-norris.html",
+          poster: "../../images/chunk-norris/01.png",
+          clip: "../../images/chunk-norris/demo.mp4",
+        },
+        {
+          slug: "app-dash",
+          name: "app-dash",
+          href: "../../projects/app-dash.html",
+          poster: "../../images/app-dash/01.png",
+          clip: "../../images/app-dash/demo.mp4",
+        },
+        {
+          slug: "prompt-heus",
+          name: "Prompt-heus",
+          href: "../../projects/prompt-heus.html",
+          poster: "../../images/prompt-heus/01.png",
+          clip: "../../images/prompt-heus/demo.mp4",
+        },
+        {
+          slug: "voice-trainer",
+          name: "Voice Trainer",
+          href: "../../projects/voice-trainer.html",
+          poster: "../../images/voice-trainer/01.png",
+          clip: "../../images/voice-trainer/demo.mp4",
+        },
+        {
+          slug: "chudios",
+          name: "chudios",
+          href: "../../projects/chudios.html",
+          poster: "../../images/chudios/01.png",
+          clip: "../../images/chudios/demo.mp4",
+        },
+        {
+          slug: "chud",
+          name: "CHUD",
+          href: "../../projects/chud.html",
+          poster: "../../images/chud/01.png",
+          clip: "../../images/chud/demo.mp4",
+        },
+        {
+          slug: "co-host",
+          name: "co-host",
+          href: "../../projects/co-host.html",
+          poster: "../../images/co-host/01.png",
+          clip: "../../images/co-host/demo.mp4",
+        },
+        {
+          slug: "mind-palace",
+          name: "Mind Palace",
+          href: "../../projects/mind-palace.html",
+          poster: "../../images/mind-palace/01.png",
+          clip: "../../images/mind-palace/demo.mp4",
+        },
+        {
+          slug: "logson",
+          name: "Logson",
+          href: "../../projects/logson.html",
+          poster: "../../images/logson/01.png",
+          clip: "../../images/logson/demo.mp4",
+        },
+        {
+          slug: "graces-tree",
+          name: "Grace's Tree",
+          href: "../../projects/graces-tree.html",
+          poster: "../../images/graces-tree/01.png",
+          clip: "../../images/graces-tree/demo.mp4",
+        },
+        {
+          slug: "journow",
+          name: "jourNOW",
+          href: "../../projects/journow.html",
+          poster: "../../images/journow/01.png",
+          clip: "../../images/journow/demo.mp4",
+        },
+        {
+          slug: "co-author",
+          name: "Co-Author",
+          href: "../../projects/co-author.html",
+          poster: "../../images/co-author/01.png",
+          clip: "../../images/co-author/demo.mp4",
+        },
+        {
+          slug: "media-cloud-web-tools",
+          name: "Media Cloud Web Tools",
+          href: "../../projects/media-cloud-web-tools.html",
+          poster: "../../images/media-cloud-web-tools/01.png",
+          clip: null,
+        },
+        {
+          slug: "media-cloud-vitals",
+          name: "Media Cloud Vitals",
+          href: "../../projects/media-cloud-vitals.html",
+          poster: "../../images/media-cloud-vitals/01.png",
+          clip: null,
+        },
+        {
+          slug: "showrunner-digest",
+          name: "ShowRunner Digest",
+          href: "../../projects/showrunner-digest.html",
+          poster: "../../images/showrunner-digest/01.png",
+          clip: null,
+        },
+      ];
+
+      const BANDS = SCREEN_COUNT + 1;
+      const LIT_IN_BANDS = 0.15;
+      const LIT_OUT_BANDS = 0.05;
+
+      const stage = document.getElementById("stage");
+      const hudStatus = document.getElementById("hud-status");
+      document.getElementById("hud-label").textContent = VARIANT.toUpperCase();
+      for (const a of document.querySelectorAll(".hud a")) {
+        if (a.dataset.v === VARIANT) a.setAttribute("aria-current", "true");
+      }
+
+      function fatal(message) {
+        const el = document.createElement("div");
+        el.className = "fatal";
+        el.textContent = message;
+        document.body.appendChild(el);
+      }
+
+      /* ===================================================================
+       * MASK SOURCE 1 (default): three silhouettes drawn in-page on an 800x1200
+       * canvas. The probe must not depend on DT14's art existing.
+       *
+       * Drawn in the 200x300 space the wireframe's placeholders use, scaled x4,
+       * so both mask sources describe the same three plants at the contract's
+       * canvas size.
+       * =================================================================== */
+      const MASK_W = 800;
+      const MASK_H = 1200;
+
+      function drawDeciduous(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(100, 20);
+        ctx.bezierCurveTo(150, 20, 190, 70, 185, 130);
+        ctx.bezierCurveTo(200, 160, 190, 210, 150, 225);
+        ctx.lineTo(112, 232);
+        ctx.lineTo(112, 300);
+        ctx.lineTo(88, 300);
+        ctx.lineTo(88, 232);
+        ctx.lineTo(50, 225);
+        ctx.bezierCurveTo(10, 210, 0, 160, 15, 130);
+        ctx.bezierCurveTo(10, 70, 50, 20, 100, 20);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawConifer(ctx) {
+        /* The wireframe's tree--1 path, verbatim in the 200x300 space. */
+        ctx.beginPath();
+        ctx.moveTo(100, 0);
+        ctx.lineTo(150, 90);
+        ctx.lineTo(128, 90);
+        ctx.lineTo(172, 170);
+        ctx.lineTo(146, 170);
+        ctx.lineTo(196, 260);
+        ctx.lineTo(112, 260);
+        ctx.lineTo(112, 300);
+        ctx.lineTo(88, 300);
+        ctx.lineTo(88, 260);
+        ctx.lineTo(4, 260);
+        ctx.lineTo(54, 170);
+        ctx.lineTo(28, 170);
+        ctx.lineTo(72, 90);
+        ctx.lineTo(50, 90);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      function drawTall(ctx) {
+        ctx.beginPath();
+        ctx.moveTo(100, 0);
+        ctx.bezierCurveTo(130, 40, 140, 70, 135, 110);
+        ctx.bezierCurveTo(160, 130, 165, 180, 150, 220);
+        ctx.lineTo(112, 236);
+        ctx.lineTo(112, 300);
+        ctx.lineTo(88, 300);
+        ctx.lineTo(88, 236);
+        ctx.lineTo(50, 220);
+        ctx.bezierCurveTo(35, 180, 40, 130, 65, 110);
+        ctx.bezierCurveTo(60, 70, 70, 40, 100, 0);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      const CANVAS_SILHOUETTES = [drawDeciduous, drawConifer, drawTall];
+
+      function buildCanvasMasks() {
+        return CANVAS_SILHOUETTES.map((draw) => {
+          const canvas = document.createElement("canvas");
+          canvas.width = MASK_W;
+          canvas.height = MASK_H;
+          const ctx = canvas.getContext("2d");
+          ctx.scale(MASK_W / 200, MASK_H / 300);
+          ctx.fillStyle = "#000";
+          draw(ctx);
+          return canvas.toDataURL("image/png");
+        });
+      }
+
+      /* ===================================================================
+       * MASK SOURCE 2 (&masksrc=svg): the exported intrinsic-size placeholders.
+       *
+       * Copied from docs/wireframes/theater-drive-in-theme.html's `.tree--1/2/3`
+       * --tree-mask declarations on 2026-09-08, with the explicit width/height
+       * the art contract requires added to the root element (the wireframe's
+       * inline URIs carry a viewBox and no intrinsic size, so as files they
+       * measure 100x150 and fail every dimension check). These are the SAME
+       * strings docs/spikes/art-check.html offers under "download placeholder
+       * set" — the two files must be kept in step by hand.
+       * =================================================================== */
+      const TREE_SVGS = [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 200 300"><path d="M100 0 L150 90 L128 90 L172 170 L146 170 L196 260 L112 260 L112 300 L88 300 L88 260 L4 260 L54 170 L28 170 L72 90 L50 90 Z" fill="black"/></svg>`,
+        `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 200 300"><path d="M100 20 C150 20 190 70 185 130 C200 160 190 210 150 225 L112 232 L112 300 L88 300 L88 232 L50 225 C10 210 0 160 15 130 C10 70 50 20 100 20 Z" fill="black"/></svg>`,
+        `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 200 300"><path d="M100 0 C130 40 140 70 135 110 C160 130 165 180 150 220 L112 236 L112 300 L88 300 L88 236 L50 220 C35 180 40 130 65 110 C60 70 70 40 100 0 Z" fill="black"/></svg>`,
+      ];
+
+      const svgUrl = (svg) =>
+        `data:image/svg+xml,${encodeURIComponent(svg)}`;
+
+      const MASK_URLS =
+        MASK_SRC === "svg" ? TREE_SVGS.map(svgUrl) : buildCanvasMasks();
+
+      /* The wireframe's placeholder wagon, with the contract's intrinsic size
+         added. Gives the car real raster content, as production's decoded
+         sprite does. Copied 2026-09-08. */
+      const CAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900"><rect x="330" y="790" width="170" height="90" rx="22" fill="#120c1c"/><rect x="1100" y="790" width="170" height="90" rx="22" fill="#120c1c"/><rect x="470" y="150" width="660" height="34" rx="10" fill="#c9c3b8"/><rect x="520" y="120" width="14" height="40" fill="#c9c3b8"/><rect x="1066" y="120" width="14" height="40" fill="#c9c3b8"/><path d="M300 330 C310 250 360 190 440 180 L1160 180 C1240 190 1290 250 1300 330 L1320 560 L1320 790 C1320 815 1300 830 1275 830 L325 830 C300 830 280 815 280 790 L280 560 Z" fill="#b9a38a"/><rect x="280" y="150" width="1040" height="50" rx="14" fill="#e9e2d6"/><rect x="320" y="560" width="960" height="170" rx="10" fill="#7a4b26"/><rect x="320" y="560" width="960" height="170" rx="10" fill="none" stroke="#e0c99a" stroke-width="8"/><rect x="380" y="215" width="840" height="300" rx="22" fill="#0b0616"/><path d="M540 515 C540 440 600 420 640 420 C690 420 740 445 740 515 Z" fill="#2a1a30"/><circle cx="640" cy="392" r="48" fill="#e8c5a0"/><path d="M860 515 C860 440 920 420 960 420 C1010 420 1060 445 1060 515 Z" fill="#2a1a30"/><circle cx="960" cy="392" r="48" fill="#e8c5a0"/><path d="M1035 372 L1075 300 L1095 320 L1070 380 Z" fill="#e8c5a0"/><rect x="300" y="560" width="60" height="170" rx="8" fill="#ff4a44"/><rect x="1240" y="560" width="60" height="170" rx="8" fill="#ff4a44"/><rect x="260" y="740" width="1080" height="56" rx="14" fill="#d9d6d2"/><rect x="700" y="752" width="200" height="34" rx="6" fill="#f2efe8"/></svg>`;
+
+      /* ===================================================================
+       * THE LOT — the DOM shape of theater/src/lot/build-lot.ts.
+       * =================================================================== */
+      function buildLot() {
+        const pin = document.createElement("div");
+        pin.className = "pin";
+
+        const lot = document.createElement("div");
+        lot.className = "sds-lot";
+        lot.style.setProperty(
+          "--sds-ground-line",
+          `${Number((GROUND_LINE * 100).toFixed(4))}%`,
+        );
+        lot.style.setProperty("--sds-ground-lead", `${GROUND_LEAD}px`);
+        lot.style.setProperty("--sds-ground-depth", `${GROUND_DEPTH}px`);
+
+        const world = document.createElement("div");
+        world.className = "sds-lot__world";
+
+        const ground = document.createElement("div");
+        ground.className = "sds-lot__ground";
+        world.appendChild(ground);
+
+        /* Trees go inside the world, after the ground and before the screens,
+           so the one drive tween moves them with everything else. */
+        const trees = [];
+        if (TREE_SPACING) {
+          for (const p of treePlacements(SCREEN_COUNT, TREE_SPACING)) {
+            const tree = document.createElement("span");
+            tree.className = `sds-tree sds-tree--${p.side}`;
+            tree.setAttribute("aria-hidden", "true");
+            tree.setAttribute("data-tree-variant", String(p.variant));
+            tree.setAttribute("data-mask", "pending");
+            tree.style.setProperty("--sds-tree-x", `${p.x}px`);
+            tree.style.setProperty("--sds-tree-z", `${p.z}px`);
+            tree.style.setProperty("--sds-tree-scale", String(p.scale));
+            const url = MASK_URLS[p.variant];
+            tree.style.setProperty("-webkit-mask-image", `url("${url}")`);
+            tree.style.setProperty("mask-image", `url("${url}")`);
+            tree.setAttribute("data-mask", "ready");
+            world.appendChild(tree);
+            trees.push(tree);
+          }
+        }
+
+        const screens = [];
+        for (let i = 0; i < SCREEN_COUNT; i++) {
+          const project = PROJECTS[i];
+          const { x, z, yaw } = screenPlacement(i);
+
+          const screen = document.createElement("a");
+          screen.className = "sds-screen";
+          screen.href = project.href;
+          screen.setAttribute("data-screen-index", String(i));
+          screen.style.setProperty("--sds-screen-x", `${x}px`);
+          screen.style.setProperty("--sds-screen-z", `${z}px`);
+          screen.style.setProperty("--sds-screen-yaw", `${yaw}deg`);
+          screen.style.setProperty("--sds-screen-lit", "0");
+
+          const surface = document.createElement("span");
+          surface.className = "sds-screen__surface";
+          surface.setAttribute("data-poster", "pending");
+
+          const video = document.createElement("video");
+          video.className = "sds-screen__video";
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.preload = "none";
+          video.poster = project.poster;
+          video.setAttribute("aria-hidden", "true");
+          /* The four poster-only screens get NO <source> at all — production's
+             fallback, not a cheaper stand-in for it. */
+          if (project.clip) {
+            const source = document.createElement("source");
+            source.src = project.clip;
+            source.type = "video/mp4";
+            video.appendChild(source);
+          }
+          surface.appendChild(video);
+
+          const base = document.createElement("span");
+          base.className = "sds-screen__base";
+          const postL = document.createElement("span");
+          postL.className = "sds-screen__post sds-screen__post--l";
+          const postR = document.createElement("span");
+          postR.className = "sds-screen__post sds-screen__post--r";
+          const marquee = document.createElement("span");
+          marquee.className = "sds-screen__marquee";
+          marquee.textContent = project.name;
+          base.append(postL, postR, marquee);
+
+          screen.append(surface, base);
+          world.appendChild(screen);
+          screens.push({ screen, surface, video, project });
+        }
+
+        lot.appendChild(world);
+
+        /* The orb, the beam and the car hang off the STAGE, outside the world,
+           so the lot drives past them. */
+        if (HAS_CAR) {
+          const orb = document.createElement("div");
+          orb.className = "sds-lot__orb";
+          orb.setAttribute("aria-hidden", "true");
+
+          const beam = document.createElement("div");
+          beam.className = "sds-lot__beam";
+          beam.setAttribute("aria-hidden", "true");
+
+          const car = document.createElement("div");
+          car.className = "sds-lot__car";
+          car.setAttribute("aria-hidden", "true");
+          car.setAttribute("data-car", "ready");
+          const carImg = document.createElement("img");
+          carImg.alt = "";
+          carImg.src = svgUrl(CAR_SVG);
+          car.appendChild(carImg);
+
+          lot.append(orb, beam, car);
+        }
+
+        pin.appendChild(lot);
+        stage.appendChild(pin);
+        return { world, screens, trees };
+      }
+
+      /* ===================================================================
+       * THE POSTER GATE (see the header). Production keeps twenty decoded
+       * posters resident inside the transformed world; a probe without them
+       * measures a lighter page and would hand back a false GO.
+       * =================================================================== */
+      function decodePoster(url) {
+        return new Promise((resolve) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => resolve(null);
+          image.src = url;
+        });
+      }
+
+      async function placePosters(screens) {
+        const images = await Promise.all(
+          screens.map((s) => decodePoster(s.project.poster)),
+        );
+        let resident = 0;
+        images.forEach((image, i) => {
+          const { surface } = screens[i];
+          if (!image || image.naturalWidth < 1) {
+            surface.setAttribute("data-poster", "missing");
+            return;
+          }
+          image.className = "sds-screen__poster";
+          image.alt = "";
+          surface.appendChild(image);
+          surface.setAttribute("data-poster", "ready");
+          resident += 1;
+        });
+        return resident;
+      }
+
+      /* ===================================================================
+       * THE TIMELINE — the shape of theater/src/lot/build-lot.ts. One unit is
+       * one screen's band; the drive is SCREEN_COUNT + 1 units long.
+       *
+       * NOT DTF's timeline: production tweens the NUMBER `--sds-screen-lit` and
+       * lets the CSS derive brightness, marquee colour and glow. DTF tweened
+       * `filter` and the marquee colours directly, which is a different
+       * per-frame cost.
+       * =================================================================== */
+      function buildTimeline(world, screens) {
+        const tl = gsap.timeline({ paused: true, defaults: { ease: "none" } });
+
+        tl.fromTo(
+          world,
+          { z: 0 },
+          { z: lotZ(1, SCREEN_COUNT), duration: BANDS, ease: "none" },
+          0,
+        );
+
+        screens.forEach(({ screen }, i) => {
+          const bandStart = screenProgress(i, SCREEN_COUNT) * BANDS;
+          const bandEnd = screenProgress(i + 1, SCREEN_COUNT) * BANDS;
+
+          tl.fromTo(
+            screen,
+            { "--sds-screen-lit": 0 },
+            { "--sds-screen-lit": 1, duration: LIT_IN_BANDS, ease: "none" },
+            bandStart,
+          );
+          tl.fromTo(
+            screen,
+            { "--sds-screen-lit": 1 },
+            {
+              "--sds-screen-lit": 0,
+              duration: LIT_OUT_BANDS,
+              ease: "none",
+              /* Without this the whole lot is lit before it is driven: a
+                 `fromTo` renders its `from` value at build time, writing "fully
+                 lit" onto every screen the visitor has not reached yet. */
+              immediateRender: false,
+            },
+            bandEnd,
+          );
+        });
+
+        return tl;
+      }
+
+      /* Playing iff active, idempotent — production's rule. */
+      function makePlayback(screens) {
+        let playing = -1;
+        return function setActive(next) {
+          if (next === playing) return;
+          if (playing >= 0) screens[playing].video.pause();
+          playing = next;
+          if (next >= 0) {
+            const played = screens[next].video.play();
+            if (played && played.catch) played.catch(() => {});
+          }
+        };
+      }
+
+      /* ===================================================================
+       * The frame loop. Same shape as theater/src/engine.ts: tick Lenis, ONE
+       * scroll read, one absolute seek. Nothing here measures layout.
+       * =================================================================== */
+      function run(tl, setActive) {
+        const lenis = new Lenis({ autoRaf: false });
+
+        let range = 1;
+        const measure = () => {
+          range = Math.max(
+            1,
+            document.documentElement.scrollHeight - window.innerHeight,
+          );
+        };
+        measure();
+        window.addEventListener("resize", measure);
+
+        function frame(time) {
+          /* Before the scroll read, not after: Lenis moves the page during this
+             call, and reading first would drive the scene from last frame's
+             position. */
+          lenis.raf(time);
+
+          const progress = Math.min(1, Math.max(0, window.scrollY / range));
+          tl.progress(progress, true);
+          setActive(activeScreen(progress, SCREEN_COUNT));
+
+          requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      }
+
+      /* ===================================================================
+       * THE CLASSIFIER — the ONE implementation of the header's decision
+       * procedure. Pure: no DOM, no globals, no clock. renderSummary()
+       * delegates to it, and ?selftest=verdict drives it directly.
+       *
+       * FAIL-CLOSED (EVO-UNI-120): any missing or non-numeric input returns
+       * INVALID rather than falling through to a verdict.
+       * =================================================================== */
+      const FPS_FLOOR = 50;
+
+      function classify(input) {
+        const i = input || {};
+        const num = (v) => typeof v === "number" && Number.isFinite(v);
+        const bool = (v) => typeof v === "boolean";
+
+        /* Everything steps 0-5 always consult. */
+        if (
+          !num(i.overloadFps) ||
+          !num(i.sceneryFps) ||
+          !num(i.halfFps) ||
+          !num(i.carFps) ||
+          !bool(i.carInteraction) ||
+          !bool(i.treesPaint) ||
+          !bool(i.sceneryInteraction)
+        ) {
+          return "INVALID";
+        }
+
+        /* 0. Instrument validity. The control must read lower, or the meter is
+              not moving and no verdict may be drawn. */
+        if (!(i.overloadFps < i.sceneryFps)) return "INVALID";
+
+        /* 1. The car must be usable — before anything about trees. */
+        if (!i.carInteraction) return "NO-GO-ALL";
+
+        /* 2. The car must be fast enough, on the natural-wheel run. */
+        if (!(i.carFps >= FPS_FLOOR)) return "NO-GO-ALL";
+
+        /* 3-4. The trees must paint, and must not break interaction. From here
+                down every failure is NO-GO-TREES: the car is already known good. */
+        if (!i.treesPaint) return "NO-GO-TREES";
+        if (!i.sceneryInteraction) return "NO-GO-TREES";
+
+        /* 5. Density. */
+        if (i.sceneryFps >= FPS_FLOOR) return "GO";
+        if (i.halfFps >= FPS_FLOOR) {
+          /* fps alone never selects a layout nobody has looked at, so the
+             reduced layout's own paint and interaction checks are required —
+             and fail-closed if they were never taken. */
+          if (!bool(i.halfPaint) || !bool(i.halfInteraction)) return "INVALID";
+          if (i.halfPaint && i.halfInteraction) return "GO-REDUCED";
+        }
+        return "NO-GO-TREES";
+      }
+
+      /* ===================================================================
+       * THE CLASSIFIER'S SELF-TEST  (?selftest=verdict)
+       *
+       * A grep for the outcome words proves only that the words appear in the
+       * header. This is the gate that proves the classifier implements the
+       * procedure: every row states the vector and the outcome the header's
+       * ordering requires. The probe REFUSES to render a verdict unless every
+       * row matched in this session.
+       * =================================================================== */
+      const VERDICT_CASES = [
+        {
+          name: "invalid-precedence-beats-a-go-shaped-vector",
+          /* Step 0 must win over a vector that would otherwise be a clean GO. */
+          input: {
+            overloadFps: 60,
+            sceneryFps: 60,
+            halfFps: 60,
+            carFps: 60,
+            carInteraction: true,
+            treesPaint: true,
+            sceneryInteraction: true,
+          },
+          expected: "INVALID",
+        },
+        {
+          name: "car-interaction-fails-with-fps-fine-everywhere",
+          /* The vector the OLD ordering got wrong: it returned NO-GO-TREES and
+             shipped a car already known to be unclickable. The control is kept
+             valid (overload 55 < scenery 60) precisely so step 0 does not
+             pre-empt the step being tested. */
+          input: {
+            overloadFps: 55,
+            sceneryFps: 60,
+            halfFps: 60,
+            carFps: 60,
+            carInteraction: false,
+            treesPaint: true,
+            sceneryInteraction: true,
+          },
+          expected: "NO-GO-ALL",
+        },
+        {
+          name: "car-only-below-the-floor",
+          input: {
+            overloadFps: 40,
+            sceneryFps: 60,
+            halfFps: 60,
+            carFps: 45,
+            carInteraction: true,
+            treesPaint: true,
+            sceneryInteraction: true,
+          },
+          expected: "NO-GO-ALL",
+        },
+        {
+          name: "trees-do-not-paint-car-fine",
+          input: {
+            overloadFps: 40,
+            sceneryFps: 60,
+            halfFps: 60,
+            carFps: 60,
+            carInteraction: true,
+            treesPaint: false,
+            sceneryInteraction: true,
+          },
+          expected: "NO-GO-TREES",
+        },
+        {
+          name: "scenery-interaction-fails",
+          input: {
+            overloadFps: 40,
+            sceneryFps: 60,
+            halfFps: 60,
+            carFps: 60,
+            carInteraction: true,
+            treesPaint: true,
+            sceneryInteraction: false,
+          },
+          expected: "NO-GO-TREES",
+        },
+        {
+          name: "go-45-55-58-60",
+          input: {
+            overloadFps: 45,
+            sceneryFps: 55,
+            halfFps: 58,
+            carFps: 60,
+            carInteraction: true,
+            treesPaint: true,
+            sceneryInteraction: true,
+          },
+          expected: "GO",
+        },
+        {
+          name: "go-reduced-40-45-52-60-half-layout-checked",
+          input: {
+            overloadFps: 40,
+            sceneryFps: 45,
+            halfFps: 52,
+            carFps: 60,
+            carInteraction: true,
+            treesPaint: true,
+            sceneryInteraction: true,
+            halfPaint: true,
+            halfInteraction: true,
+          },
+          expected: "GO-REDUCED",
+        },
+        {
+          name: "half-layout-does-not-paint",
+          input: {
+            overloadFps: 40,
+            sceneryFps: 45,
+            halfFps: 52,
+            carFps: 60,
+            carInteraction: true,
+            treesPaint: true,
+            sceneryInteraction: true,
+            halfPaint: false,
+            halfInteraction: true,
+          },
+          expected: "NO-GO-TREES",
+        },
+        {
+          name: "everything-slow-30-40-45-48",
+          input: {
+            overloadFps: 30,
+            sceneryFps: 40,
+            halfFps: 45,
+            carFps: 48,
+            carInteraction: true,
+            treesPaint: true,
+            sceneryInteraction: true,
+          },
+          expected: "NO-GO-ALL",
+        },
+        {
+          name: "fail-closed-scenery-fps-absent",
+          input: {
+            overloadFps: 40,
+            halfFps: 60,
+            carFps: 60,
+            carInteraction: true,
+            treesPaint: true,
+            sceneryInteraction: true,
+          },
+          expected: "INVALID",
+        },
+      ];
+
+      function runVerdictSelfTest() {
+        const rows = VERDICT_CASES.map((c) => {
+          const actual = classify(c.input);
+          return { name: c.name, expected: c.expected, actual };
+        });
+        const allMatch = rows.every((r) => r.expected === r.actual);
+        return { rows, allMatch };
+      }
+
+      function verdictSelfTestText(result) {
+        const width = Math.max(...VERDICT_CASES.map((c) => c.name.length));
+        const lines = result.rows.map(
+          (r) =>
+            `${r.name.padEnd(width)}  ${r.expected}/${r.actual}  ` +
+            `${r.expected === r.actual ? "MATCH" : "*** MISMATCH ***"}`,
+        );
+        return (
+          "DT11 verdict classifier self-test — case: EXPECTED/ACTUAL\n" +
+          `${lines.join("\n")}\n\n` +
+          `${result.rows.length} cases, ${result.rows.filter((r) => r.expected === r.actual).length} matched\n` +
+          `RESULT: ${result.allMatch ? "all-match" : "MISMATCH — the classifier does not implement the header's procedure"}\n`
+        );
+      }
+
+      function renderVerdictSelfTest() {
+        const result = runVerdictSelfTest();
+        const pre = document.getElementById("verdict-selftest");
+        pre.textContent = verdictSelfTestText(result);
+        pre.hidden = false;
+        return result;
+      }
+
+      /* ===================================================================
+       * MEASUREMENT  (?measure=all)
+       *
+       * Copied from DTF's harness. Its store key is its own (this one is
+       * dt11-measure-results), its walk order is baseline-first (EVO-UNI-021),
+       * and its summary is the five-outcome procedure above rather than DTF's
+       * three bands.
+       * =================================================================== */
+      const MEASURE = PARAMS.get("measure");
+      const MEASURE_ORDER = [
+        "lot20",
+        "car-only",
+        "scenery",
+        "scenery-half",
+        "scenery-overload",
+      ];
+      const RUNS = 3;
+      const RUN_MS = 10000;
+      const SETTLE_MS = 1800;
+      const STORE = "dt11-measure-results";
+      /* Recorded when the gate passes, so ?verdict= can print the residency the
+         medians were actually taken under rather than re-deriving it. */
+      const POSTER_STORE = "dt11-posters-resident";
+
+      /* The metric: the fewest frames landing in any contiguous 1 s window. */
+      function lowestWindowFps(ts) {
+        if (ts.length < 2) return 0;
+        const last = ts[ts.length - 1];
+        let min = Infinity;
+        let j = 0;
+        for (let i = 0; i < ts.length; i++) {
+          if (ts[i] + 1000 > last) break;
+          while (j < ts.length && ts[j] < ts[i] + 1000) j++;
+          min = Math.min(min, j - i);
+        }
+        return min === Infinity ? 0 : min;
+      }
+
+      function median(values) {
+        const sorted = [...values].sort((a, b) => a - b);
+        return sorted[Math.floor(sorted.length / 2)];
+      }
+
+      function measureBox() {
+        let el = document.getElementById("measure-overlay");
+        if (!el) {
+          el = document.createElement("div");
+          el.id = "measure-overlay";
+          el.style.cssText =
+            "position:fixed;inset:auto 0 0 0;z-index:100;padding:14px 18px;" +
+            "background:rgba(0,0,0,.88);color:#f0f0ff;border-top:2px solid #7c3aed;" +
+            "font:13px/1.6 ui-monospace,monospace;white-space:pre;overflow:auto;" +
+            "max-height:70vh";
+          document.body.appendChild(el);
+        }
+        return el;
+      }
+
+      /* One 10 s run. The page is moved EVERY frame from wall-clock elapsed, so
+         no frame is free and the trajectory is identical in every variant. */
+      function runOnce() {
+        return new Promise((resolve) => {
+          window.scrollTo(0, 0);
+          setTimeout(() => {
+            const range = Math.max(
+              1,
+              document.documentElement.scrollHeight - window.innerHeight,
+            );
+            const stamps = [];
+            let start = null;
+            function tick(now) {
+              if (start === null) start = now;
+              const elapsed = now - start;
+              stamps.push(now);
+              window.scrollTo(0, Math.min(range, (elapsed / RUN_MS) * range));
+              if (elapsed < RUN_MS) requestAnimationFrame(tick);
+              else resolve(lowestWindowFps(stamps));
+            }
+            requestAnimationFrame(tick);
+          }, SETTLE_MS);
+        });
+      }
+
+      /* Read the manual inputs the harness cannot take: the natural-wheel fps
+         and the click / Tab / paint observations. Absent -> undefined, which
+         classify() turns into INVALID. */
+      function manualInputs() {
+        const num = (k) => {
+          const raw = PARAMS.get(k);
+          if (raw === null || raw.trim() === "") return undefined;
+          const n = Number(raw);
+          return Number.isFinite(n) ? n : NaN;
+        };
+        const flag = (k) => {
+          const raw = PARAMS.get(k);
+          if (raw === null) return undefined;
+          if (raw === "1" || raw === "true" || raw === "yes") return true;
+          if (raw === "0" || raw === "false" || raw === "no") return false;
+          return undefined;
+        };
+        return {
+          carFps: num("carFps"),
+          carInteraction: flag("carInteraction"),
+          treesPaint: flag("treesPaint"),
+          sceneryInteraction: flag("sceneryInteraction"),
+          halfPaint: flag("halfPaint"),
+          halfInteraction: flag("halfInteraction"),
+        };
+      }
+
+      /* What the gate saw when the medians were taken. `?` (never a number) if
+         no run in this session ever passed it. */
+      function postersResident() {
+        const raw = sessionStorage.getItem(POSTER_STORE);
+        return raw === null ? "?" : raw;
+      }
+
+      function summaryText(state) {
+        const width = 18;
+        const rows = MEASURE_ORDER.filter((v) => state[v]).map((v) => {
+          const runs = state[v];
+          return (
+            `  ${v.padEnd(width)}` +
+            `${runs.map((n) => String(n).padStart(6)).join("")}   median ${median(runs)}`
+          );
+        });
+
+        const has = (v) => Array.isArray(state[v]) && state[v].length > 0;
+        const med = (v) => (has(v) ? median(state[v]) : undefined);
+        const overloadFps = med("scenery-overload");
+        const sceneryFps = med("scenery");
+        const halfFps = med("scenery-half");
+
+        let control = "  CONTROL (EVO-UNI-120): not both variants measured yet\n";
+        if (overloadFps != null && sceneryFps != null) {
+          const moves = overloadFps < sceneryFps;
+          control =
+            `  CONTROL (EVO-UNI-120): scenery-overload ${overloadFps} ` +
+            `${moves ? "<" : ">="} scenery ${sceneryFps}  ->  ` +
+            `${moves ? "meter moves; the medians are meaningful" : "METER DID NOT MOVE — INVALID, no verdict may be drawn"}\n`;
+        }
+
+        /* The verdict, from the ONE classifier — refused unless its self-test
+           passed in this session. */
+        const selfTest = runVerdictSelfTest();
+        const manual = manualInputs();
+        const input = { overloadFps, sceneryFps, halfFps, ...manual };
+        let verdict;
+        if (!selfTest.allMatch) {
+          verdict =
+            "  VERDICT: REFUSED — the classifier's own self-test did not print\n" +
+            "           all-match in this session. Open ?selftest=verdict, fix the\n" +
+            "           probe, and do not record anything.\n";
+        } else {
+          const outcome = classify(input);
+          const missing = Object.entries({
+            carFps: manual.carFps,
+            carInteraction: manual.carInteraction,
+            treesPaint: manual.treesPaint,
+            sceneryInteraction: manual.sceneryInteraction,
+          })
+            .filter(([, v]) => v === undefined)
+            .map(([k]) => k);
+          verdict =
+            `  VERDICT (classify): ${outcome}\n` +
+            (missing.length
+              ? `  ...fail-closed on missing manual input: ${missing.join(", ")}.\n` +
+                "     The harness cannot take these. Do the natural-wheel run and the\n" +
+                "     click / Tab / paint checks, then reopen in THIS TAB with:\n" +
+                `     ?verdict=1&carFps=<n>&carInteraction=<0|1>&treesPaint=<0|1>` +
+                `&sceneryInteraction=<0|1>&halfPaint=<0|1>&halfInteraction=<0|1>\n`
+              : "");
+        }
+
+        return (
+          "DT11 scenery probe — IN-PAGE HARNESS (relative cost only; NEVER an absolute >= 50)\n" +
+          "lowest fps over any contiguous 1 s window; 3 runs of 10 s, page driven top->bottom.\n" +
+          "Every absolute >= 50 comparison comes from the natural-wheel DevTools run instead.\n" +
+          `browser: ${navigator.userAgent}\n` +
+          `viewport: ${window.innerWidth}x${window.innerHeight}  dpr: ${window.devicePixelRatio}\n` +
+          `screens: ${SCREEN_COUNT}   posters resident: ${postersResident()}/${SCREEN_COUNT}   mask source: ${MASK_SRC}\n` +
+          `verdict self-test: ${selfTest.allMatch ? "all-match" : "MISMATCH"}\n\n` +
+          `  variant${" ".repeat(width - 7)}  run1  run2  run3\n${rows.join("\n")}\n\n` +
+          control +
+          verdict +
+          "\nCopy this whole block back to the session, then write the roadmap's decision row."
+        );
+      }
+
+      function renderSummary(state, box) {
+        const text = summaryText(state);
+        box.textContent = text;
+        console.log(text);
+      }
+
+      async function measureFlow() {
+        if (PARAMS.get("reset")) sessionStorage.removeItem(STORE);
+        const state = JSON.parse(sessionStorage.getItem(STORE) || "{}");
+        const box = measureBox();
+
+        const runs = [];
+        for (let r = 1; r <= RUNS; r++) {
+          box.textContent =
+            `MEASURING  ${VARIANT}  —  run ${r} of ${RUNS}  (${RUN_MS / 1000}s)\n` +
+            "don't touch the window; it scrolls itself\n" +
+            (Object.keys(state).length
+              ? `done so far: ${Object.keys(state).join(", ")}`
+              : "");
+          runs.push(await runOnce());
+        }
+        state[VARIANT] = runs;
+        sessionStorage.setItem(STORE, JSON.stringify(state));
+
+        if (MEASURE === "all") {
+          const next = MEASURE_ORDER.find((v) => !state[v]);
+          if (next) {
+            box.textContent = `${VARIANT} done (${runs.join(", ")}) — loading ${next}…`;
+            location.href = `?variant=${next}&measure=all${MASK_SRC === "svg" ? "&masksrc=svg" : ""}`;
+            return;
+          }
+        }
+        renderSummary(state, box);
+      }
+
+      /* ===================================================================
+       * BOOT
+       * =================================================================== */
+      if (PARAMS.get("selftest") === "verdict") {
+        /* Nothing is built: this mode is about the classifier alone, and a
+           driver reading #verdict-selftest should not wait on twenty posters. */
+        renderVerdictSelfTest();
+      } else if (PARAMS.get("verdict")) {
+        /* Verdict-only: the medians and the residency both come from this
+           session's storage, so nothing is built and nothing is measured. */
+        renderSummary(
+          JSON.parse(sessionStorage.getItem(STORE) || "{}"),
+          measureBox(),
+        );
+      } else if (!window.gsap || !window.Lenis) {
+        /* Refuse rather than measure a static page: a probe that silently
+           reported a great fps because its libraries failed to load is a metric
+           that cannot report a bad number (EVO-UNI-120). */
+        fatal(
+          "gsap and/or lenis failed to load from jsdelivr. This probe needs " +
+            "network access. Do not record a measurement from this page.",
+        );
+      } else {
+        const { world, screens, trees } = buildLot();
+        run(buildTimeline(world, screens), makePlayback(screens));
+
+        hudStatus.innerHTML =
+          ` · <b>${SCREEN_COUNT}</b> screens · <b>${trees.length}</b> trees` +
+          ` · masks <b>${MASK_SRC}</b> · posters <b>…</b>`;
+
+        placePosters(screens).then((resident) => {
+          sessionStorage.setItem(POSTER_STORE, String(resident));
+          const ok = resident === SCREEN_COUNT;
+          hudStatus.innerHTML =
+            ` · <b>${SCREEN_COUNT}</b> screens · <b>${trees.length}</b> trees` +
+            ` · masks <b>${MASK_SRC}</b> · ` +
+            `<span class="${ok ? "" : "bad"}">posters resident: ` +
+            `<b>${resident}/${SCREEN_COUNT}</b></span>`;
+
+          if (!ok) {
+            /* Refuse to measure a lot that is missing raster textures — the
+               number would be light and the GO would be false. */
+            fatal(
+              `posters resident: ${resident}/${SCREEN_COUNT}. Production keeps ` +
+                "twenty decoded posters resident inside the transformed world, so a " +
+                "lot missing any of them is a lighter workload than the shipped " +
+                "page. This probe will not measure. Check that images/<slug>/01.png " +
+                "resolves from this file:// path for every project.",
+            );
+            return;
+          }
+
+          if (MEASURE) measureFlow();
+        });
+      }
+    </script>
+  </body>
+</html>

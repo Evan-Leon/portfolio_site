@@ -1,0 +1,1115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spike — DT11 art checker (per-pixel sprite acceptance)</title>
+
+    <!--
+    ===========================================================================
+    DT11 — THE ART CHECKER: does a generated sprite meet the art contract?
+    ===========================================================================
+
+    Roadmap: docs/roadmaps/drive-in-theme-roadmap.md, phase DT11.
+    Spec:    docs/superpowers/specs/2026-09-08-drive-in-theme-design.md,
+             "Art contract".
+
+    This file SHIPS NOTHING. Open it directly over file://:
+
+        file:///home/evan/EVOsystem/portfolio_site/docs/spikes/art-check.html
+
+    Drop the generated PNGs (or SVGs) on it. DT14 has no other acceptance tool,
+    and the host has no ImageMagick, no PIL and no sharp — the checker is canvas
+    in a browser.
+
+    ---------------------------------------------------------------------------
+    WHY EVERY NUMBER IS READ FROM getImageData()
+    ---------------------------------------------------------------------------
+    EVO-TOOL-054: some image models draw a literal grey/white CHECKERBOARD into
+    fully-opaque pixels to represent "transparent background" instead of writing
+    real alpha. A file's reported dimensions and its "RGBA" colour type say
+    nothing about this, so `file`'s output is never consulted here.
+
+    EVO-TOOL-055: headless Chromium can render a false opaque backdrop behind a
+    transparent PNG shown through a CSS-scaled <img>, in both full-page and
+    element screenshots. So nothing on this page is inferred from how an <img>
+    renders — every corner alpha, every fraction and every bounding box comes
+    from `canvas.getImageData()`, which is the path a canvas/WebGL engine
+    actually uses.
+
+    Files reach the canvas through `FileReader.readAsDataURL`, never a blob: or
+    file: URL: under file:// Chrome gives the page an opaque origin, and drawing
+    a same-directory file: image would taint the canvas so that `getImageData()`
+    throws SecurityError. A data: URL never taints. For the same reason there is
+    no network read anywhere on this page — reading the wireframe off disk from
+    a file:// page is always blocked, so the placeholder set below is PASTED IN
+    as constants instead.
+
+    ---------------------------------------------------------------------------
+    THE CONTRACT
+    ---------------------------------------------------------------------------
+    Chosen by filename: `car*` -> the car contract, `tree*` -> the tree
+    contract, anything else -> "unknown contract", which is a FAIL.
+
+      predicate            car (1600x900)              tree (800x1200)
+      ------------------------------------------------------------------------
+      dimensions           exactly 1600 x 900          exactly 800 x 1200
+      corners              all four alpha = 0          all four alpha = 0
+      transparentFraction  15 % - 85 %                 15 % - 85 %
+      bboxWidth            >= 960 px                   (not constrained)
+      bboxHeight           >= 0.55 x 900 = 495 px      >= 0.55 x 1200 = 660 px
+      bboxBottom           within 5 % of the bottom    within 5 % of the bottom
+      bboxCentre           within 5 % of the centre    within 8 % of the centre
+      fileSize             <= 400 KB                   <= 400 KB
+
+      warning (not a failure): >= 30 % of the opaque pixels inside the bounding
+      box are near-grey or near-white (|r-g| < 12, |g-b| < 12, r > 180). That is
+      the baked-checkerboard tell of EVO-TOOL-054.
+
+    `dimensions` GATES the rest: a canvas of the wrong size makes every other
+    threshold meaningless (a 1x1 would otherwise "fail" three predicates at
+    once), so when it fails it is the only predicate reported.
+
+    WHY THE THREE PLACEMENT PREDICATES EXIST (bboxHeight / bboxBottom /
+    bboxCentre). Every sprite is drawn into a fixed box with
+    `object-fit: contain`, so where the subject sits INSIDE its canvas is
+    exactly where it sits on the page, and width alone does not constrain that.
+    Measured counterexample, Codex Part 3B: a genuinely correct 1200x500 wagon
+    drawn at y = 0 with 400 transparent rows beneath it passes the corner,
+    fraction, width and size checks and every visual confirmation — and then
+    floats above the road in the shipped car box. The tree tolerance is wider
+    (8 %) because a leaning silhouette is legitimate.
+
+    STRUCTURAL PASS IS NECESSARY, NOT SUFFICIENT. The composite strip on each
+    card is the other half: the sprite over white, over black and over the six
+    period `--sds-tree` colours, so Evan can confirm the subject is the one
+    described and that nothing but the subject is opaque.
+
+    ---------------------------------------------------------------------------
+    THE SELF-TEST  (?selftest=1)  — AND WHY IT IS SHAPED THIS WAY
+    ---------------------------------------------------------------------------
+    An earlier draft asserted only `wrong-fixture: WARN`, `1x1: FAIL` and four
+    dimension lines. A checker whose corner-alpha, transparent-fraction and
+    bounding-box predicates were ALL mutated to `return true` still emits every
+    one of those lines: the wrong fixture is deliberately numerically valid and
+    warns through a separate ratio, the 1x1 fails on dimensions, and the
+    placeholder lines assert size rather than PASS. That is a check that cannot
+    fail (EVO-UNI-061).
+
+    So `?selftest=1` generates a table of fixtures IN-PAGE, each shadowing
+    exactly ONE predicate, and writes `name: VERDICT (failed: <predicate>|none)`
+    per case into <pre id="selftest">. A predicate stuck at `true` fails its own
+    row. The four exported placeholders must report a full structural PASS —
+    that is what makes the spec's SVG fallback a CHECKED property rather than an
+    assumption.
+
+    ---------------------------------------------------------------------------
+    THE PLACEHOLDER SET  ("download placeholder set")
+    ---------------------------------------------------------------------------
+    The spec's recorded fallback: if no generation passes both halves after a
+    reasonable number of tries, the wireframe's placeholder silhouettes and
+    wagon ship instead. The four inline `data:image/svg+xml;utf8,...` URIs in
+    docs/wireframes/theater-drive-in-theme.html carry a `viewBox` and NO
+    intrinsic size — loaded as files they measure 267x150 and 100x150, which
+    fails every dimension check. The constants below are those four URIs,
+    COPIED FROM THAT WIREFRAME ON 2026-09-08 (`.tree--1/2/3`'s `--tree-mask` and
+    `.lot__car img`'s `src`), with `%23` decoded back to `#` and explicit
+    `width`/`height` added to the root element. The button offers them as
+    standalone SVG documents: car.svg, tree-1.svg, tree-2.svg, tree-3.svg.
+
+    The three tree strings are duplicated verbatim in
+    docs/spikes/2026-09-08-scenery-probe.html (its `&masksrc=svg` mask source).
+    Both files are standalone file:// pages and cannot share a module, so the
+    two copies are kept in step by hand.
+    ===========================================================================
+    -->
+
+    <style>
+      :root {
+        --bg: #0a0520;
+        --raised: #0f0a2a;
+        --border: rgba(124, 58, 237, 0.28);
+        --text: #f0f0ff;
+        --muted: #a0a8c8;
+        --pass: #4ade80;
+        --warn: #fbbf24;
+        --fail: #f87171;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font: 14px/1.6 Inter, system-ui, -apple-system, sans-serif;
+        padding: 1.5rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        margin-bottom: 0.25rem;
+      }
+      p.lede {
+        color: var(--muted);
+        margin-bottom: 1.25rem;
+        max-width: 70ch;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+        margin-bottom: 1rem;
+      }
+      button {
+        padding: 0.5rem 0.9rem;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--raised);
+        color: var(--text);
+        font: inherit;
+        cursor: pointer;
+      }
+      button:hover {
+        border-color: #7c3aed;
+      }
+      #drop {
+        border: 2px dashed var(--border);
+        border-radius: 10px;
+        padding: 1.5rem;
+        text-align: center;
+        color: var(--muted);
+        margin-bottom: 1.25rem;
+      }
+      #drop.over {
+        border-color: #7c3aed;
+        color: var(--text);
+      }
+      .card {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: var(--raised);
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+      .card h2 {
+        font-size: 1rem;
+        display: flex;
+        gap: 0.6rem;
+        align-items: baseline;
+        flex-wrap: wrap;
+      }
+      .verdict {
+        font: 700 0.8rem/1 ui-monospace, monospace;
+        padding: 0.3rem 0.5rem;
+        border-radius: 4px;
+        color: #0a0520;
+      }
+      .verdict.PASS {
+        background: var(--pass);
+      }
+      .verdict.WARN {
+        background: var(--warn);
+      }
+      .verdict.FAIL {
+        background: var(--fail);
+      }
+      table.metrics {
+        border-collapse: collapse;
+        margin: 0.75rem 0;
+        font: 12px/1.5 ui-monospace, monospace;
+      }
+      table.metrics td {
+        padding: 2px 14px 2px 0;
+        vertical-align: top;
+      }
+      table.metrics td:first-child {
+        color: var(--muted);
+      }
+      td.ok {
+        color: var(--pass);
+      }
+      td.no {
+        color: var(--fail);
+      }
+      td.warned {
+        color: var(--warn);
+      }
+      .strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 0.5rem;
+      }
+      .swatch {
+        text-align: center;
+        font: 10px/1.4 ui-monospace, monospace;
+        color: var(--muted);
+      }
+      .swatch canvas {
+        display: block;
+        width: 150px;
+        height: auto;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        /* A checkerboard behind every cell, so leftover alpha is visible. This
+           is page chrome and is never sampled — see EVO-TOOL-055. */
+        background-image: linear-gradient(45deg, #444 25%, transparent 25%),
+          linear-gradient(-45deg, #444 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #444 75%),
+          linear-gradient(-45deg, transparent 75%, #444 75%);
+        background-size: 12px 12px;
+        background-position:
+          0 0,
+          0 6px,
+          6px -6px,
+          -6px 0;
+      }
+      #selftest {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        background: #060315;
+        padding: 1rem;
+        margin-bottom: 1.25rem;
+        font: 12px/1.6 ui-monospace, monospace;
+        white-space: pre;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+
+  <body>
+    <h1>DT11 art checker</h1>
+    <p class="lede">
+      Every number below is read from <code>canvas.getImageData()</code>, never
+      from how an <code>&lt;img&gt;</code> renders (EVO-TOOL-055). The contract
+      is chosen by filename: <code>car*</code> or <code>tree*</code>. Structural
+      PASS is necessary, not sufficient — read the composite strip too.
+    </p>
+
+    <div class="controls">
+      <input id="files" type="file" multiple accept="image/*,.svg" />
+      <button id="wrong">show me a wrong fixture</button>
+      <button id="placeholders">download placeholder set</button>
+      <button id="selftest-run">run self-test</button>
+    </div>
+
+    <div id="drop">drop sprites here</div>
+
+    <!-- The drivable self-test. Empty and hidden until ?selftest=1 (or the
+         button) fills it; present in the markup so a driver can wait on the
+         element rather than on a script having run. -->
+    <pre id="selftest" hidden></pre>
+
+    <div id="cards"></div>
+
+    <script>
+      /* ===================================================================
+       * THE CONTRACTS
+       * =================================================================== */
+      const MAX_BYTES = 400 * 1024;
+      const TRANSPARENT_MIN = 0.15;
+      const TRANSPARENT_MAX = 0.85;
+      const CHECKER_WARN_RATIO = 0.3;
+
+      const CONTRACTS = {
+        car: {
+          key: "car",
+          width: 1600,
+          height: 900,
+          minBboxWidth: 960,
+          minBboxHeightFraction: 0.55,
+          bottomToleranceFraction: 0.05,
+          centreToleranceFraction: 0.05,
+        },
+        tree: {
+          key: "tree",
+          width: 800,
+          height: 1200,
+          /* No width floor: the spec constrains a tree's height and placement,
+             not how wide the canopy spreads. */
+          minBboxWidth: null,
+          minBboxHeightFraction: 0.55,
+          bottomToleranceFraction: 0.05,
+          /* Wider than the car's — a leaning silhouette is legitimate. */
+          centreToleranceFraction: 0.08,
+        },
+      };
+
+      function contractFor(name) {
+        const base = String(name).toLowerCase();
+        if (base.startsWith("car")) return CONTRACTS.car;
+        if (base.startsWith("tree")) return CONTRACTS.tree;
+        return null;
+      }
+
+      /* ===================================================================
+       * MEASUREMENT — everything from one getImageData() read.
+       * =================================================================== */
+      function measure(image) {
+        const width = image.naturalWidth;
+        const height = image.naturalHeight;
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+        /* Rasterised at its INTRINSIC size — which is why the exported SVGs
+           must carry width/height and the wireframe's inline URIs cannot. */
+        ctx.drawImage(image, 0, 0, width, height);
+        const data = ctx.getImageData(0, 0, width, height).data;
+
+        let transparent = 0;
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const a = data[(y * width + x) * 4 + 3];
+            if (a === 0) {
+              transparent++;
+              continue;
+            }
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
+          }
+        }
+
+        const hasSubject = maxX >= minX;
+        const bbox = hasSubject
+          ? {
+              x: minX,
+              y: minY,
+              w: maxX - minX + 1,
+              h: maxY - minY + 1,
+              bottom: maxY + 1,
+              centreX: (minX + maxX + 1) / 2,
+            }
+          : { x: 0, y: 0, w: 0, h: 0, bottom: 0, centreX: width / 2 };
+
+        /* The EVO-TOOL-054 tell, measured only inside the bounding box: what
+           fraction of the SUBJECT's opaque pixels is near-grey / near-white.
+           Antialiased edges are excluded (a >= 250) so a soft outline cannot
+           move the number either way. */
+        let opaque = 0;
+        let grey = 0;
+        if (hasSubject) {
+          for (let y = bbox.y; y < bbox.y + bbox.h; y++) {
+            for (let x = bbox.x; x < bbox.x + bbox.w; x++) {
+              const i = (y * width + x) * 4;
+              if (data[i + 3] < 250) continue;
+              opaque++;
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              if (Math.abs(r - g) < 12 && Math.abs(g - b) < 12 && r > 180) {
+                grey++;
+              }
+            }
+          }
+        }
+
+        const corner = (x, y) => data[(y * width + x) * 4 + 3];
+
+        return {
+          width,
+          height,
+          transparentFraction: transparent / (width * height),
+          bbox,
+          hasSubject,
+          checkerRatio: opaque === 0 ? 0 : grey / opaque,
+          corners: [
+            corner(0, 0),
+            corner(width - 1, 0),
+            corner(0, height - 1),
+            corner(width - 1, height - 1),
+          ],
+        };
+      }
+
+      /* ===================================================================
+       * THE PREDICATES. Each one is a named boolean, and every self-test
+       * fixture but `checkerboard` and `clean` breaks exactly one of them.
+       * =================================================================== */
+      function judge(m, bytes, contract) {
+        const failed = [];
+        const checks = {};
+
+        const dimensions =
+          m.width === contract.width && m.height === contract.height;
+        checks.dimensions = dimensions;
+        if (!dimensions) {
+          /* Gating: a wrong canvas makes every other threshold meaningless. */
+          return {
+            failed: ["dimensions"],
+            checks,
+            gated: true,
+            checkerWarn: false,
+            verdict: "FAIL",
+          };
+        }
+
+        checks.corners = m.corners.every((a) => a === 0);
+        checks.transparentFraction =
+          m.transparentFraction >= TRANSPARENT_MIN &&
+          m.transparentFraction <= TRANSPARENT_MAX;
+        checks.bboxWidth =
+          contract.minBboxWidth === null || m.bbox.w >= contract.minBboxWidth;
+        checks.bboxHeight =
+          m.bbox.h >= contract.minBboxHeightFraction * contract.height;
+        checks.bboxBottom =
+          contract.height - m.bbox.bottom <=
+          contract.bottomToleranceFraction * contract.height;
+        checks.bboxCentre =
+          Math.abs(m.bbox.centreX - contract.width / 2) <=
+          contract.centreToleranceFraction * contract.width;
+        checks.fileSize = bytes <= MAX_BYTES;
+
+        for (const [name, ok] of Object.entries(checks)) {
+          if (!ok) failed.push(name);
+        }
+        const checkerWarn = m.checkerRatio >= CHECKER_WARN_RATIO;
+
+        return {
+          failed,
+          checks,
+          gated: false,
+          checkerWarn,
+          verdict: failed.length ? "FAIL" : checkerWarn ? "WARN" : "PASS",
+        };
+      }
+
+      /* One line, exactly as the self-test table declares it. */
+      function selftestLine(name, result) {
+        return `${name}: ${result.verdict} (failed: ${
+          result.failed.length ? result.failed.join(", ") : "none"
+        })`;
+      }
+
+      /* ===================================================================
+       * LOADING — data: URLs only. See the header on canvas tainting.
+       * =================================================================== */
+      function imageFromDataUrl(url) {
+        return new Promise((resolve, reject) => {
+          const image = new Image();
+          image.onload = () => resolve(image);
+          image.onerror = () => reject(new Error("could not decode"));
+          image.src = url;
+        });
+      }
+
+      function readFileAsDataUrl(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error("could not read"));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function canvasToDataUrlAndBytes(canvas) {
+        return new Promise((resolve) => {
+          canvas.toBlob((blob) => {
+            const reader = new FileReader();
+            reader.onload = () =>
+              resolve({ url: reader.result, bytes: blob.size });
+            reader.readAsDataURL(blob);
+          }, "image/png");
+        });
+      }
+
+      /* ===================================================================
+       * THE COMPOSITE STRIP — the visual half of acceptance.
+       * White, black, and the six period `--sds-tree` colours from
+       * docs/wireframes/theater-drive-in-theme.html.
+       * =================================================================== */
+      const STRIP = [
+        ["white", "#ffffff"],
+        ["black", "#000000"],
+        ["night", "#05030f"],
+        ["dawn", "#1e2438"],
+        ["morning", "#2e5a34"],
+        ["afternoon", "#234a2a"],
+        ["sunset", "#1a0e14"],
+        ["evening", "#0b0818"],
+      ];
+
+      function buildStrip(image, contract) {
+        const wrap = document.createElement("div");
+        wrap.className = "strip";
+        for (const [label, colour] of STRIP) {
+          const cell = document.createElement("div");
+          cell.className = "swatch";
+          const canvas = document.createElement("canvas");
+          const scale = 300 / image.naturalWidth;
+          canvas.width = 300;
+          canvas.height = Math.round(image.naturalHeight * scale);
+          const ctx = canvas.getContext("2d");
+          if (contract && contract.key === "tree") {
+            /* A tree is a MASK: fill with the colour, then destination-in the
+               silhouette. What is left is the shape in that colour, on
+               transparency — over the card's checkerboard. */
+            ctx.fillStyle = colour;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.globalCompositeOperation = "destination-in";
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          } else {
+            /* The car is drawn as-is, over the colour. */
+            ctx.fillStyle = colour;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+          }
+          const caption = document.createElement("div");
+          caption.textContent = label;
+          cell.append(canvas, caption);
+          wrap.appendChild(cell);
+        }
+        return wrap;
+      }
+
+      /* ===================================================================
+       * CARDS
+       * =================================================================== */
+      const cards = document.getElementById("cards");
+
+      function row(table, label, value, state) {
+        const tr = document.createElement("tr");
+        const a = document.createElement("td");
+        a.textContent = label;
+        const b = document.createElement("td");
+        b.textContent = value;
+        if (state) b.className = state;
+        tr.append(a, b);
+        table.appendChild(tr);
+      }
+
+      /* `contractName` exists only for the self-test, whose cards are titled by
+         fixture ("floating-car") while the contract they are held to is chosen
+         by the filename the sprite would ship under ("car.png"). Everywhere
+         else the two are the same string. */
+      function renderCard(name, image, bytes, contractName) {
+        const contract = contractFor(contractName === undefined ? name : contractName);
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const heading = document.createElement("h2");
+        heading.textContent = name;
+        card.appendChild(heading);
+
+        if (!contract) {
+          const badge = document.createElement("span");
+          badge.className = "verdict FAIL";
+          badge.textContent = "FAIL";
+          heading.appendChild(badge);
+          const note = document.createElement("p");
+          note.textContent =
+            "unknown contract — a sprite must be named car* or tree*, " +
+            "because the contract it is held to is chosen by filename.";
+          card.appendChild(note);
+          cards.prepend(card);
+          return { verdict: "FAIL", failed: ["unknownContract"] };
+        }
+
+        const m = measure(image);
+        const result = judge(m, bytes, contract);
+
+        const badge = document.createElement("span");
+        badge.className = `verdict ${result.verdict}`;
+        badge.textContent = result.verdict;
+        heading.appendChild(badge);
+        const which = document.createElement("span");
+        which.style.color = "var(--muted)";
+        which.textContent = `${contract.key} contract`;
+        heading.appendChild(which);
+
+        const table = document.createElement("table");
+        table.className = "metrics";
+        const state = (k) =>
+          result.gated && k !== "dimensions"
+            ? ""
+            : result.checks[k]
+              ? "ok"
+              : "no";
+
+        row(table, "decoded", `${m.width} x ${m.height}`, state("dimensions"));
+        row(
+          table,
+          "file size",
+          `${(bytes / 1024).toFixed(1)} KB  (max ${MAX_BYTES / 1024})`,
+          state("fileSize"),
+        );
+        row(
+          table,
+          "corner alphas",
+          `TL ${m.corners[0]}  TR ${m.corners[1]}  BL ${m.corners[2]}  BR ${m.corners[3]}`,
+          state("corners"),
+        );
+        row(
+          table,
+          "transparent fraction",
+          `${(m.transparentFraction * 100).toFixed(1)} %  (${TRANSPARENT_MIN * 100}-${TRANSPARENT_MAX * 100})`,
+          state("transparentFraction"),
+        );
+        row(
+          table,
+          "alpha > 0 bbox",
+          `x ${m.bbox.x}  y ${m.bbox.y}  w ${m.bbox.w}  h ${m.bbox.h}`,
+          "",
+        );
+        row(
+          table,
+          "bboxWidth",
+          contract.minBboxWidth === null
+            ? `${m.bbox.w} px  (not constrained for a tree)`
+            : `${m.bbox.w} px  (min ${contract.minBboxWidth})`,
+          state("bboxWidth"),
+        );
+        row(
+          table,
+          "bboxHeight",
+          `${m.bbox.h} px  (min ${Math.round(contract.minBboxHeightFraction * contract.height)})`,
+          state("bboxHeight"),
+        );
+        row(
+          table,
+          "bboxBottom",
+          `${contract.height - m.bbox.bottom} px above the canvas bottom  ` +
+            `(max ${Math.round(contract.bottomToleranceFraction * contract.height)})`,
+          state("bboxBottom"),
+        );
+        row(
+          table,
+          "bboxCentre",
+          `${(m.bbox.centreX - contract.width / 2).toFixed(1)} px off centre  ` +
+            `(max ${Math.round(contract.centreToleranceFraction * contract.width)})`,
+          state("bboxCentre"),
+        );
+        row(
+          table,
+          "checkerboard ratio",
+          `${(m.checkerRatio * 100).toFixed(1)} % of opaque pixels near-grey/white  ` +
+            `(warn at ${CHECKER_WARN_RATIO * 100} %)`,
+          result.checkerWarn ? "warned" : "ok",
+        );
+        card.appendChild(table);
+
+        if (result.gated) {
+          const note = document.createElement("p");
+          note.style.color = "var(--muted)";
+          note.textContent =
+            "dimensions gate the rest: a canvas of the wrong size makes every " +
+            "other threshold meaningless, so nothing below it was judged.";
+          card.appendChild(note);
+        }
+        if (result.checkerWarn) {
+          const note = document.createElement("p");
+          note.style.color = "var(--warn)";
+          note.textContent =
+            "WARNING (EVO-TOOL-054): most of the subject's opaque pixels are " +
+            "near-grey or near-white. This is what a baked 'transparency' " +
+            "checkerboard looks like. Confirm on the strip below before " +
+            "accepting it.";
+          card.appendChild(note);
+        }
+
+        card.appendChild(buildStrip(image, contract));
+        cards.prepend(card);
+        return result;
+      }
+
+      /* ===================================================================
+       * INPUTS
+       * =================================================================== */
+      async function handleFiles(list) {
+        for (const file of list) {
+          try {
+            const url = await readFileAsDataUrl(file);
+            const image = await imageFromDataUrl(url);
+            renderCard(file.name, image, file.size);
+          } catch (error) {
+            const card = document.createElement("div");
+            card.className = "card";
+            card.textContent = `${file.name}: ${error.message}`;
+            cards.prepend(card);
+          }
+        }
+      }
+
+      document
+        .getElementById("files")
+        .addEventListener("change", (e) => handleFiles(e.target.files));
+
+      const drop = document.getElementById("drop");
+      drop.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        drop.classList.add("over");
+      });
+      drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+      drop.addEventListener("drop", (e) => {
+        e.preventDefault();
+        drop.classList.remove("over");
+        handleFiles(e.dataTransfer.files);
+      });
+
+      /* ===================================================================
+       * THE WRONG FIXTURE (EVO-UNI-120 / EVO-UNI-061)
+       *
+       * The review's transparent-bordered checkerboard: numerically valid on
+       * every predicate, and warning only through the grey/white ratio. The
+       * border is on three sides, not four — a transparent band under the
+       * subject would fail `bboxBottom`, and then the fixture would prove the
+       * placement predicate rather than the warning it exists for.
+       * =================================================================== */
+      const CHECK_CELL = 32;
+      const CHECK_INSET = 160;
+
+      function wrongFixtureCanvas() {
+        const canvas = document.createElement("canvas");
+        canvas.width = 1600;
+        canvas.height = 900;
+        const ctx = canvas.getContext("2d");
+        for (let y = CHECK_INSET; y < 900; y += CHECK_CELL) {
+          for (let x = CHECK_INSET; x < 1600 - CHECK_INSET; x += CHECK_CELL) {
+            const even =
+              (Math.floor(x / CHECK_CELL) + Math.floor(y / CHECK_CELL)) % 2 === 0;
+            ctx.fillStyle = even ? "#ffffff" : "#c8c8c8";
+            ctx.fillRect(
+              x,
+              y,
+              Math.min(CHECK_CELL, 1600 - CHECK_INSET - x),
+              Math.min(CHECK_CELL, 900 - y),
+            );
+          }
+        }
+        return canvas;
+      }
+
+      async function showWrongFixture() {
+        const { url, bytes } = await canvasToDataUrlAndBytes(
+          wrongFixtureCanvas(),
+        );
+        const image = await imageFromDataUrl(url);
+        return renderCard("car-wrong-fixture.png", image, bytes);
+      }
+
+      document.getElementById("wrong").addEventListener("click", () => {
+        showWrongFixture();
+      });
+
+      /* ===================================================================
+       * THE PLACEHOLDER SET — see the header. Copied from
+       * docs/wireframes/theater-drive-in-theme.html on 2026-09-08, `%23`
+       * decoded back to `#`, explicit intrinsic size added.
+       *
+       * The three tree strings are duplicated verbatim in
+       * docs/spikes/2026-09-08-scenery-probe.html; keep the two in step.
+       * =================================================================== */
+      const PLACEHOLDERS = {
+        "car.svg": `<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900"><rect x="330" y="790" width="170" height="90" rx="22" fill="#120c1c"/><rect x="1100" y="790" width="170" height="90" rx="22" fill="#120c1c"/><rect x="470" y="150" width="660" height="34" rx="10" fill="#c9c3b8"/><rect x="520" y="120" width="14" height="40" fill="#c9c3b8"/><rect x="1066" y="120" width="14" height="40" fill="#c9c3b8"/><path d="M300 330 C310 250 360 190 440 180 L1160 180 C1240 190 1290 250 1300 330 L1320 560 L1320 790 C1320 815 1300 830 1275 830 L325 830 C300 830 280 815 280 790 L280 560 Z" fill="#b9a38a"/><rect x="280" y="150" width="1040" height="50" rx="14" fill="#e9e2d6"/><rect x="320" y="560" width="960" height="170" rx="10" fill="#7a4b26"/><rect x="320" y="560" width="960" height="170" rx="10" fill="none" stroke="#e0c99a" stroke-width="8"/><rect x="380" y="215" width="840" height="300" rx="22" fill="#0b0616"/><path d="M540 515 C540 440 600 420 640 420 C690 420 740 445 740 515 Z" fill="#2a1a30"/><circle cx="640" cy="392" r="48" fill="#e8c5a0"/><path d="M860 515 C860 440 920 420 960 420 C1010 420 1060 445 1060 515 Z" fill="#2a1a30"/><circle cx="960" cy="392" r="48" fill="#e8c5a0"/><path d="M1035 372 L1075 300 L1095 320 L1070 380 Z" fill="#e8c5a0"/><rect x="300" y="560" width="60" height="170" rx="8" fill="#ff4a44"/><rect x="1240" y="560" width="60" height="170" rx="8" fill="#ff4a44"/><rect x="260" y="740" width="1080" height="56" rx="14" fill="#d9d6d2"/><rect x="700" y="752" width="200" height="34" rx="6" fill="#f2efe8"/></svg>`,
+        "tree-1.svg": `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 200 300"><path d="M100 0 L150 90 L128 90 L172 170 L146 170 L196 260 L112 260 L112 300 L88 300 L88 260 L4 260 L54 170 L28 170 L72 90 L50 90 Z" fill="black"/></svg>`,
+        "tree-2.svg": `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 200 300"><path d="M100 20 C150 20 190 70 185 130 C200 160 190 210 150 225 L112 232 L112 300 L88 300 L88 232 L50 225 C10 210 0 160 15 130 C10 70 50 20 100 20 Z" fill="black"/></svg>`,
+        "tree-3.svg": `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1200" viewBox="0 0 200 300"><path d="M100 0 C130 40 140 70 135 110 C160 130 165 180 150 220 L112 236 L112 300 L88 300 L88 236 L50 220 C35 180 40 130 65 110 C60 70 70 40 100 0 Z" fill="black"/></svg>`,
+      };
+
+      const svgDataUrl = (svg) =>
+        `data:image/svg+xml,${encodeURIComponent(svg)}`;
+
+      document.getElementById("placeholders").addEventListener("click", () => {
+        for (const [name, svg] of Object.entries(PLACEHOLDERS)) {
+          const blob = new Blob([svg], { type: "image/svg+xml" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = name;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(link.href), 5000);
+        }
+      });
+
+      /* ===================================================================
+       * THE SELF-TEST FIXTURES
+       *
+       * Every fixture but `checkerboard` and `clean` isolates exactly ONE
+       * predicate, so a predicate stuck at `true` fails its own row.
+       * =================================================================== */
+      const CAR_W = 1600;
+      const CAR_H = 900;
+      const WOOD = "#7a4b26";
+      const TEAL = "#1f8a70";
+
+      function blank(w, h) {
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        return canvas;
+      }
+
+      /* A wagon-shaped opaque blob: body plus roof. Grounded (bottom row 899),
+         centred on 800, 1040px wide — inside every threshold with room. */
+      function wagon(colour, options) {
+        const o = options || {};
+        const left = o.left === undefined ? 280 : o.left;
+        const width = o.width === undefined ? 1040 : o.width;
+        const top = o.top === undefined ? 250 : o.top;
+        const bottom = o.bottom === undefined ? CAR_H : o.bottom;
+        const canvas = blank(CAR_W, CAR_H);
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = colour;
+        ctx.fillRect(left, top, width, bottom - top);
+        if (o.roof !== false) {
+          const roofW = Math.round(width * 0.62);
+          ctx.fillRect(
+            left + Math.round((width - roofW) / 2),
+            Math.max(0, top - 100),
+            roofW,
+            Math.min(100, top),
+          );
+        }
+        return canvas;
+      }
+
+      const FIXTURES = [
+        {
+          name: "valid-car",
+          file: "car.png",
+          expect: "PASS (failed: none)",
+          make: () => wagon(WOOD),
+        },
+        {
+          name: "opaque-corner",
+          file: "car.png",
+          expect: "FAIL (failed: corners)",
+          make: () => {
+            /* One corner pixel, bottom-right — so the row also proves the
+               checker indexes the LAST row and column, not only (0, 0).
+               The subject is 1300px wide at x = 100 rather than valid-car's
+               1040 at x = 280 for one reason: a single opaque corner pixel is
+               part of the alpha > 0 bounding box, so it drags the box's centre
+               toward that corner. With valid-car's geometry the drag is 140px
+               and `bboxCentre` fails too, and the fixture would no longer
+               isolate `corners`. At 100..1400 the drag is 50px, inside the
+               80px tolerance, and the subject is still valid on its own. */
+            const canvas = wagon(WOOD, { left: 100, width: 1300 });
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = WOOD;
+            ctx.fillRect(CAR_W - 1, CAR_H - 1, 1, 1);
+            return canvas;
+          },
+        },
+        {
+          name: "too-opaque",
+          file: "car.png",
+          expect: "FAIL (failed: transparentFraction)",
+          make: () => {
+            /* 95 % opaque, with the four corners cleared so `corners` still
+               passes and only the fraction fails. */
+            const canvas = blank(CAR_W, CAR_H);
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = WOOD;
+            ctx.fillRect(0, 0, CAR_W, CAR_H);
+            ctx.clearRect(0, 0, 135, 135);
+            ctx.clearRect(CAR_W - 135, 0, 135, 135);
+            ctx.clearRect(0, CAR_H - 135, 135, 135);
+            ctx.clearRect(CAR_W - 135, CAR_H - 135, 135, 135);
+            return canvas;
+          },
+        },
+        {
+          name: "too-transparent",
+          file: "car.png",
+          expect: "FAIL (failed: transparentFraction)",
+          make: () => {
+            /* ~4 % opaque: a hollow outline whose bbox is still 1040 x 600,
+               grounded and centred, so only the fraction fails. */
+            const canvas = blank(CAR_W, CAR_H);
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = WOOD;
+            ctx.fillRect(280, 880, 1040, 20);
+            ctx.fillRect(280, 300, 1040, 20);
+            ctx.fillRect(280, 300, 20, 600);
+            ctx.fillRect(1300, 300, 20, 600);
+            return canvas;
+          },
+        },
+        {
+          name: "narrow-car",
+          file: "car.png",
+          expect: "FAIL (failed: bboxWidth)",
+          make: () => wagon(WOOD, { left: 450, width: 700 }),
+        },
+        {
+          name: "floating-car",
+          file: "car.png",
+          expect: "FAIL (failed: bboxBottom)",
+          make: () =>
+            /* The Part 3B counterexample: a correct subject in the top 500 rows
+               with 400 transparent rows beneath it. Width, height, centre,
+               corners and fraction all pass. */
+            wagon(WOOD, { top: 0, bottom: 500, roof: false }),
+        },
+        {
+          name: "short-car",
+          file: "car.png",
+          expect: "FAIL (failed: bboxHeight)",
+          make: () => wagon(WOOD, { top: 600, roof: false }),
+        },
+        {
+          name: "off-centre-car",
+          file: "car.png",
+          expect: "FAIL (failed: bboxCentre)",
+          make: () =>
+            /* Pushed 270 px (17 %) right, not the round 20 %: a 20 % shift would
+               push a >= 960px subject against the right edge and take `corners`
+               down with it, and the fixture would no longer isolate one
+               predicate. 270 is already 3.4x the 80px tolerance. */
+            wagon(WOOD, { left: 570, width: 1000, roof: false }),
+        },
+        {
+          name: "floating-tree",
+          file: "tree-1.png",
+          expect: "FAIL (failed: bboxBottom)",
+          make: () => {
+            const canvas = blank(800, 1200);
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = WOOD;
+            /* Ends 200px above the bottom. */
+            ctx.fillRect(200, 200, 400, 800);
+            return canvas;
+          },
+        },
+        {
+          name: "oversize",
+          file: "car.png",
+          expect: "FAIL (failed: fileSize)",
+          make: () => {
+            /* valid-car's exact alpha structure, filled with high-entropy noise
+               so the PNG cannot compress under 400 KB. */
+            const canvas = wagon(WOOD, { roof: false });
+            const ctx = canvas.getContext("2d");
+            const image = ctx.getImageData(0, 0, CAR_W, CAR_H);
+            const d = image.data;
+            for (let i = 0; i < d.length; i += 4) {
+              if (d[i + 3] === 0) continue;
+              d[i] = (Math.random() * 256) | 0;
+              d[i + 1] = (Math.random() * 256) | 0;
+              d[i + 2] = (Math.random() * 256) | 0;
+            }
+            ctx.putImageData(image, 0, 0);
+            return canvas;
+          },
+        },
+        {
+          name: "checkerboard",
+          file: "car.png",
+          expect: "WARN (failed: none)",
+          make: wrongFixtureCanvas,
+        },
+        {
+          name: "clean",
+          file: "car.png",
+          expect: "PASS (failed: none)",
+          make: () => wagon(TEAL),
+        },
+        {
+          name: "1x1",
+          file: "car.png",
+          expect: "FAIL (failed: dimensions)",
+          make: () => {
+            const canvas = blank(1, 1);
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = WOOD;
+            ctx.fillRect(0, 0, 1, 1);
+            return canvas;
+          },
+        },
+      ];
+
+      async function runSelfTest() {
+        const lines = [
+          "DT11 art checker self-test — name: VERDICT (failed: <predicate>|none)",
+          "",
+        ];
+        let failures = 0;
+
+        for (const fixture of FIXTURES) {
+          let line;
+          try {
+            const { url, bytes } = await canvasToDataUrlAndBytes(
+              fixture.make(),
+            );
+            const image = await imageFromDataUrl(url);
+            const result = renderCard(
+              `${fixture.name} [${fixture.file}]`,
+              image,
+              bytes,
+              fixture.file,
+            );
+            line = selftestLine(fixture.name, result);
+          } catch (error) {
+            line = `${fixture.name}: ERROR (${error.message})`;
+          }
+          const ok = line === `${fixture.name}: ${fixture.expect}`;
+          if (!ok) failures++;
+          lines.push(
+            `${line.padEnd(56)}  expected: ${fixture.name}: ${fixture.expect}` +
+              `   ${ok ? "MATCH" : "*** MISMATCH ***"}`,
+          );
+        }
+
+        lines.push("");
+        lines.push(
+          "the four exported placeholders, decoded back through an Image:",
+        );
+
+        for (const [name, svg] of Object.entries(PLACEHOLDERS)) {
+          let line;
+          let dims = "";
+          try {
+            const image = await imageFromDataUrl(svgDataUrl(svg));
+            const bytes = new Blob([svg]).size;
+            const result = renderCard(name, image, bytes);
+            dims = `${image.naturalWidth}x${image.naturalHeight}`;
+            line = `${selftestLine(name, result)} ${dims}`;
+          } catch (error) {
+            line = `${name}: ERROR (${error.message})`;
+          }
+          const expectDims = name === "car.svg" ? "1600x900" : "800x1200";
+          const expect = `${name}: PASS (failed: none) ${expectDims}`;
+          const ok = line === expect;
+          if (!ok) failures++;
+          lines.push(
+            `${line.padEnd(56)}  expected: ${expect}` +
+              `   ${ok ? "MATCH" : "*** MISMATCH ***"}`,
+          );
+        }
+
+        lines.push("");
+        lines.push(
+          `${FIXTURES.length + 4} cases, ${failures} mismatched`,
+        );
+        lines.push(
+          `RESULT: ${failures === 0 ? "all-match" : "MISMATCH — the checker does not implement the contract"}`,
+        );
+
+        const pre = document.getElementById("selftest");
+        pre.textContent = lines.join("\n");
+        pre.hidden = false;
+      }
+
+      document
+        .getElementById("selftest-run")
+        .addEventListener("click", () => runSelfTest());
+
+      if (new URLSearchParams(location.search).get("selftest")) {
+        runSelfTest();
+      }
+    </script>
+  </body>
+</html>
