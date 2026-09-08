@@ -131,9 +131,21 @@ not paint or the frame rate collapses, and the art phase has no other acceptance
   the 767px narrow block); `theater/src/styles/tokens.css` (the `--sds-*` values the CSS
   reads). `theater/src/projects.ts` has **20** projects today, of which 16 have a real
   `images/<slug>/demo.mp4` and four (`spead-read`, `media-cloud-web-tools`,
-  `media-cloud-vitals`, `showrunner-digest`) fall back to the poster — so a probe that
-  cycles eight clips across all twenty screens is slightly heavier than production on
-  decoders, which is the right side to err on.
+  `media-cloud-vitals`, `showrunner-digest`) fall back to the poster.
+- **Production keeps twenty decoded poster images resident, and the probe must too.**
+  `build-lot.ts` lines 270–291 give every screen a video *and* a poster URL, and
+  `lot-scene.ts` lines 441–476 append a decoded poster `<img>` to every surface once the
+  loader resolves. The DTF builder being copied has videos, surfaces and marquees but no
+  poster `<img>` (`2026-08-25-transformed-video-probe.html` lines 631–655), so a
+  straight copy measures a lot with **twenty transformed raster textures missing** — a
+  materially lighter GPU-memory and paint workload than the shipped page, on which `GO`
+  would be a false positive. Nor is "eight clips cycled across twenty screens errs heavy"
+  a safe assumption in the other direction: cycling eight URLs lets the second and third
+  use hit cache in a way sixteen distinct production URLs cannot, so the direction of
+  bias is unknown, not conservative. The probe reproduces the **post-reveal production
+  DOM**: all twenty real posters loaded and appended before measuring, sixteen distinct
+  clips, four poster-only screens, and the same resident images in the control and in
+  every variant.
 - The spec (`docs/superpowers/specs/2026-09-08-drive-in-theme-design.md`) fixes what the
   scenery will be, so the probe can build the same thing: trees at
   `x = ±(480 + 420 + dx)`, one per `TREE_SPACING = 400` of Z from `z = -100` (left) and
@@ -152,6 +164,17 @@ not paint or the frame rate collapses, and the art phase has no other acceptance
 - The art contract (spec, "Art contract"): `car` 1600×900, `tree-1..3` 800×1200,
   transparent PNG; corners α = 0; transparent fraction 15–85 %; car α > 0 bounding box
   ≥ 960px wide; tree α > 0 bounding box bottom within 5 % of the canvas bottom; ≤ 400 KB;
+  **plus the placement thresholds** — every sprite is drawn into a fixed box with
+  `object-fit: contain`, so where the subject sits *inside its canvas* is exactly where it
+  sits on the page, and width alone does not constrain that: the car α > 0 bounding box
+  must also be **≥ 0.55 × 900 px tall**, have its **bottom within 5 % of the canvas
+  bottom** (the wagon is parked on the road, not floating above it) and be **horizontally
+  centred within 5 % of the canvas centre**; each tree bounding box must be **≥ 0.55 ×
+  1200 px tall** and **horizontally centred within 8 %** (a wider tolerance — a leaning
+  silhouette is legitimate). Without these, a genuinely correct 1200×500 wagon drawn at
+  `y = 0` with 400 transparent rows beneath it passes every other numeric check and every
+  visual confirmation, and then floats in the shipped car box (measured counterexample,
+  Codex Part 3B);
   a checkerboard warning when ≥ 30 % of opaque pixels inside the bounding box are
   near-grey/near-white (`|r−g| < 12`, `|g−b| < 12`, `r > 180`). The host has no
   ImageMagick, PIL or sharp — the checker is canvas in the browser, and it must also
@@ -193,24 +216,107 @@ Read these files before writing any code:
 
 <constraints>
 - **Two new files, nothing else:** `docs/spikes/2026-09-08-scenery-probe.html` and `docs/spikes/art-check.html`. Both open over `file://`; both ship nothing.
-- **The probe's variants:** `lot20` (20 screens, production CSS, production timeline shape, the DT13 ground and road, eight clips cycled `i % 8`, `preload="none"`, play iff active — nothing else), `car-only` (`lot20` + orb + beam + car with the two blurred glows), `scenery` (`car-only` + 88 tree planes at `TREE_SPACING = 400`), `scenery-half` (44 planes at `TREE_SPACING = 800`), `scenery-overload` (≈4× `scenery`'s planes — **351** by the same loop at `TREE_SPACING = 100`: 176 left, 175 right). Default variant `scenery`. Tree masks are generated in-page: draw three silhouettes (deciduous, conifer, tall) on an 800×1200 canvas, `toDataURL('image/png')`, and use the data URL as `mask-image` — the probe must not depend on DT14's art. The tree fill colour and every other value come from the inlined tokens.
-- **The scroll range is identical across variants** (as DTF's was), so the numbers compare; the measurement is the lowest fps over any contiguous 1 s window, median of three 10 s runs, via the copied `?measure=all` harness (store key `dt11-measure-results`, not DTF's). The header records the inherited limitation: the harness scrolls programmatically, so Lenis's wheel-smoothing path is idle during measurement.
-- **The decision procedure is written in the header before any number is taken, exactly as the spec states it:** (0) `scenery-overload` must read lower than `scenery` in every browser measured, else **INVALID** — fix the probe, record nothing; (1) trees visible as silhouettes in `scenery` in every browser measured, else the trees are out — go to step 4, which decides between `NO-GO-TREES` and `NO-GO-ALL`; (2) in `car-only`, click on screen 3 navigates to `../../projects/classic-golf.html` and Tab reaches the screens in DOM order, else **NO-GO-ALL**; then the same in `scenery`, and a failure there with `car-only` passing means the trees are out — go to step 4; (3) judged on the median of three per variant, every browser measured, the lowest browser deciding: `scenery ≥ 50` → **GO**; else `scenery-half ≥ 50` → **GO-REDUCED**; else step 4; (4) `car-only ≥ 50` → **NO-GO-TREES**, else **NO-GO-ALL**. Every outcome names what it changes downstream (GO: DT15 at 400; GO-REDUCED: DT15 at 800; NO-GO-TREES: DT14 needs the car only and DT15 ships the car only; NO-GO-ALL: DT14 and DT15 are not executed; INVALID: no verdict). The `renderSummary()` copied from DTF is rewritten to print this procedure's outcome.
+- **The probe's variants:** `lot20` (20 screens, production CSS, production timeline shape, the DT13 ground and road, the **production media pattern** below, `preload="none"`, play iff active — nothing else), `car-only` (`lot20` + orb + beam + car with the two blurred glows), `scenery` (`car-only` + 88 tree planes at `TREE_SPACING = 400`), `scenery-half` (44 planes at `TREE_SPACING = 800`), `scenery-overload` (≈4× `scenery`'s planes — **351** by the same loop at `TREE_SPACING = 100`: 176 left, 175 right). Default variant `scenery`.
+- **The production media pattern, in `lot20` and therefore in every variant** (this is the
+  fidelity the whole GO decision rests on — see `<context>`): read the twenty slugs from
+  `theater/src/projects.ts` and hardcode them in the probe; each screen gets
+  `video.poster = '../../images/<slug>/01.png'` and, for the sixteen slugs that have one,
+  a `<source src="../../images/<slug>/demo.mp4">`; the four poster-only slugs
+  (`spead-read`, `media-cloud-web-tools`, `media-cloud-vitals`, `showrunner-digest`) get
+  **no `<source>` at all**. Then reproduce what `lot-scene.ts` lines 441–476 do after the
+  loader resolves: `await` an `Image` for all twenty posters and append each as a decoded
+  `<img>` to its surface **before the measurement harness starts**, so twenty transformed
+  raster textures are resident exactly as they are in production. The probe prints
+  `posters resident: 20/20` in the header before it will measure; if any poster fails to
+  decode it refuses to measure rather than reporting a light number. The DTF probe's own
+  `probe-clip-0..7.mp4` files are **not** used — cycling eight URLs across twenty elements
+  buys cache reuse production does not get.
+- **Tree masks are generated in-page** — draw three silhouettes (deciduous, conifer, tall) on an 800×1200 canvas, `toDataURL('image/png')`, and use the data URL as `mask-image`; the probe must not depend on DT14's art. The tree fill colour and every other value come from the inlined tokens. **Second mask source (`&masksrc=svg`):** the same three silhouettes also ship as the exported intrinsic-size SVG placeholders (the same constants `art-check.html` downloads), applied as external `mask-image: url(...)` rather than a PNG data URL. This exists because the SVG branch is the *likely* art outcome and the roadmap otherwise first exercises external-SVG masks under `preserve-3d` in DT15, after the manual art phase and an implementation commit. It does not need the full performance matrix: one `scenery&masksrc=svg` run showing trees paint and fps within noise of the PNG run is enough to retire the risk, and step 5 of the procedure records it.
+- **The scroll range is identical across variants** (as DTF's was), so the numbers compare; the measurement is the lowest fps over any contiguous 1 s window, median of three 10 s runs, via the copied `?measure=all` harness (store key `dt11-measure-results`, not DTF's).
+- **The harness measures *relative* cost only; the absolute floor comes from a wheel run.**
+  The inherited harness calls `window.scrollTo()` on every measurement rAF
+  (`2026-08-25-transformed-video-probe.html` lines 857–878). The scene loop still calls
+  `lenis.raf(time)`, but Lenis is never moving the page from wheel input, so production's
+  actual frame path — `Lenis.raf` under real wheel deltas, then the engine update
+  (`theater/src/engine.ts` lines 323–350) — is idle for the whole measurement. Comparing
+  variants against each other under that harness is sound, because they all share the
+  bias. Reading an **absolute** `≥ 50` off it is not: a `scenery = 50` harness run can
+  yield GO without ever measuring the interaction the number is promising. So the probe
+  reports two things, and the procedure uses each for what it can carry: the harness
+  medians decide density (`scenery` vs `scenery-half` vs the control), and a separate
+  **natural-wheel run** — Chrome DevTools performance panel, real wheel scrolling through
+  the full lot, lowest fps over any contiguous 1 s window, recorded per variant for
+  `car-only` and the selected scenery variant — owns every absolute `≥ 50` comparison.
+  The header states both protocols and keeps their result slots apart.
+- **The decision procedure is written in the header before any number is taken.** It is
+  ordered, exhaustive and mutually exclusive, and **the car is gated before any tree
+  branch** — the earlier draft jumped from "trees do not paint" straight to the fps step,
+  so the vector *(control valid, trees invisible, `car-only` 60 fps, car-only click/Tab
+  FAILS)* returned `NO-GO-TREES` and shipped a car already known to be unusable:
+  - **(0) Instrument validity.** `scenery-overload` must read lower than `scenery` on the
+    harness, else **INVALID** — fix the probe, record nothing.
+  - **(1) The car must be usable.** In `car-only`: click on screen 3 navigates to
+    `../../projects/classic-golf.html`, and Tab reaches the screens in DOM order. Either
+    failing is **NO-GO-ALL**. Nothing downstream ships a car that cannot be clicked, so
+    this is checked before anything about trees.
+  - **(2) The car must be fast enough.** `car-only ≥ 50` on the **natural-wheel** run,
+    else **NO-GO-ALL**.
+  - **(3) The trees must paint.** Trees visible as silhouettes on both sides in `scenery`,
+    else **NO-GO-TREES** (steps 1–2 have already established the car is fine, so every
+    failure from here down is NO-GO-TREES, never NO-GO-ALL).
+  - **(4) The trees must not break interaction.** Click and Tab in `scenery` as in step 1,
+    else **NO-GO-TREES**.
+  - **(5) Density.** On the harness medians (three runs per variant, the lowest browser
+    deciding), with the absolute floor confirmed on the natural-wheel run for whichever
+    variant is selected: `scenery ≥ 50` → **GO**; else if `scenery-half ≥ 50` **and** the
+    reduced layout itself passes steps 3 and 4 when opened at `?variant=scenery-half`
+    (fps alone never selected a layout nobody had looked at) → **GO-REDUCED**; else
+    **NO-GO-TREES**. Under GO or GO-REDUCED, also record the `&masksrc=svg` smoke: trees
+    paint with external SVG masks, fps within noise of the PNG run.
+  Every outcome names what it changes downstream (GO: DT15 at 400; GO-REDUCED: DT15 at
+  800; NO-GO-TREES: DT14 needs the car only and DT15/DT16 take their car-only branch;
+  NO-GO-ALL: DT14, DT15 and DT16 are not executed; INVALID: no verdict). The
+  `renderSummary()` copied from DTF is rewritten to print this procedure's outcome.
+- **The verdict is computed by one classifier, and the classifier is tested** (see the
+  self-test constraint below and `EVO-UNI-120`). `renderSummary()` delegates to a single
+  pure `classify({overloadFps, sceneryFps, halfFps, carFps, carInteraction, treesPaint, sceneryInteraction, halfPaint, halfInteraction})` returning one of the five verdict strings, and it is **fail-closed**: any missing or non-numeric input returns `INVALID` rather than falling through to a verdict.
+- **The probe carries its own verdict self-test (`?selftest=verdict`)**, because a grep for the outcome words proves only that the words appear in the header — an implementation that unconditionally prints `GO` while naming all five outcomes in prose satisfies it. The mode runs `classify()` over a table written into the probe and prints `case: EXPECTED/ACTUAL` per row into `<pre id="verdict-selftest">`, covering at minimum: INVALID precedence (`overload ≥ scenery` with everything else passing — `INVALID`, proving step 0 wins over a GO-shaped vector); car interaction failure with 60 fps everywhere (`NO-GO-ALL`, the vector the old ordering got wrong); `car-only` below the floor (`NO-GO-ALL`); trees not painting with the car fine (`NO-GO-TREES`); scenery interaction failure (`NO-GO-TREES`); `(overload 45, scenery 55, half 58, car 60)` all passing (`GO`); `(40, 45, 52, 60)` with the half layout painting and interacting (`GO-REDUCED`); the same with the half layout *not* painting (`NO-GO-TREES`); `(30, 40, 45, 48)` (`NO-GO-ALL`); and a row with `sceneryFps` absent (`INVALID`, the fail-closed path). The same throwaway Playwright driver reads this element, and **the decision row may not be written unless it printed all-match** — the probe refuses to render a verdict when its own self-test has not passed in that session.
 - **The checker page** (`art-check.html`): a file input (multiple) and a drop zone — files are decoded through `FileReader.readAsDataURL` into an `Image` (never a blob/file URL, so `getImageData()` cannot throw `SecurityError` under `file://`); per file a card with: filename, decoded dimensions, file size, the four corner alphas, transparent fraction, α > 0 bounding box (x, y, w, h), the checkerboard ratio, a composite strip of the image over white, black and the six `--sds-tree` colours from the wireframe (trees rendered as a mask: fill a canvas with the colour and `destination-in` the image; the car drawn as-is), and a verdict **PASS / WARN / FAIL** against the contract chosen by filename (`car*` → car contract, `tree*` → tree contract, anything else → "unknown contract" FAIL). SVG files are loaded through `<img>` and drawn at `naturalWidth × naturalHeight`. Two controls: **"show me a wrong fixture"** generates a 1600×900 canvas with a 160px transparent border around a 32px grey/white checkerboard, names it `car-wrong-fixture.png`, and runs it through the same cards — it must show WARN with the checkerboard ratio ≥ 0.9 while every numeric check passes; **"download placeholder set"** holds the wireframe's four data URIs **pasted in as constants** (a `fetch()` of the wireframe file is always blocked under `file://` — Chrome gives the page an opaque origin — so there is no fetch path; a comment names the wireframe as the source and the date copied) and offers `car.svg`, `tree-1.svg`, `tree-2.svg`, `tree-3.svg` for download as standalone SVG documents with the `viewBox` preserved, `%23` decoded to `#`, and explicit `width="1600" height="900"` / `width="800" height="1200"` attributes on the root element.
 - Every number the checker prints is computed from `getImageData()`; nothing is inferred from `<img>` rendering (EVO-TOOL-055).
-- **The checker is drivable without a human:** `?selftest=1` runs, on load, the wrong fixture, a generated 1×1 PNG and the four exported placeholder SVGs (each loaded back through an `Image`) through the same card logic and writes one line per case into `<pre id="selftest">` (`wrong-fixture: WARN`, `1x1: FAIL`, `car.svg: 1600x900`, `tree-1.svg: 800x1200`, …). The build order verifies it with a throwaway Playwright script under the scratch directory (never committed) that opens the page over `file://` and reads that element's text — `pnpm -C theater exec node <script>` with `chromium` from `@playwright/test`, the same way the wireframe was rendered on 2026-09-08.
-- Prettier does not run on `docs/` (`.prettierignore`), so format by hand to the DTF probe's style; the pre-commit hook will not touch these files.
+- **The checker is drivable without a human, and the self-test proves the checker is honest — not merely that it runs.** The earlier draft asserted only `wrong-fixture: WARN`, `1x1: FAIL` and four dimension lines; a checker whose corner-alpha, transparent-fraction and bounding-box predicates were all mutated to `return true` still emits every one of those lines (the wrong fixture is deliberately numerically valid and warns via a separate ratio; the 1×1 fails on dimensions; the placeholder lines assert size, not PASS). So `?selftest=1` runs, on load, a **table of fixtures generated in-page**, each shadowing exactly one predicate, and writes `name: VERDICT (failed: <predicate>|none)` per case into `<pre id="selftest">`:
+  | Fixture | Must report |
+  |---|---|
+  | `valid-car` — a synthetic 1600×900 wagon-shaped opaque blob, grounded, centred, ~50 % transparent | `PASS (failed: none)` |
+  | `opaque-corner` — `valid-car` with one corner pixel α = 255 | `FAIL (failed: corners)` |
+  | `too-opaque` — 95 % opaque | `FAIL (failed: transparentFraction)` |
+  | `too-transparent` — 5 % opaque | `FAIL (failed: transparentFraction)` |
+  | `narrow-car` — subject 700px wide | `FAIL (failed: bboxWidth)` |
+  | `floating-car` — correct subject in the top 500 rows, 400 transparent rows below | `FAIL (failed: bboxBottom)` |
+  | `short-car` — subject 300px tall, grounded | `FAIL (failed: bboxHeight)` |
+  | `off-centre-car` — subject grounded but pushed 20 % right | `FAIL (failed: bboxCentre)` |
+  | `floating-tree` — 800×1200 silhouette ending 200px above the bottom | `FAIL (failed: bboxBottom)` |
+  | `oversize` — a 1600×900 that encodes above 400 KB | `FAIL (failed: fileSize)` |
+  | `checkerboard` — the wrong fixture (numerically valid, grey/white check) | `WARN (failed: none)` |
+  | `clean` — `valid-car` in a saturated colour | `PASS (failed: none)` with no WARN |
+  | `1x1` — a generated 1×1 PNG | `FAIL (failed: dimensions)` |
+  | the four exported placeholder SVGs, each loaded back through an `Image` | full structural `PASS`, and their decoded dimensions (`car.svg: 1600x900`, `tree-1.svg: 800x1200`, …) |
+  Every fixture but `checkerboard` and `clean` isolates a single predicate, so a predicate stuck at `true` fails its own row. The exported placeholders must report **PASS**, not dimensions alone — that is what makes the SVG fallback's self-consistency a checked property rather than an assumption. The build order verifies the whole table with a throwaway Playwright script under the scratch directory (never committed) that opens the page over `file://` and reads that element's text — `pnpm -C theater exec node <script>` with `chromium` from `@playwright/test`, the same way the wireframe was rendered on 2026-09-08.
+- Prettier does not run on `docs/` (`.prettierignore`), so format by hand to the DTF probe's style; the pre-commit hook will not touch these files. **This was challenged in Part 3B review and re-measured on 2026-09-08:** `.prettierignore`'s `docs/` entry is honoured even for paths passed explicitly on the command line, so the hook's `prettier --check <staged .html>` arm cannot block these two files. Identical misformatted HTML exits 0 at `docs/spikes/__fmt-probe.html` and exits 1 at the repo root. No format step is needed in the build order; do not add one.
 </constraints>
 
 <build_order>
 
 ### 1. The probe
-- [ ] Copy the DTF probe to `docs/spikes/2026-09-08-scenery-probe.html`; rewrite the header (what is measured, the five variants, the protocol, the inherited limitation, the decision procedure with its five outcomes, empty result slots); replace the `lot` builder with the production transcription (20 screens, `--sds-screen-lit` tweens, DT13 ground and road) and add the orb, beam, car and tree builders per variant; rename the results key.
+- [ ] Copy the DTF probe to `docs/spikes/2026-09-08-scenery-probe.html`; rewrite the header (what is measured, the five variants, **both** measurement protocols and what each may decide, the decision procedure with its six steps and five outcomes, separate empty result slots for the harness medians and the natural-wheel runs); replace the `lot` builder with the production transcription (20 screens, `--sds-screen-lit` tweens, DT13 ground and road) and add the orb, beam, car and tree builders per variant; rename the results key.
+- [ ] Wire the production media pattern: the twenty slugs, sixteen `<source>` clips, four poster-only screens, twenty posters decoded and appended before measurement, and the `posters resident: 20/20` gate that refuses to measure otherwise.
+- [ ] Write `classify()` as a single pure function and have `renderSummary()` delegate to it; add `?selftest=verdict` with the case table.
 - [ ] Screenshot each variant over `file://` (`pnpm -C theater exec playwright screenshot --browser chromium --viewport-size=1440,900 "file://…?variant=<v>" <out.png>`) and confirm none shows the fatal banner and `scenery` shows silhouettes on both sides.
+- [ ] Screenshot `?variant=scenery&masksrc=svg` too — the external-SVG mask source must paint the same silhouettes under `preserve-3d`.
+- [ ] Drive `?selftest=verdict` with the throwaway Playwright script and confirm every case prints `EXPECTED == ACTUAL`.
 
 ### 2. The checker
-- [ ] Write `docs/spikes/art-check.html` with the cards, the two contracts, the composite strip, the wrong-fixture control and the placeholder downloader.
-- [ ] Write a throwaway Playwright driver in the scratch directory that opens `art-check.html?selftest=1` and prints `#selftest`; confirm it reports `wrong-fixture: WARN`, `1x1: FAIL`, `car.svg: 1600x900` and the three trees at `800x1200`.
+- [ ] Write `docs/spikes/art-check.html` with the cards, the two contracts (including the bbox height / bottom / centre thresholds), the composite strip, the wrong-fixture control and the placeholder downloader.
+- [ ] Write a throwaway Playwright driver in the scratch directory that opens `art-check.html?selftest=1` and prints `#selftest`; confirm **every row of the fixture table** reports its stated verdict and failing predicate — in particular that `floating-car`, `short-car` and `off-centre-car` FAIL on `bboxBottom` / `bboxHeight` / `bboxCentre`, and that the four exported placeholders report full structural PASS.
 
 ### 3. Hand over
 - [ ] Commit both files (the `<commit>` below). The measurement and the verdict are Evan's (Manual Verification); the decision row is written by whoever measures.
@@ -222,10 +328,24 @@ Read these files before writing any code:
 
 ## Manual Verification (Evan)
 
-1. Chrome (and Firefox if installed), 1440×900, mains power, no other media playing.
-2. `file:///home/evan/EVOsystem/portfolio_site/docs/spikes/2026-09-08-scenery-probe.html?variant=lot20&measure=all&reset=1` — let the harness walk all five variants; copy the printed medians into the header's result slots.
-3. Open `?variant=scenery` by hand: are the trees visible as silhouettes on both sides? Scroll until screen 3 is lit and click it (must open `projects/classic-golf.html`); Tab from the top (focus must walk the screens in order). Repeat the click and Tab in `?variant=car-only`.
-4. Apply the procedure in the header, in order, and write the decision row (verdict; medians per variant per browser; painting; click/Tab per variant; date; decider) into the "Decision records" table at the bottom of this roadmap. Commit as `docs(dt11): decision record`.
+**Browser scope: Chromium only, deliberately.** Evan's ruling, 2026-09-08, after Part 3B
+raised that the spec's core assumption named Chrome *and* Firefox while DT11 said "Firefox
+if installed" and DT16 is Chromium-only — with no Firefox on this host, the likely path was
+to ship having never tested the second browser. Rather than leave a premise the process
+cannot honour, the supported-browser claim is narrowed: this feature is verified on
+Chromium, the spec's "Core assumption" says so (amended in the same edit), and nothing in
+DT11 or DT16 claims Firefox evidence. If Firefox support is wanted later it is a new
+phase with its own measurement, not an optional line here.
+
+1. Chrome, 1440×900, mains power, no other media playing.
+2. Confirm the probe's own gates before taking any number: the header shows
+   `posters resident: 20/20`, and `?selftest=verdict` printed all-match (the probe refuses
+   to render a verdict otherwise).
+3. **Harness run (relative only):** `file:///home/evan/EVOsystem/portfolio_site/docs/spikes/2026-09-08-scenery-probe.html?variant=lot20&measure=all&reset=1` — let the harness walk all five variants; copy the printed medians into the header's harness result slots.
+4. **Natural-wheel run (owns every absolute ≥ 50):** with the DevTools performance panel recording, wheel-scroll the full lot in `?variant=car-only` and again in whichever scenery variant step 5 of the procedure is about to select; take the lowest fps over any contiguous 1 s window; copy both into the header's wheel result slots. A harness median never decides an absolute threshold.
+5. Open `?variant=scenery` by hand: are the trees visible as silhouettes on both sides? Scroll until screen 3 is lit and click it (must open `projects/classic-golf.html`); Tab from the top (focus must walk the screens in order). Repeat the click and Tab in `?variant=car-only`. **If the procedure is heading for GO-REDUCED, repeat both checks in `?variant=scenery-half`** — the reduced layout is what would ship, and fps alone must never select a layout nobody opened.
+6. Under GO or GO-REDUCED, open `?variant=scenery&masksrc=svg` once: trees must paint from the external SVG masks, with fps within noise of the PNG run.
+7. Apply the procedure in the header, in order, and write the decision row (verdict; harness medians per variant; the two natural-wheel numbers; painting; click/Tab per variant including `scenery-half` if it was reached; the `masksrc=svg` smoke; date; decider) into the "Decision records" table at the bottom of this roadmap. Commit as `docs(dt11): decision record`.
 
 <verification>
 ```bash
@@ -237,6 +357,15 @@ grep -n 'SCREEN_COUNT = 20' docs/spikes/2026-09-08-scenery-probe.html           
 grep -n -- '--sds-screen-lit' docs/spikes/2026-09-08-scenery-probe.html | head -3                              # the production lit property is what the timeline tweens
 grep -n 'brightness(calc(' docs/spikes/2026-09-08-scenery-probe.html                                            # the production CSS expression, not a tweened filter
 grep -n 'INVALID\|NO-GO-TREES\|NO-GO-ALL\|GO-REDUCED' docs/spikes/2026-09-08-scenery-probe.html | head          # all five outcomes named in the header
+# The grep above proves only that the WORDS appear — an implementation that always prints GO
+# passes it. The gate is the classifier's own self-test, driven in a browser:
+node "$SCRATCH/dt11-verdict-selftest.mjs"                                                                       # every row EXPECTED == ACTUAL; non-zero exit if any row differs
+grep -n 'function classify' docs/spikes/2026-09-08-scenery-probe.html                                           # one classifier, which renderSummary delegates to
+grep -c 'images/[a-z-]*/01.png' docs/spikes/2026-09-08-scenery-probe.html                                       # 20 — the real posters, resident as production has them
+grep -c 'images/[a-z-]*/demo.mp4' docs/spikes/2026-09-08-scenery-probe.html                                     # 16 — the real clips; the other four screens are poster-only
+grep -n 'probe-clip-' docs/spikes/2026-09-08-scenery-probe.html ; echo "exit=$?"                                # DTF's eight cycled clips are gone → exit=1
+grep -n 'posters resident' docs/spikes/2026-09-08-scenery-probe.html                                            # the gate that refuses to measure a light lot
+grep -n 'masksrc' docs/spikes/2026-09-08-scenery-probe.html | head -3                                           # the external-SVG mask source mode
 grep -n 'dt11-measure-results' docs/spikes/2026-09-08-scenery-probe.html                                        # its own results key
 grep -n 'dtf-measure-results\|GO-REDUCED   lot' docs/spikes/2026-09-08-scenery-probe.html ; echo "exit=$?"     # DTF's key and DTF's summary bands are gone → exit=1
 grep -n 'getImageData' docs/spikes/art-check.html                                                               # alpha read from canvas
@@ -244,13 +373,21 @@ grep -n 'readAsDataURL' docs/spikes/art-check.html                              
 grep -n 'fetch(' docs/spikes/art-check.html ; echo "exit=$?"                                                    # no fetch under file:// → exit=1
 grep -n 'width="1600" height="900"\|width="800" height="1200"' docs/spikes/art-check.html                       # the exported SVGs carry intrinsic size
 grep -n 'id="selftest"' docs/spikes/art-check.html                                                              # the drivable self-test
+node "$SCRATCH/dt11-art-selftest.mjs"                                                                           # every fixture row reports its stated verdict AND failing predicate; non-zero exit otherwise
+grep -n 'bboxBottom\|bboxHeight\|bboxCentre' docs/spikes/art-check.html | head -4                               # the placement predicates a floating car would otherwise pass
 grep -E '^\| DT11 \| (GO|GO-REDUCED|NO-GO-TREES|NO-GO-ALL|INVALID) \|' docs/roadmaps/drive-in-theme-roadmap.md   # nothing yet; exactly one row after Manual Verification
 ```
 
+`$SCRATCH` is this session's scratch directory; both driver scripts are throwaway and
+never committed. Each must **exit non-zero when a row mismatches** — a driver that only
+prints is the same vacuous check as the outcome-word grep it replaces.
+
 Expected, for the session that builds the files: both files exist, the DTF receipt is
-untouched, every grep above prints its lines, and the decision-record grep prints
-**nothing**. Expected after Manual Verification: exactly one decision row, medians for
-all five variants in the probe header, and `scenery-overload` lower than `scenery`.
+untouched, every grep above prints its lines (with the counts stated: 20 posters, 16
+clips), both self-test drivers exit 0, and the decision-record grep prints **nothing**.
+Expected after Manual Verification: exactly one decision row, harness medians for all
+five variants and both natural-wheel numbers in the probe header, and `scenery-overload`
+lower than `scenery`.
 </verification>
 
 <commit>
@@ -379,7 +516,15 @@ Read these files before writing any code:
 cd /home/evan/EVOsystem/portfolio_site
 pnpm format:check
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
-(cd theater && ./node_modules/.bin/vitest run --reporter=verbose src/page) 2>&1 | grep -E '✓|✗|×' | head -40   # the new suite, all ✓ — the binary directly: `pnpm exec vitest … --reporter=verbose` exits 1 with no output because pnpm parses `--reporter` as its OWN flag (measured 2026-09-08), and a `--` is forwarded literally
+# The new suite, all ✓. Two separate defects were measured here on 2026-09-08, so the form matters:
+# (a) `pnpm exec vitest … --reporter=verbose` exits 1 with no output — pnpm parses `--reporter` as its OWN
+#     flag, and a `--` is forwarded literally. Hence the binary directly.
+# (b) `<test> | grep … | head -40` returns HEAD's status, so a Vitest that never starts reports success
+#     (measured: `pipeline_exit=0 pipe_statuses=1 1 0`). `pipefail` is the wrong fix — head closing the
+#     pipe would then create false failures. Capture, check the status, THEN render.
+(cd theater && ./node_modules/.bin/vitest run --reporter=verbose src/page) > /tmp/dt12-vitest.log 2>&1; vitest_status=$?
+grep -E '✓|✗|×' /tmp/dt12-vitest.log | head -40
+echo "vitest exit=$vitest_status"                                                                              # must be 0 — this, not the glyphs, is the check
 awk '/installPeriod\(document.documentElement/{a=NR} /createEngine\(\{/{b=NR} END{exit !(a && b && a<b)}' theater/src/main.ts && echo "period installed before the engine"   # must print
 grep -n "location.search.split\|indexOf('period')" theater/src/page/period.ts ; echo "exit=$?"   # EVO-FE-183: exit=1
 grep -n "APP_URL" theater/e2e/helpers/app.ts theater/e2e/reveal.spec.ts | wc -l      # ≥ 4 (definition, openPage, two reveal gotos)
@@ -632,14 +777,27 @@ the rear-facing third row waving out the back.
    resize afterwards in the tool.
 2. Open `docs/spikes/art-check.html` (DT11) over `file://`, drop the files in, and read
    the card per file: **structural PASS** on dimensions, corner alpha, transparent
-   fraction, bounding box, size, and **no checkerboard WARN**. A WARN or FAIL means
-   regenerate (ask explicitly for "transparent background with a real alpha channel, not
-   a checkerboard") or fix in the tool; do not hand-edit pixels.
-3. Look at the composite strip for each file and confirm the four visual statements:
-   the subject is the one described; nothing but the subject is opaque (no baked
-   checkerboard, halo or backdrop); the trunk reaches the bottom edge (trees); the
-   tail-lights and rear window read at 320px wide (car). Structural PASS without these is
-   not acceptance.
+   fraction, bounding box **width, height, bottom and horizontal centre**, size, and **no
+   checkerboard WARN**. A WARN or FAIL means regenerate (ask explicitly for "transparent
+   background with a real alpha channel, not a checkerboard") or fix in the tool; do not
+   hand-edit pixels.
+   *Why the placement predicates are in the structural half:* every sprite is drawn into a
+   fixed box with `object-fit: contain`, so where the subject sits inside its canvas is
+   where it sits on the page. Without them, a genuinely correct, readable rear-view wagon
+   occupying an opaque 1200×500 region at `y = 0` — corners transparent, ~58 % transparent
+   overall, bbox 1200px wide, under 400 KB — passes every other check and every visual
+   statement below, and then floats above the road in the shipped car box. That
+   counterexample was constructed and confirmed against this checklist (Part 3B).
+3. Look at the composite strip for each file and confirm the visual statements, now
+   including placement:
+   - the subject is the one described;
+   - nothing but the subject is opaque (no baked checkerboard, halo or backdrop);
+   - **the car's wheels and body baseline sit on the bottom edge of its canvas, and the
+     wagon is horizontally centred** — judged in the 320px composite, at the size it
+     actually ships;
+   - the trunk reaches the bottom edge (trees);
+   - the tail-lights and rear window read at 320px wide (car).
+   Structural PASS without these is not acceptance.
 4. `mkdir -p theater/public/art` and copy the four files in with the contract names.
    Commit immediately (`EVO-UNI-090`): `git add theater/public/art && git commit -m "feat(dt14): drive-in art sprites"`.
 5. **Fallback**, if after a reasonable number of tries a file cannot pass both halves:
@@ -787,9 +945,25 @@ Read these files before writing any code:
 Check the **Decision records** table at the bottom of this roadmap and `ls theater/public/art` before writing any code:
 - If DT11 says `GO` → `TREE_SPACING = SPACING / 2` (400) and the GO literals.
 - If DT11 says `GO-REDUCED` → `TREE_SPACING = SPACING` (800) and the GO-REDUCED literals; note the deviation from the wireframe's density in the session log.
-- If DT11 says `NO-GO-TREES` → omit `scenery.ts`, the tree DOM/CSS and the masks; `load()` declares posters + car only (`units = projects.length + 2`); `snapshot().trees` is `0`; `ART_FILES.trees` stays declared but unused.
 - If DT11 says `NO-GO-ALL` or `INVALID`, or the row is empty → **stop**; this phase does not run.
 - If `theater/public/art/car.svg` exists (and no `car.png`) → `ART_EXTENSION = 'svg'`; otherwise `'png'`.
+- If DT11 says `NO-GO-TREES` → the car-only build. **Everything above assumes trees, so this
+  is the full override — apply it to each section; where it conflicts with a bullet in
+  `<constraints>`, `<build_order>`, `<verification>` or `## Done`, this wins.** (Part 3B
+  found the earlier one-line version unexecutable: it dropped `scenery.ts` while the rest
+  of the phase still required the file, its tests, its CSS and its greps.)
+  | Section | Under `NO-GO-TREES` |
+  |---|---|
+  | `scenery.ts` / `scenery.test.ts` | Not written at all. Every literal in the `scenery.test.ts` bullet is void. |
+  | `art.ts` | Written, but `ART_FILES.trees` stays declared and **unused**; `artUrls()` still returns the full shape so `art.test.ts`'s literals are unchanged. |
+  | `build-lot.ts` | Export `LOT_CAR_CLASS`, `CAR_SPRITE_CLASS`, `LOT_BEAM_CLASS`, `CAR_STATE_ATTRIBUTE` only — no `TREE_CLASS`, `TREE_VARIANT_ATTRIBUTE`, `MASK_STATE_ATTRIBUTE` or the three tree properties. No tree elements in the world; beam and car on the stage exactly as written. |
+  | `lot-scene.ts` | `load()` queues posters + `art.car` only (`units = projects.length + 2`); `#placeCar` as written, **no `#placeMask`**; `destroy()` releases the one art URL; `snapshot().trees` is always `0`; `snapshot().car` unchanged. |
+  | `global.css` | No `.sds-tree` rule and no narrow tree overrides. `.sds-lot__car` and `.sds-lot__beam` — including both **`pointer-events: none`** declarations — are written exactly as specified; they are what "the car never steals a click" rests on and DT16 still falsifies them. |
+  | Unit tests | `lot-scene.contract.test.ts` line 76 expects `[...posters, art.car]`. `lot-scene.test.ts` keeps the car-ready and car-missing cases and drops the mask cases; `snapshot().trees === 0` after load. `build-lot.test.ts` asserts **no** `.sds-tree` elements, plus car and beam on the stage outside the world. |
+  | Build order | Step 1 is `art.ts` + `art.test.ts` only; step 2 omits the tree DOM, the mask placement and the `.sds-tree` rules. |
+  | Verification | Drop the `visibility: hidden` grep (no tree rule exists). Keep both `awk … pointer-events: none` guards. Add `ls theater/src/lot/scenery.ts ; echo "exit=$?"` expecting **exit=1**, and `grep -c 'sds-tree' theater/src/styles/global.css theater/src/lot/build-lot.ts` expecting **0** — under this branch the absence is the assertion. |
+  | Manual check | Look for the wagon, beam and road at night; there are no trees to look for. |
+  | `## Done` | Says "the visitor's wagon on a marked road under a sky that follows the clock, **no trees — DT11 measured `NO-GO-TREES`**", and names the decision row. |
 </branch>
 
 <build_order>
@@ -815,7 +989,12 @@ Check the **Decision records** table at the bottom of this roadmap and `ls theat
 cd /home/evan/EVOsystem/portfolio_site
 pnpm format:check
 pnpm -C theater typecheck && pnpm -C theater lint && pnpm -C theater test
-(cd theater && ./node_modules/.bin/vitest run --reporter=verbose src/lot) 2>&1 | grep -E '✓|✗|×' | head -80    # scenery, art, lot-scene, build-lot, contract — all ✓ (binary directly: pnpm swallows `--reporter`)
+# scenery, art, lot-scene, build-lot, contract — all ✓. The binary directly (pnpm swallows `--reporter`),
+# and captured rather than piped: `… | grep | head` returns head's status, so a suite that never starts
+# reports success (measured 2026-09-08). Do not "fix" this with `pipefail` — head would then break it.
+(cd theater && ./node_modules/.bin/vitest run --reporter=verbose src/lot) > /tmp/dt15-vitest.log 2>&1; vitest_status=$?
+grep -E '✓|✗|×' /tmp/dt15-vitest.log | head -80
+echo "vitest exit=$vitest_status"                                                                              # must be 0 — this, not the glyphs, is the check
 grep -rn 'import.meta' theater/src/lot/ --include='*.ts' | grep -v 'lot/lot-scene.ts' ; echo "exit=$?"   # only lot-scene may read the env → exit=1 (works whether or not scenery.ts exists)
 grep -n 'artUrls(import.meta.env.BASE_URL)' theater/src/lot/lot-scene.ts                   # exactly the one call site
 grep -n 'Math.random' theater/src/lot/*.ts ; echo "exit=$?"                                # SDS-001: exit=1
@@ -904,7 +1083,7 @@ DT15's unit tests cannot see rendering, hit-testing or the served image.
   `pnpm build` is `tsc --noEmit && vite build`, so a TypeScript error in any spec kills
   the whole run. Specs assert navigation as `click-through.spec.ts` does:
   `waitForURL(\`**${href}\`)` then `new URL(page.url()).pathname`. **pnpm 11 forwards a
-  `--` literally and parses flags such as `--reporter` as its own**, so filters and flags go to the binaries directly: `(cd theater && ./node_modules/.bin/playwright test <filter>)`, `(cd theater && ./node_modules/.bin/vitest run --reporter=verbose <path>)`.
+  `--` literally and parses flags such as `--reporter` as its own**, so filters and flags go to the binaries directly: `(cd theater && ./node_modules/.bin/playwright test <filter>)`, `(cd theater && ./node_modules/.bin/vitest run --reporter=verbose <path>)`. **And a test command's exit status must reach the shell**: `<test> | grep … | head` reports `head`'s success even when the runner never started (measured 2026-09-08 — a Vite startup failure and a nonexistent filter both gave `pipeline_exit=0 pipe_statuses=1 1 0`), so every filtered check redirects to a log, saves `$?`, and greps the log afterwards. `pipefail` is not the fix: `head` closing the pipe would manufacture failures.
 - `theater/e2e/nginx-parity.sh` curls the served container with `report`, `status_of`,
   `content_type_of` helpers and checks `/images/nom-noms/01.png` is `image/png`.
 - **Geometry that matters for the click test** (measured 2026-09-08 at 390×720 on the
@@ -948,7 +1127,7 @@ Read these files before writing any code:
 </reference_material>
 
 <constraints>
-- **`e2e/scenery.spec.ts`** (skip the tree assertions under `NO-GO-TREES`): after `openPage`, `.sds-tree` count `=== treePlacements(projects.length).length` and every tree has `data-mask="ready"` with computed `visibility === 'visible'`; **the first tree's computed `mask-image` (and `-webkit-mask-image`) contains `art/tree-1.`** — the attribute and visibility alone cannot see a mask that was later lost (a tree forced to `mask-image: none` still reads `ready` and `visible`, measured 2026-09-08) and a lost mask paints a filled rectangle; the car has `data-car="ready"` and a computed height > 0; the first left tree's computed `transform` parsed by `new DOMMatrixReadOnly(...)` has `m41 === -900`, `m43 === -100`, `m11 === 1.05` (to 3 dp). **Click-through under the car**, in a test that sets `test.use({ viewport: { width: 390, height: 720 } })`: scan `progress` from `screenProgress(0, n)` to `screenProgress(2, n)` in 40 equal steps using `scrollToSceneProgress(page, LOT_SCENE, p)`, at each reading screen 0's and `.sds-lot__car`'s bounding boxes; stop at the **first** sample where they intersect and `expect` that one was found (the geometry note in `<context>` says it will be, about one and a half bands in); at that position take the intersection's centre, assert `document.elementFromPoint(x, y)?.closest('a.sds-screen')` has `data-screen-index="0"`, `page.mouse.click(x, y)`, then `waitForURL` for `projects[0].href`. Import `SCREEN`, `LOT_CAR_CLASS`, `TREE_CLASS`, `MASK_STATE_ATTRIBUTE`, `CAR_STATE_ATTRIBUTE` — never re-type them.
+- **`e2e/scenery.spec.ts`** (skip the tree assertions under `NO-GO-TREES`): after `openPage`, `.sds-tree` count `=== treePlacements(projects.length).length` and every tree has `data-mask="ready"` with computed `visibility === 'visible'`; **every tree's computed `mask-image` and `-webkit-mask-image` contain `art/tree-${Number(el.dataset.treeVariant) + 1}.`** — read each element's `data-tree-variant` and assert against the URL that variant should carry, in one `$$eval` over all of them. Checking only tree 0 (the Part 3 fix) is not enough: with tree 1's masks removed after load, `count=88 ready=88 visible=88` and tree 0's two URLs all still held while tree 1 computed `none` (measured 2026-09-08), so the filled-rectangle failure was merely displaced to the 87 unchecked elements. Asserting per variant catches both a lost mask and a mask applied to the wrong variant. The car has `data-car="ready"` and a computed height > 0; the first left tree's computed `transform` parsed by `new DOMMatrixReadOnly(...)` has `m41 === -900`, `m43 === -100`, `m11 === 1.05` (to 3 dp). **Click-through under the car**, as a loop over **two viewports — `{ width: 390, height: 720 }` and `{ width: 1440, height: 900 }`** — because the `pointer-events: none` guard in DT15's `<verification>` reads the base rule block only and is not cascade-aware: an `@media (min-width: 768px) { .sds-lot__car { pointer-events: auto } }` regression leaves that block untouched, and a scan that only ever runs at 390×720 never sees it. (`click-through.spec.ts` does visit every screen at the default desktop viewport, but the `<context>` geometry note says those band-midpoint boxes do not overlap the car, so it cannot catch a desktop car stealing a click.) At each viewport: first assert `getComputedStyle(car).pointerEvents === 'none'` — the computed value, which the cascade decides; then scan `progress` from `screenProgress(0, n)` to `screenProgress(2, n)` in 40 equal steps using `scrollToSceneProgress(page, LOT_SCENE, p)`, at each reading screen 0's and `.sds-lot__car`'s bounding boxes; stop at the **first** sample where they intersect and `expect` that one was found (the geometry note in `<context>` says it will be, about one and a half bands in); at that position take the intersection's centre, assert `document.elementFromPoint(x, y)?.closest('a.sds-screen')` has `data-screen-index="0"`, `page.mouse.click(x, y)`, then `waitForURL` for `projects[0].href`. One screen per viewport is enough once the computed cascade is proved — `pointer-events: none` makes screen identity irrelevant. Import `SCREEN`, `LOT_CAR_CLASS`, `TREE_CLASS`, `MASK_STATE_ATTRIBUTE`, `CAR_STATE_ATTRIBUTE` — never re-type them.
 - **`e2e/art.spec.ts`**: `openPage(page)` first (same origin, so the canvas is not tainted); then for each URL of `artUrls(APP_PATH)` (car only under `NO-GO-TREES`), in the page create an `Image`, await load (a load error is a failure), draw to a canvas and assert: dimensions `1600×900` / `800×1200`; four corner alphas `0`; transparent fraction in `[0.15, 0.85]`; car α > 0 bounding box width `>= 960`; tree bounding-box bottom `>= 0.95 * height`. SVG files load through the same `Image` path at their intrinsic size.
 - **`nginx-parity.sh`**: add `report "/theater/art/car.<ext> is served" 200 …` and a content-type check (`image/png` or `image/svg+xml`), with `<ext>` read by `grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" theater/src/lot/art.ts | grep -oE 'png|svg'` so the script cannot drift from the constant.
 - No spec introduces a `waitForTimeout`; the scan relies on `scrollToSceneProgress`'s settle.
@@ -957,7 +1136,22 @@ Read these files before writing any code:
 <branch>
 Check the **Decision records** table before writing any code:
 - `GO` / `GO-REDUCED` → the full `scenery.spec.ts` (the tree count comes from `treePlacements`, so density does not change the spec).
-- `NO-GO-TREES` → no tree assertions; the click-under-the-car test and the car assertions stay; `art.spec.ts` checks the car only.
+- `NO-GO-TREES` → the car-only build. **As in DT15, this is the full override and it wins
+  over any conflicting line in `<constraints>`, `<reference_material>`, `<build_order>`,
+  `<verification>` or `## Done`** — under this verdict `theater/src/lot/scenery.ts` does
+  not exist, so a `cp` of it has no source and the phase cannot be executed as otherwise
+  written (Part 3B, VERIFIED against the current tree):
+  | Section | Under `NO-GO-TREES` |
+  |---|---|
+  | `scenery.spec.ts` | Keep the car assertions (`data-car="ready"`, computed height > 0) and the whole click-under-the-car scan at both viewports. Drop every tree assertion — count, `data-mask`, mask URLs, the transform matrix. Add the negative: `.sds-tree` count `=== 0`. |
+  | `art.spec.ts` | Iterates `artUrls(APP_PATH)`'s car entry only; the tree canvas assertions are void. |
+  | `reference_material` | `theater/src/lot/scenery.ts` is not listed — it does not exist. |
+  | Falsification 1 (`scenery.ts` stub) | **Skipped entirely** — there is no file to back up, stub or restore. Its purpose (proving the tree assertions can fail) has no subject here. |
+  | Falsification 2 (car steals click) | **Kept, and it is now the load-bearing one** — it is the only proof left that the click-through test can fail. Run it at both viewports. |
+  | Falsification 3 (corrupt car sprite) | Kept as written. |
+  | `nginx-parity.sh` | The car line only. |
+  | Manual / wireframe comparison | Wagon, beam, road and sky; no tree comparison. |
+  | `## Done` | "every screen still a link" as written, and the scenery sentence says the wagon and beam ship **without trees, per DT11's `NO-GO-TREES` row**. |
 </branch>
 
 <build_order>
@@ -1028,9 +1222,13 @@ After this phase, portfolio_site's `/theater/` is a drive-in: the visitor's wago
 marked road, trees lining the lot, a sky and lighting that follow the visitor's clock,
 every screen still a link — proven by unit tests, the conformance kit, Playwright and
 the nginx parity check. What the browser proof covers, exactly: the click-through under
-the car is measured for **screen 0 at a 390×720 viewport in Chromium**; it generalises to
-the other screens and viewports only through the `pointer-events: none` rule that the
-falsification shows is load-bearing, not through a per-screen sweep.
+the car is measured for **screen 0 at both 390×720 and 1440×900, in Chromium**, and each
+viewport first asserts the car's *computed* `pointer-events` is `none`, so a responsive
+override that flips it is caught by the cascade check rather than assumed away by a
+source-text grep. It generalises to the other screens through `pointer-events: none`
+itself — which the falsification shows is load-bearing — not through a per-screen sweep.
+Firefox is out of scope by decision (see DT11's Manual Verification); this feature is
+verified on Chromium and the spec says so.
 
 This is the final phase. The completed roadmap gives the portfolio a drive-in that
 changes with the hour; a later roadmap could add ambient sound or a period toggle, both
@@ -1040,9 +1238,14 @@ deliberately out of scope here.
 
 ## Decision records
 
-| Phase | Decision | Chrome fps, median of 3 (lot20 / car-only / scenery / scenery-half / scenery-overload) | Firefox fps (same order) | Trees paint (scenery) | Click + Tab (car-only / scenery) | Date | Decided by |
-|---|---|---|---|---|---|---|---|
-| DT11 | _not yet run_ | | | | | | |
+Browser scope is **Chromium only** by Evan's ruling of 2026-09-08 (see DT11's Manual
+Verification and the spec's "Core assumption"), so there is no second-browser column. The
+two fps columns are the two protocols and are not interchangeable: harness medians decide
+density and the control, the natural-wheel numbers own every absolute `≥ 50`.
+
+| Phase | Decision | Harness fps, median of 3 (lot20 / car-only / scenery / scenery-half / scenery-overload) | Natural-wheel fps (car-only / selected variant) | Posters resident | Verdict self-test | Trees paint (scenery / scenery-half if reached) | Click + Tab (car-only / scenery / scenery-half if reached) | `masksrc=svg` smoke | Date | Decided by |
+|---|---|---|---|---|---|---|---|---|---|---|
+| DT11 | _not yet run_ | | | | | | | | | |
 
 ## Changelog
 
@@ -1050,4 +1253,5 @@ deliberately out of scope here.
 |---|---|---|---|
 | 2026-09-08 | — | `f4cfda3` → `14f398b` | Spec + wireframe written from a same-session brainstorm; Codex adversarial on the spec (gpt-6-astra high, in-session on Evan's say-so): 8 MAJOR / 5 MINOR, all 13 accepted (receipt `docs/roadmaps/drive-in-theme-spec-codex-review.md`); wireframe approved with road markings and the wagon. |
 | 2026-09-08 | — | `4882883` → `a572b5e` | Roadmap written (Part 2); two cold Opus evaluators — code truth 3 CRITICAL / 5 MAJOR / 9 MINOR, structure 1 CRITICAL / 8 MAJOR / 11 MINOR — 28 findings, 27 accepted / 1 rescoped / 0 rejected. Headline: the click-under-the-car test was pinned where no screen overlaps the car (now a bounded scan); `git checkout --` reverts on new/uncommitted files (now backup by copy); `pnpm … -- <filter>` does not filter under pnpm 11 (now `pnpm exec`); the car never opted out of hit-testing; DT15 split into DT15/DT16. Part 3 prompt prepared for Codex (`gpt-5.6-sol` high, Evan-driven): `docs/roadmaps/drive-in-theme-part3-prompt.md`. |
-| 2026-09-08 | — | `a572b5e` → `7579eed` | Part 3 (Codex `gpt-5.6-sol` high, in-session on Evan's approval) **hit the usage limit at 285k tokens with no findings list**; folded from its probe outputs (receipt `docs/roadmaps/drive-in-theme-part3-codex-review.md`, severities by the writing session): 2 MAJOR / 3 MINOR, all accepted — vacuous verbose-suite checks through `pnpm exec` (→ binaries directly), a lost mask invisible to `data-mask` + visibility (→ computed `mask-image` asserted), fragile `-A12` guards (→ awk rule blocks), DT16's Done stated to its one-screen Chromium proof, 16 real clips recorded in DT11. Its probes verified the Part 2 triage's own edits (scan-based click test, typed-stub falsification and copy restore, four requests for four declared art files). **FINAL.** A full Part 3 re-run is owed if quota returns before DT11 executes. |
+| 2026-09-08 | — | `a572b5e` → `7579eed` | Part 3 (Codex `gpt-5.6-sol` high, in-session on Evan's approval) **hit the usage limit at 285k tokens with no findings list**; folded from its probe outputs (receipt `docs/roadmaps/drive-in-theme-part3-codex-review.md`, severities by the writing session): 2 MAJOR / 3 MINOR, all accepted — vacuous verbose-suite checks through `pnpm exec` (→ binaries directly), a lost mask invisible to `data-mask` + visibility (→ computed `mask-image` asserted), fragile `-A12` guards (→ awk rule blocks), DT16's Done stated to its one-screen Chromium proof, 16 real clips recorded in DT11. Its probes verified the Part 2 triage's own edits (scan-based click test, typed-stub falsification and copy restore, four requests for four declared art files). Not final — a full Part 3 re-run was owed and was run the same day (next row). |
+| 2026-09-08 | — | `7579eed` → _this commit_ | **Part 3B: the owed Part 3 re-run, completed** (Codex `gpt-5.6-sol` high, in-session on Evan's "can we finish the adversarial?", exit 0 at 301k tokens / 33 commands; prompt `drive-in-theme-part3b-prompt.md`, receipt `drive-in-theme-part3b-codex-review.md`). Narrowed to the five lenses the partial run never reached plus the five unreviewed `7579eed` edits, and required findings to be written to disk as they formed — the process fix for the earlier quota death. **0 CRITICAL, 11 MAJOR, 4 MINOR; 14 accepted, 1 rejected.** Headline: DT11's `lot20` omitted the twenty decoded posters production keeps resident, so GO could be measured on a lighter workload; a tree-paint failure skipped the car-only interaction gate and could ship a known-broken car (procedure reordered — car first, six steps); the `NO-GO-TREES` branch was internally unexecutable in both DT15 and DT16 (now a full override table per section); DT14 could accept a correct-but-floating car (bbox height/bottom/centre thresholds added); the checker's and the probe's self-tests proved only that they ran (now per-predicate fixture tables that fail closed); the glyph pipelines returned `head`'s exit status; the tree-mask assertion covered one of 88 trees; the car-click proof was not cascade-aware (now two viewports, computed `pointer-events`). Evan ruled **Chromium-only** on the browser gate, amended into the spec. **Rejected — finding 14** (DT11 needs a format step before its commit): measured false, `.prettierignore`'s `docs/` entry is honoured for explicitly-passed paths, so the hook cannot block those files. Cleared by Codex and left alone: the procedure's decidability, `destroy()`/re-mount, the conformance kit, the whole SVG fallback path, and the 83 % loading-ring plateau — diagnosed as the probe's own 1500 ms route delay plus the reveal fade, with SVG `decode()` at 0 ms. |

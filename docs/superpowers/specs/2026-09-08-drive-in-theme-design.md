@@ -338,7 +338,16 @@ branch. The theme ships either way; the art phase can never block the lot.
 **Roughly ninety static masked planes inside the transformed world, plus a stage-anchored
 car overlay with two blurred glows, keep the 20-screen drive at ≥ 50 fps (DTF's band,
 lowest 1 s window) and leave every screen clickable and Tab-reachable — and `mask-image`
-actually paints on a plane under `preserve-3d` in Chrome and Firefox.**
+actually paints on a plane under `preserve-3d` in **Chromium**.**
+
+**Browser scope, amended 2026-09-08 (Evan's ruling, after the Part 3B adversarial):** this
+assumption named Chrome *and* Firefox while DT11 said "Firefox if installed" and DT16 is
+configured for Chromium only — and there is no Firefox on this host, so the likely
+execution path recorded a verdict having never tested the second browser named by the
+premise. Rather than carry a premise the process cannot honour, the claim is narrowed to
+Chromium: that is what DT11 measures, what DT16 asserts, and what the feature is
+documented as supporting. Firefox support, if wanted, is a later phase with its own
+measurement — not an optional line inside this one.
 
 Searched 2026-09-08: DTF (`docs/spikes/2026-08-25-transformed-video-probe.html`, decision
 row in `docs/roadmaps/drive-in-theater-roadmap.md`, session log
@@ -357,7 +366,7 @@ where there are twenty, `filter` tweened directly where production tweens
 layer, and 88 of them exceed DTF's 32 screens; (c) the car's `filter: blur()` on two
 pseudo-elements is a per-frame raster cost DTF never had; (d) masks on 3D-transformed
 elements have a history of rendering quirks (the review's probe confirmed masks paint on
-a transformed leaf in Chromium; Firefox is unmeasured). So the assumption is **not
+a transformed leaf in Chromium; Firefox is out of scope by the ruling above). So the assumption is **not
 measured**, and DT11 is a cheap falsifier that runs first — **on a probe that reproduces
 production, not DTF**: 20 screens; the lot CSS copied verbatim from `global.css`
 (custom-property placement, the `--sds-screen-lit` brightness `calc()`, the `color-mix()`
@@ -377,22 +386,42 @@ silhouette at 800×1200), `scenery-half` (44 planes, `TREE_SPACING = 800`),
 `scenery-overload` (4× the planes, the failing control, `EVO-UNI-120`). Bands are
 pre-registered in the probe's header before any number is taken (`EVO-UNI-091`).
 
-**Decision procedure, ordered, exhaustive and exclusive** (the review showed the first
-draft admitted results that matched no outcome or two):
+**Decision procedure, ordered, exhaustive and exclusive** (the first review showed the
+original draft admitted results that matched no outcome or two; **Part 3B, 2026-09-08,
+found the revision still ordered wrongly** — a tree-paint failure jumped straight to the
+frame-rate step, so *(control valid, trees invisible, `car-only` 60 fps, car-only
+click/Tab FAILS)* returned NO-GO-TREES and shipped a car already known to be unusable.
+The car is now gated before anything about trees, which also makes every post-car failure
+resolve to NO-GO-TREES):
 
-0. *Instrument validity.* `scenery-overload` must read lower than `scenery` in every
-   browser measured. If not, the result is **INVALID**: fix the probe, do not record a
-   verdict.
-1. *Painting.* In the `scenery` variant the trees are visible as silhouettes in every
-   browser measured. If not: **NO-GO-TREES** (go to step 4).
-2. *Interaction.* In `car-only`, click on screen 3 navigates and Tab reaches the screens
-   in DOM order. If not: **NO-GO-ALL** (the overlay itself breaks interaction; trees are
-   moot). Then the same in `scenery`; if that fails while `car-only` passed:
-   **NO-GO-TREES** (go to step 4).
-3. *Frame rate, judged on the median of three per variant, in every browser measured,
-   the lowest browser deciding:* `scenery ≥ 50` → **GO**; else `scenery-half ≥ 50` →
-   **GO-REDUCED**; else → step 4.
-4. *Car-only frame rate:* `car-only ≥ 50` → **NO-GO-TREES**; else **NO-GO-ALL**.
+0. *Instrument validity.* `scenery-overload` must read lower than `scenery` on the
+   harness. If not, the result is **INVALID**: fix the probe, do not record a verdict.
+1. *The car must be usable.* In `car-only`, click on screen 3 navigates and Tab reaches
+   the screens in DOM order. Either failing is **NO-GO-ALL** — nothing downstream ships a
+   car that cannot be clicked.
+2. *The car must be fast enough.* `car-only ≥ 50` on the natural-wheel run, else
+   **NO-GO-ALL**.
+3. *The trees must paint.* Trees visible as silhouettes on both sides in `scenery`, else
+   **NO-GO-TREES**.
+4. *The trees must not break interaction.* Click and Tab in `scenery` as in step 1, else
+   **NO-GO-TREES**.
+5. *Density,* on the harness medians of three per variant, with the absolute floor
+   confirmed on the natural-wheel run for the variant selected: `scenery ≥ 50` → **GO**;
+   else if `scenery-half ≥ 50` **and** the reduced layout itself passes steps 3 and 4 when
+   opened directly → **GO-REDUCED**; else **NO-GO-TREES**.
+
+**Two measurement protocols, and each decides only what it can carry** (Part 3B): the
+in-page harness scrolls with `window.scrollTo()` on every measurement rAF, so Lenis's
+wheel-smoothing path — production's actual frame path — is idle throughout. All variants
+share that bias, so the harness is sound for *relative* density comparisons and for the
+`scenery-overload` control. Every **absolute** `≥ 50` comparison instead comes from a
+natural-wheel DevTools run, because a `scenery = 50` harness number would otherwise yield
+GO without ever measuring the interaction it is promising.
+
+The verdict is produced by one pure `classify()` function that `renderSummary()`
+delegates to, is fail-closed on missing or non-numeric input (returns INVALID), and is
+covered by an in-probe `?selftest=verdict` case table driven from Playwright — a grep for
+the outcome words proves only that the words appear in the header (`EVO-UNI-120`).
 
 What each outcome changes: **GO** → DT15 as specified (`TREE_SPACING = 400`).
 **GO-REDUCED** → DT15 with `TREE_SPACING = 800` and the reduced literals.
@@ -458,7 +487,7 @@ checks, the checkerboard warning, the composite strip over white / black / six t
 colours, a PASS/WARN/FAIL per the filename (`car` vs `tree-*`), the "show me a wrong
 fixture" control (the transparent-bordered checkerboard, which must WARN) and the
 "download placeholder set" control (four standalone SVGs with intrinsic dimensions).
-Evan measures (Chrome; Firefox if present), records the decision row in the roadmap.
+Evan measures (Chromium — see the browser-scope ruling under "Core assumption"), records the decision row in the roadmap.
 Unlocks: a number behind the tree count, and the tool DT14 is accepted with.
 
 **DT12 — Period engine (frontend, S).** `page/period.ts` and `page/period.test.ts`
@@ -564,10 +593,13 @@ landed; diff `<context>` against the tree), `EVO-TOOL-023` / `EVO-TOOL-024`,
 
 - `[FYI]` `theater/index.html`'s hero eyebrow still reads "Now showing · 8 projects" with
   20 on the lot. Unrelated to this roadmap; noted for a separate one-line fix.
-- `[FYI]` DTF's measurement was Chrome-only (Firefox absent, no Mac). DT11 inherits the
-  same limitation; the procedure says "every browser measured" and the decision row
-  records which. Tree painting in Firefox is therefore unverified until Firefox exists on
-  the host.
+- `[DECIDED]` DTF's measurement was Chrome-only (Firefox absent, no Mac). This was an
+  inherited *limitation* until 2026-09-08, when Part 3B pointed out that an optional
+  "Firefox if installed" line lets the whole feature ship with the second browser of its
+  own core assumption untested. Evan ruled: **narrow to Chromium and say so.** The core
+  assumption, DT11's Manual Verification and DT16's `## Done` now all state Chromium
+  scope; nothing claims Firefox evidence. Tree painting in Firefox is not "unverified
+  pending a host" — it is out of scope, and revisiting it is a new phase.
 - `[FYI]` The `--sds-orb-*` positions are percentages of the stage; the sunset sun sits at
   the vanishing point and is partly behind the far screens by design.
 - `[FYI]` `installPeriod` uses `visibilitychange` only. Same behaviour as jourNOW.
