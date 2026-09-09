@@ -37,7 +37,7 @@ built and measured:
   hairline is one texel at 4, two-thirds of one at 6, half at 8, and 6/8 measurably wash
   the rows and the near dash out.
 
-**Done — proved.** Unit 379 green; e2e 45 green over repeated full runs; the
+**Done — proved.** Unit 379 green; e2e 48 green over repeated full runs; the
 falsification required by the phase (`EVO-UNI-061`) fails `period.spec.ts` and the restored
 file makes it green; the container serves 200; all six palettes compared against the
 approved wireframe at 1440x900 and 390px.
@@ -50,6 +50,7 @@ hardware are still the gate, and the lever is one constant.
 ## Commits
 
 - portfolio_site `d4eff15` — `feat(dt13): six time-of-day palettes, sun/moon orb, road markings, geometry-sized ground`
+- portfolio_site `7af0ade` — `fix(dt13): the header stops blurring the sky and stops swallowing clicks`
 - portfolio_site `<this commit>` — `docs(session): DT13 palettes, orb, road, geometry-sized ground`
 
 ## Uncommitted work left behind
@@ -63,7 +64,7 @@ Run and **passing**:
 - `pnpm format:check`
 - `pnpm -C theater typecheck`, `pnpm -C theater lint`
 - `pnpm -C theater test` — 379 tests, 22 files
-- `pnpm -C theater test:e2e` — 45 tests (43 before the review's fixes added two), green on every full run
+- `pnpm -C theater test:e2e` — 48 tests (43 before the review and Evan's report added five), green on every full run
 - The phase's `<verification>` greps: 6 `:host([data-period=` blocks matching 6
   `:root[data-period=` twins; no hex `var()` fallbacks (exit 1); `height: 4800px` gone
   (exit 1); `--sds-ground-depth` / `--sds-ground-lead` / `--sds-ground-squash` all read in
@@ -203,6 +204,29 @@ against the fixed tree), both raised timeouts, and that the removed `::after` an
 
 **Not run / not possible here:** the GPU check. See Blockers.
 
+**Evan's review of the served page found two more, both in `.sds-chrome`, both
+pre-existing and both first made visible by this phase** (fixed in `7af0ade`):
+
+9. **The header blurred the sun and the moon.** `backdrop-filter: blur(8px)` on a full-bleed
+   fixed strip has no falloff, so it drew a hard-edged rectangle of blur across the orb —
+   invisible for as long as the top of the lot was empty night sky. Replaced by
+   `--sds-chrome-scrim`, a gradient that fades to nothing at its own bottom edge and does
+   what the blur was actually standing in for: keeping the logo legible over a daylight sky.
+10. **The header swallowed every click in its own 58px.** `position: fixed` at
+    `--sds-z-chrome` across the viewport with no opinion about hit-testing. Measured before
+    the fix: `elementFromPoint` anywhere in the strip returned `.sds-chrome`, and screen 0
+    reaches under it at 1440x900, screens 0 and 1 at 1280x620. The container now opts out
+    and the logo opts back in — the same pairing already documented on `.sds-lot__world`
+    twenty lines below in the same file, which is the annoying part.
+
+The regression guard that was missing is now in `click-through.spec.ts`: those tests drove
+to each screen's band middle and clicked the centre of the frame, so nothing in the suite
+had ever clicked near the header. Two viewports, a scan across four bands, read from
+`elementsFromPoint` rather than a bounding box — a screen is a yawed 3D quad whose
+axis-aligned box is strictly larger than the shape the browser hit-tests, and my first draft
+failed for exactly that reason rather than because of the header. The logo's own click is
+pinned separately. Both fail against the pre-fix stylesheet.
+
 ## Blockers
 
 **The flicker verdict needs real hardware and is not mine to give.** DT11 measured that
@@ -281,6 +305,23 @@ DT11's decision row.
   `EVO-UNI-018`; the failure mode is `EVO-UNI-061`'s, one level down — the check runs, it
   just cannot distinguish the states it exists to distinguish.
   `promote → universal`
+- **A fixed overlay with one control in it needs `pointer-events: none` on the container
+  and `auto` on the control, and nothing but a click test will tell you it does not.** A
+  `position: fixed` header spanning the viewport owns every point in its own height, so
+  anything beneath it in that strip is unclickable — silently, with the page looking
+  perfect. It survives a suite that clicks element *centres*, because a control's centre is
+  rarely under the chrome. Test it by reading `elementsFromPoint` at points in the strip and
+  asserting the topmost is not the decoration; and pin the container's own control
+  separately, because a focus/tab-order test stays green when an inherited
+  `pointer-events: none` has made it mouse-dead.
+  `promote → react-frontend`
+- **A hit-test assertion must not pick its point from `getBoundingClientRect` when the
+  element is 3D-transformed.** A yawed or rotated element's axis-aligned box is strictly
+  larger than the shape the browser hit-tests, so points sampled from the box land outside
+  the element and the test fails for a reason unrelated to what it is checking. Ask the
+  browser instead — `elementsFromPoint` returns the real stack, and omits anything with
+  `pointer-events: none`.
+  `promote → react-frontend`
 - **A `pgrep`/`grep` whose pattern appears in the checking command's own command line
   matches itself.** Polling for a background job with
   `until ! pgrep -f 'codex exec'; do sleep 30; done` never terminates: the waiting shell's
