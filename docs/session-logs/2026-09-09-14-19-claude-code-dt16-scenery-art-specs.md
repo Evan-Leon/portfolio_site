@@ -158,6 +158,14 @@ None.
   in that row as "the first and only evidence that the trees and car are performant and do
   not steal a click". It now covers the click and the painting; it says **nothing about
   fps** — no frame timing was measured this session, at 88 trees or otherwise.
+  **Amended after the log was first written:** Evan opened the served lot on his own
+  machine and reported "no issues with lag or blinking" at the shipped density
+  (`TREE_SPACING = 400`, 88 trees). That is a **qualitative pass on real hardware, not a
+  number** — no harness walk, no natural-wheel DevTools run, no fps figure — but it is the
+  same kind of evidence that settled `GROUND_SQUASH = 4` in DT13, and it is the first
+  observation of the trees, wagon and beam running on the machine that matters. It closes
+  the practical worry behind DT11's fps gate; it does not close the gate. The
+  `TREE_SPACING = SPACING` fallback stays documented and unneeded.
 - Four `PENDING (decided-by: human)` items remain open across the DT13/DT14/DT15 logs
   (`fold_back_audit.py`: `applied=13 no_change=20 pending=4 needs_decision=0`, oldest 0
   days). None blocks anything.
