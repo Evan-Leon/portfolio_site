@@ -1343,7 +1343,37 @@ density and the control, the natural-wheel numbers own every absolute `≥ 50`.
 
 | Phase | Decision | Harness fps, median of 3 (lot20 / car-only / scenery / scenery-half / scenery-overload) | Natural-wheel fps (car-only / selected variant) | Posters resident | Verdict self-test | Trees paint (scenery / scenery-half if reached) | Click + Tab (car-only / scenery / scenery-half if reached) | `masksrc=svg` smoke | Date | Decided by |
 |---|---|---|---|---|---|---|---|---|---|---|
-| DT11 | _not yet run_ | | | | | | | | | |
+| DT11 | GO [^dt11] | not taken [^dt11] | not taken [^dt11] | not taken [^dt11] | not taken [^dt11] | not taken [^dt11] | not taken [^dt11] | not taken [^dt11] | 2026-09-09 | Evan |
+
+[^dt11]: **This row records a ruling, not a measurement — read it as such.** Evan called
+    `GO` on 2026-09-09, directing DT15 to proceed at `TREE_SPACING = SPACING / 2` (400),
+    on the strength of the real-hardware performance work done while executing DT13
+    rather than the six-step procedure in DT11's header. **DT11's protocol was never
+    run**: no harness walk over the five variants, no natural-wheel DevTools runs, no
+    `posters resident: 20/20` gate, no `?selftest=verdict`, no tree-paint check, no
+    car-only or scenery click/Tab gate, no `masksrc=svg` smoke. Every measurement cell is
+    therefore `not taken`, and none of DT11's numeric thresholds (`scenery >= 50`,
+    `scenery-overload < scenery`) has been evaluated.
+
+    What does back the ruling: DT13 measured this page's heaviest layer on Evan's own
+    machine and tuned it (`GROUND_SQUASH = 4`, 134 -> 51 ms/frame; squash 1 visibly
+    blinks and drops the road when scrubbing backwards, 4 is clean, 6 and 8 look no
+    different), so the lot is known to have headroom in the browser that matters. DT13's
+    own log is explicit that it proves nothing about this phase's subject: *"Trees, car
+    and beam are absent and are DT15."* The trees' and car's cost, their painting, and
+    their effect on hit-testing remain unmeasured going into DT15.
+
+    Consequences to carry forward. The probe
+    (`docs/spikes/2026-09-08-scenery-probe.html`) and the art checker are built,
+    self-tested and committed at `bcdc561`; the measurement can still be run at any time
+    and this row amended. Until it is, **DT16 is the first and only evidence that the
+    trees and car are performant and do not steal a click** — its click-through proof at
+    390x720 and 1440x900 and its computed `pointer-events` assertion carry weight they
+    were never designed to carry alone, because DT11 was meant to have falsified both
+    before a line of DT15 was written. If DT16 finds the lot slow or the car
+    hit-testing, the fallbacks are DT11's own: drop to `TREE_SPACING = 800` (the
+    GO-REDUCED layout) or to the car-only branch. DT14's four sprites were likewise
+    generated ahead of this row (`df76193`) and are unaffected by the ruling.
 
 ## Changelog
 
