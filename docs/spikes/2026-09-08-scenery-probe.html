@@ -614,6 +614,15 @@
         content: "";
       }
 
+      /* DIAGNOSTIC ONLY (&road=lifted) — never production. The rule above puts
+         the road at exactly the asphalt's depth; measured, both are their own
+         composited layer (420x20800 and 4000x20800) at the same Z, which is the
+         classic z-fighting setup. This lifts it 1px so the two surfaces have an
+         order. Default is OFF: the page as shipped is DT13 as specified. */
+      .sds-lot[data-road="lifted"] .sds-lot__ground::after {
+        transform: translateZ(1px);
+      }
+
       .sds-screen {
         pointer-events: auto;
         position: absolute;
@@ -998,7 +1007,48 @@
 
       /* DT13's two ground numbers, from the spec. */
       const GROUND_LEAD = SPACING; // 800
-      const GROUND_DEPTH = lotZ(1, SCREEN_COUNT) + 5 * SPACING; // 20800
+      const GROUND_DEPTH_SPEC = lotZ(1, SCREEN_COUNT) + 5 * SPACING; // 20800
+
+      /* ===================================================================
+       * DIAGNOSTIC SWITCHES — added 2026-09-08 after Evan reported the whole
+       * scene blinking during scroll in EVERY variant, `lot20` included. They
+       * exist to tell two candidate causes apart and are NOT part of the
+       * measurement: a median taken with either flag set is a number about the
+       * flag, not about the scenery, and must be labelled as such.
+       *
+       * WHAT WAS MEASURED, on the probe as specified (Chromium, dpr 1):
+       *   MAX_TEXTURE_SIZE                  8192 px
+       *   .sds-lot__ground composited layer 4000 x 20800 = 83.2 Mpx
+       *   .sds-lot__ground::after (road)     420 x 20800 =  8.7 Mpx,
+       *                                     transform: none — i.e. COPLANAR
+       *                                     with the asphalt it sits on
+       *   whole page                        145 Mpx  (~580 MB of texture)
+       * Capping the depth at 8000 takes the page to 89 Mpx (~357 MB).
+       *
+       * &ground=<px>   overrides GROUND_DEPTH. The spec's 20800 is 2.5x the
+       *                texture limit in one dimension, so Chromium must tile
+       *                the plane; tiles evicted under memory pressure and
+       *                re-drawn are what a blink looks like.
+       * &road=lifted   gives the road 1px of Z so it is no longer exactly
+       *                coplanar with the asphalt. Two surfaces at identical
+       *                depth fight over which is in front, every frame.
+       *
+       * Both are OFF by default, so the default page is still DT13 exactly as
+       * specified. The HUD names whichever is on — if the HUD does not say so,
+       * the flag did not take.
+       * =================================================================== */
+      const groundOverride = Number(PARAMS.get("ground"));
+      const GROUND_DEPTH =
+        Number.isFinite(groundOverride) && groundOverride > 0
+          ? groundOverride
+          : GROUND_DEPTH_SPEC;
+      const ROAD_LIFTED = PARAMS.get("road") === "lifted";
+      /* Carried across the harness walk's self-navigation, so a walk started
+         with a flag does not silently drop it at the first variant change. */
+      const FLAG_QUERY =
+        (MASK_SRC === "svg" ? "&masksrc=svg" : "") +
+        (GROUND_DEPTH !== GROUND_DEPTH_SPEC ? `&ground=${GROUND_DEPTH}` : "") +
+        (ROAD_LIFTED ? "&road=lifted" : "");
 
       /* ===================================================================
        * SCENERY ARITHMETIC — from the spec's "Scenery" section. A table, never
@@ -1340,6 +1390,7 @@
         );
         lot.style.setProperty("--sds-ground-lead", `${GROUND_LEAD}px`);
         lot.style.setProperty("--sds-ground-depth", `${GROUND_DEPTH}px`);
+        if (ROAD_LIFTED) lot.dataset.road = "lifted";
 
         const world = document.createElement("div");
         world.className = "sds-lot__world";
@@ -1998,6 +2049,8 @@
           `browser: ${navigator.userAgent}\n` +
           `viewport: ${window.innerWidth}x${window.innerHeight}  dpr: ${window.devicePixelRatio}\n` +
           `screens: ${SCREEN_COUNT}   posters resident: ${postersResident()}/${SCREEN_COUNT}   mask source: ${MASK_SRC}\n` +
+          `ground: ${GROUND_DEPTH}px${GROUND_DEPTH === GROUND_DEPTH_SPEC ? " (DT13 as specified)" : ` *** DIAGNOSTIC — spec is ${GROUND_DEPTH_SPEC}px ***`}` +
+          `   road: ${ROAD_LIFTED ? "*** DIAGNOSTIC — lifted 1px ***" : "coplanar (DT13 as specified)"}\n` +
           `verdict self-test: ${selfTest.allMatch ? "all-match" : "MISMATCH"}\n\n` +
           `  variant${" ".repeat(width - 7)}  run1  run2  run3\n${rows.join("\n")}\n\n` +
           control +
@@ -2034,7 +2087,7 @@
           const next = MEASURE_ORDER.find((v) => !state[v]);
           if (next) {
             box.textContent = `${VARIANT} done (${runs.join(", ")}) — loading ${next}…`;
-            location.href = `?variant=${next}&measure=all${MASK_SRC === "svg" ? "&masksrc=svg" : ""}`;
+            location.href = `?variant=${next}&measure=all${FLAG_QUERY}`;
             return;
           }
         }
@@ -2067,16 +2120,23 @@
         const { world, screens, trees } = buildLot();
         run(buildTimeline(world, screens), makePlayback(screens));
 
-        hudStatus.innerHTML =
+        /* The diagnostic flags are named here, and ONLY when they are actually
+           on, so "did the flag take?" is answered by looking at the page rather
+           than by trusting the URL. */
+        const flags =
+          (GROUND_DEPTH !== GROUND_DEPTH_SPEC
+            ? ` · <b class="bad">ground ${GROUND_DEPTH}px</b> (spec ${GROUND_DEPTH_SPEC})`
+            : "") + (ROAD_LIFTED ? ` · <b class="bad">road lifted 1px</b>` : "");
+        const base =
           ` · <b>${SCREEN_COUNT}</b> screens · <b>${trees.length}</b> trees` +
-          ` · masks <b>${MASK_SRC}</b> · posters <b>…</b>`;
+          ` · masks <b>${MASK_SRC}</b>${flags}`;
+        hudStatus.innerHTML = `${base} · posters <b>…</b>`;
 
         placePosters(screens).then((resident) => {
           sessionStorage.setItem(POSTER_STORE, String(resident));
           const ok = resident === SCREEN_COUNT;
           hudStatus.innerHTML =
-            ` · <b>${SCREEN_COUNT}</b> screens · <b>${trees.length}</b> trees` +
-            ` · masks <b>${MASK_SRC}</b> · ` +
+            `${base} · ` +
             `<span class="${ok ? "" : "bad"}">posters resident: ` +
             `<b>${resident}/${SCREEN_COUNT}</b></span>`;
 
