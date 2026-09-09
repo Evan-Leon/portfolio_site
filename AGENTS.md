@@ -40,10 +40,11 @@ Run from the repository root (`/home/evan/EVOsystem/portfolio_site`).
   `pnpm theater:test`; build with `pnpm theater:build`.
 - Validate the Codex setup: `python3 scripts/validate_codex_setup.py`
   (or `pnpm validate:codex`).
-- Treat a generated theater sprite before committing it (key the backdrop off,
-  fit it to its contract, check it): `pnpm -C scripts/art install
-  --ignore-workspace` once, then see `scripts/art/README.md` and the
-  `treating-art-sprites` skill. `scripts/art/` is deliberately outside the pnpm
+- Create, edit or treat a theater sprite (drive the change through Codex, key
+  the backdrop off, fit it to its contract, check it, integrate it): `pnpm -C
+  scripts/art install --ignore-workspace` once, then `scripts/art/new-run.sh`;
+  the `treating-art-sprites` skill is the whole loop and
+  `scripts/art/README.md` the reference. `scripts/art/` is deliberately outside the pnpm
   workspace — `sharp` is a native binary, and formatting the static site must
   not require building it.
 - Serve a change (rebuild the image + recreate the container): use the

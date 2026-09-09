@@ -1,6 +1,7 @@
 // Step 1 of the sprite treatment: cut a FLAT generated backdrop off a sprite.
 //
 // Usage: node key.mjs <in.png> <out.png> [--tol N] [--soft N] [--floor N] [--band N]
+//                                        [--pockets N] [--flat F]
 //
 // Image generators keep returning sprites painted onto a solid studio backdrop instead
 // of transparency. `fit.mjs` refuses those by design (exit 3) so nobody can quietly key
@@ -14,9 +15,12 @@
 //
 //   1. Idempotent: a source that already has real alpha at all four corners is copied
 //      through untouched, so re-running the pipeline is free.
-//   2. Estimate the backdrop as the per-channel median of the 2px border ring, then
-//      REFUSE (exit 3) unless >= 98% of that ring sits within `tol` of it — that is the
-//      "provably flat" test, and it is what stops this being a general background remover.
+//   2. Learn the backdrop as a small PALETTE clustered from the 2px border ring, then
+//      REFUSE (exit 3) unless it explains >= `flat` of that ring — the test that stops this
+//      being a general background remover. A palette rather than one colour because the
+//      generator's other habit is painting an opaque grey-and-white CHECKERBOARD, a picture
+//      of transparency. Lower `--flat` only when the refusal's own diagnosis says the
+//      unexplained pixels are the subject touching the frame edge.
 //   3. Flood fill from the border. Distance <= tol -> fully transparent. Distance between
 //      tol and soft -> partial alpha, so the illustration's antialiased outline feathers
 //      instead of turning into stairsteps. Band pixels propagate at most `band` px from
@@ -32,6 +36,9 @@
 //      CONNECTED COMPONENTS and only those at least `pockets` px are opened. On the DT14
 //      wagon that cleanly splits the three real holes (6094/300/294 px) from the chrome
 //      shading on the bumper (357 slivers, none over 79 px), which must stay.
+//      NOT done for a patterned backdrop unless `--pockets` is passed explicitly: a
+//      checkerboard's colours ARE the chrome's colours, so opening its pockets punches holes
+//      through the roof rack and trim. Measured 2026-09-09; see the note at the pocket loop.
 //   6. Floor near-zero alpha to 0 (and near-full to 255) so the bbox `fit.mjs` measures
 //      is the bbox that survives PNG quantisation. (DT14 open flag: a faint sub-1% alpha
 //      fringe under the car survived the fit and was then dropped by palette
@@ -59,6 +66,8 @@ const SOFT = flag("soft", 60); // >= this distance is subject; between the two i
 const FLOOR = flag("floor", 8); // alpha below this is snapped to 0, above 255-this to 255
 const BAND = flag("band", 4); // how many px a partial-alpha edge may travel from solid backdrop
 const POCKETS = flag("pockets", 200); // open enclosed backdrop components >= this many px; 0 = report only
+const FLAT = flag("flat", 0.98); // fraction of the border ring the backdrop palette must explain
+const POCKETS_FORCED = args.includes("--pockets"); // opening pockets on a patterned backdrop must be deliberate
 
 const { data, info } = await sharp(inp).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 const W = info.width;
@@ -75,24 +84,137 @@ if (corners.every((a) => a === 0)) {
   process.exit(0);
 }
 
-// 2. Estimate the backdrop from the border ring, and refuse unless it is flat.
+// 2. Learn the backdrop PALETTE from the border ring, and refuse unless it explains the ring.
+//
+// One flat colour is the easy case. The other case that actually happens is a CHECKERBOARD:
+// asked for transparency, the generator paints an opaque grey-and-white chequer — a picture
+// of transparency (2026-09-09 plate run, tries 1 and 2). That is two colours, not one, so a
+// single-colour test refuses it and there is nothing to do but regenerate and hope.
+//
+// So the backdrop is a small palette: cluster the border ring greedily, and require the
+// clusters to explain >= 98% of it. A photographic background still fails — it has hundreds
+// of colours, and no handful of centres covers it — so the guard that matters is intact.
 const ring = [];
 for (let x = 0; x < W; x++)
   for (const y of [0, 1, H - 2, H - 1]) ring.push((y * W + x) * 4);
 for (let y = 0; y < H; y++)
   for (const x of [0, 1, W - 2, W - 1]) ring.push((y * W + x) * 4);
-const median = (vals) => vals.sort((a, b) => a - b)[vals.length >> 1];
-const BG = [0, 1, 2].map((c) => median(ring.map((i) => data[i + c])));
-const dist = (i) => Math.hypot(data[i] - BG[0], data[i + 1] - BG[1], data[i + 2] - BG[2]);
-const flat = ring.filter((i) => dist(i) <= TOL).length / ring.length;
-if (flat < 0.98) {
+
+const MAX_CLUSTERS = 4;
+const MIN_SHARE = 0.03; // a cluster under this share of the ring is noise, not a backdrop colour
+const rgbAt = (i) => [data[i], data[i + 1], data[i + 2]];
+const gap = (c, d) => Math.hypot(c[0] - d[0], c[1] - d[1], c[2] - d[2]);
+const PALETTE = [];
+{
+  let pool = ring.slice();
+  while (pool.length && PALETTE.length < MAX_CLUSTERS) {
+    // modal colour of what is left, on a coarse grid so antialiasing noise groups together
+    const bins = new Map();
+    for (const i of pool) {
+      const k = `${data[i] >> 3},${data[i + 1] >> 3},${data[i + 2] >> 3}`;
+      bins.set(k, (bins.get(k) ?? []).concat(i));
+    }
+    const biggest = [...bins.values()].sort((a, b) => b.length - a.length)[0];
+    const centre = [0, 1, 2].map((c) => Math.round(biggest.reduce((s, i) => s + data[i + c], 0) / biggest.length));
+    const members = pool.filter((i) => gap(rgbAt(i), centre) <= TOL);
+    if (members.length / ring.length < MIN_SHARE) break;
+    PALETTE.push({ centre, share: members.length / ring.length });
+    pool = pool.filter((i) => gap(rgbAt(i), centre) > TOL);
+  }
+}
+// Distance to the backdrop — measured to the palette's points AND to the segments between
+// them, because a blend of two backdrop colours is still backdrop. A checkerboard's cells
+// are antialiased into each other, and its white and grey centres are 73 apart, so the seam
+// pixels sit ~36 from both and a points-only test rejects 14% of the border as "not
+// backdrop". The whole pipeline below is unchanged by this; it just measures against a
+// palette instead of a point, and degenerates to exactly the old behaviour for one colour.
+const toSegment = (c, a, b) => {
+  const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+  const len2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
+  if (len2 === 0) return gap(c, a);
+  let t = ((c[0] - a[0]) * ab[0] + (c[1] - a[1]) * ab[1] + (c[2] - a[2]) * ab[2]) / len2;
+  t = Math.max(0, Math.min(1, t));
+  return gap(c, [a[0] + t * ab[0], a[1] + t * ab[1], a[2] + t * ab[2]]);
+};
+const dist = (i) => {
+  const c = rgbAt(i);
+  let best = Infinity;
+  for (let k = 0; k < PALETTE.length; k++) {
+    best = Math.min(best, gap(c, PALETTE[k].centre));
+    for (let j = k + 1; j < PALETTE.length; j++) best = Math.min(best, toSegment(c, PALETTE[k].centre, PALETTE[j].centre));
+  }
+  return best;
+};
+const nearest = (i) => {
+  const c = rgbAt(i);
+  let best = PALETTE[0]?.centre ?? [0, 0, 0];
+  let bd = Infinity;
+  for (const p of PALETTE) {
+    const d = gap(c, p.centre);
+    if (d < bd) {
+      bd = d;
+      best = p.centre;
+    }
+  }
+  return best;
+};
+const paletteOf = (i) => {
+  const c = rgbAt(i);
+  let bi = -1;
+  let bd = Infinity;
+  for (let k = 0; k < PALETTE.length; k++) {
+    const d = gap(c, PALETTE[k].centre);
+    if (d < bd) {
+      bd = d;
+      bi = k;
+    }
+  }
+  return bi;
+};
+const flat = PALETTE.length ? ring.filter((i) => dist(i) <= TOL).length / ring.length : 0;
+if (flat < FLAT) {
+  // Say what the UNEXPLAINED pixels are, because the honest answer is often "the subject".
+  // A car whose roof rack and tyres run to the top and bottom edges puts real subject in the
+  // border ring, and no backdrop palette will ever explain it. That is a different situation
+  // from a photographic background, and the operator can only tell them apart if told which
+  // colours failed and which edges they sit on — so print it instead of just a percentage.
+  const bad = ring.filter((i) => dist(i) > TOL);
+  const tally = new Map();
+  for (const i of bad) {
+    const k = `${data[i] >> 5},${data[i + 1] >> 5},${data[i + 2] >> 5}`;
+    tally.set(k, (tally.get(k) ?? 0) + 1);
+  }
+  const worst = [...tally.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([k, n]) => `~rgb(${k.split(",").map((v) => +v * 32 + 16).join(",")}) x${n}`)
+    .join(", ");
+  const edges = { top: 0, bottom: 0, left: 0, right: 0 };
+  for (const i of bad) {
+    const p = i / 4;
+    const x = p % W;
+    const y = (p / W) | 0;
+    if (y <= 1) edges.top++;
+    else if (y >= H - 2) edges.bottom++;
+    else if (x <= 1) edges.left++;
+    else edges.right++;
+  }
+  const shown = PALETTE.map((p) => `rgb(${p.centre.join(",")}) ${(p.share * 100).toFixed(0)}%`).join(" + ") || "none";
   console.error(
-    `REFUSED: backdrop is not flat — only ${(flat * 100).toFixed(1)}% of the border ring is within ` +
-      `${TOL} of rgb(${BG.join(",")}). This tool only cuts a solid studio backdrop; regenerate the ` +
-      `source with a transparent background instead of keying a real scene out of it.`,
+    `REFUSED: backdrop palette explains only ${(flat * 100).toFixed(1)}% of the border ring ` +
+      `(need ${(FLAT * 100).toFixed(0)}%).\n` +
+      `  palette:     ${PALETTE.length} colour(s) — ${shown}\n` +
+      `  unexplained: ${bad.length}/${ring.length} px — ${worst}\n` +
+      `  on edges:    top ${edges.top}, bottom ${edges.bottom}, left ${edges.left}, right ${edges.right}\n` +
+      `If those unexplained pixels are a real BACKGROUND (a scene, a gradient, a photo), regenerate ` +
+      `the source with a transparent background — do not force this through.\n` +
+      `If they are the SUBJECT touching the frame edge (a roof rack at the top, tyres at the bottom), ` +
+      `the backdrop is fine and the ring simply is not all backdrop: re-run with --flat <lower>, and ` +
+      `LOOK at the result before believing it.`,
   );
   process.exit(3);
 }
+const PATTERNED = PALETTE.length > 1;
 
 // 3. Flood fill from the border.
 const OPAQUE = 255;
@@ -157,7 +279,16 @@ for (let p0 = 0; p0 < N; p0++) {
       }
     }
   }
-  if (POCKETS > 0 && comp.length >= POCKETS) {
+  // MEASURED, 2026-09-09: on a PATTERNED backdrop, opening pockets destroys the subject.
+  // A grey-and-white checkerboard's two palette entries are the same colours as the wagon's
+  // chrome — roof rack, window trim, the cream border on the wood panel, the plate surround.
+  // Every one of those is an enclosed region matching the backdrop palette, so pocket-opening
+  // punched holes clean through them (verified over magenta: the rack all but vanished).
+  // Requiring a pocket to contain BOTH palette entries does NOT save it, because chrome is
+  // shaded and contains both. The colours genuinely overlap, so no test on colour alone can
+  // separate them. Pockets are therefore OFF for a patterned backdrop unless explicitly asked
+  // for; the border fill on its own is safe and leaves the chrome intact.
+  if (POCKETS > 0 && comp.length >= POCKETS && (!PATTERNED || POCKETS_FORCED)) {
     opened.push(comp.length);
     for (const p of comp) push(p % W, (p / W) | 0, 0);
     drain();
@@ -177,8 +308,9 @@ for (let p = 0; p < N; p++) {
   if (a > 0 && a < 255) {
     partial++;
     const f = a / 255;
+    const B = nearest(i);
     for (let c = 0; c < 3; c++) {
-      data[i + c] = Math.max(0, Math.min(255, Math.round((data[i + c] - (1 - f) * BG[c]) / f)));
+      data[i + c] = Math.max(0, Math.min(255, Math.round((data[i + c] - (1 - f) * B[c]) / f)));
     }
   }
   if (a === 0) {
@@ -194,7 +326,8 @@ await sharp(data, { raw: { width: W, height: H, channels: 4 } })
   .toFile(out);
 
 console.log(
-  `keyed ${W}x${H} backdrop rgb(${BG.join(",")}) (border ${(flat * 100).toFixed(1)}% flat, tol ${TOL}/${SOFT}) -> ` +
+  `keyed ${W}x${H} backdrop ${PATTERNED ? "palette" : ""} ${PALETTE.map((p) => `rgb(${p.centre.join(",")})`).join(" + ")} ` +
+    `(border ${(flat * 100).toFixed(1)}% explained, tol ${TOL}/${SOFT}) -> ` +
     `${((transparent / N) * 100).toFixed(1)}% transparent, ${partial} feathered px; wrote ${out}`,
 );
 const sum = (a) => a.reduce((s, v) => s + v, 0);
@@ -204,7 +337,14 @@ if (opened.length) {
       `backdrop the subject surrounds, now see-through`,
   );
 }
-if (kept.length) {
+if (PATTERNED && kept.length && !POCKETS_FORCED) {
+  console.log(
+    `left ${kept.length} enclosed backdrop-coloured region(s) opaque, ${sum(kept)} px (largest ` +
+      `${Math.max(...kept)}) — pockets are NOT opened on a patterned backdrop, because its colours are ` +
+      `also the subject's chrome and opening them punches holes through it. If real backdrop is still ` +
+      `showing inside the silhouette, that is a bad generation: get a transparent or flat-colour source.`,
+  );
+} else if (kept.length) {
   console.log(
     `left ${kept.length} backdrop-coloured region(s) opaque, ${sum(kept)} px (largest ${Math.max(...kept)}, ` +
       `under the ${POCKETS}px pocket threshold) — treated as subject shading, not backdrop. ` +

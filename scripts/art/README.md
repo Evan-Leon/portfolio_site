@@ -16,6 +16,25 @@ has come back off-size, oversized on disk, and (this time) with a painted backdr
 instead of alpha. The theater composites these over a night sky at eight times of day,
 so a backdrop is not a cosmetic problem: it is a visible slab.
 
+## Driving a change through Codex
+
+`treat.mjs` is step 3 of a longer loop. To *change* a sprite (a new plate, a different
+outfit) rather than just treat one you already have, use the `treating-art-sprites` skill —
+it covers scaffolding the run, writing the prompt, launching Codex detached, and
+integrating the result. Start here:
+
+```bash
+./new-run.sh <run-name> ../../theater/public/art/car.png <reference> [<reference> ...]
+```
+
+That builds a scratch workspace **outside every repo** with these tools, the edit target and
+each reference re-encoded to plain PNG, and a `prompt.md` seeded from `PROMPT-TEMPLATE.md`.
+It prints the exact `codex exec` line; it deliberately does not launch anything, because the
+prompt is the part that decides whether the run is worth spending.
+
+Codex never writes into the repo. The treated sprite is copied back by hand, after the
+browser check, by someone who looked at it.
+
 ## Install (once, on demand)
 
 Deliberately **not** a pnpm workspace package. `sharp` is a native binary, and nobody
@@ -64,19 +83,52 @@ output for what it is:
 - **`fit.mjs` exits 3 on a source with no real alpha.** This is the guard that makes the
   whole pipeline safe: without it, a *photographic* background could be quietly keyed out
   into a sprite full of fringe. Do not soften it.
-- **`key.mjs` exits 3 unless ≥98% of the border ring is within tolerance of one colour.**
-  It is a *studio-backdrop* cutter, not a background remover. If it refuses, the answer is
-  to regenerate the source with a transparent background, not to raise `--tol`.
+- **`key.mjs` exits 3 unless its backdrop palette explains ≥98% of the border ring.** It is
+  a *studio-backdrop* cutter, not a background remover. A photographic background has
+  hundreds of colours and no handful of centres covers it, so it still refuses. When it does
+  refuse it prints the unexplained pixels' colours and which edges they sit on, because the
+  honest answer is often "that is the subject" — see `--flat` below.
 - **`key.mjs` fills from the border, never globally.** A global colour key would also
   delete matching pixels inside the subject (tinted glass, a shadow under a bumper). A
   fill can only reach what is genuinely connected to the outside.
 
-## Knobs (`key.mjs`), and the one judgement call
+## The backdrop palette, and the checkerboard
+
+The backdrop is a **palette**, not a single colour: the border ring is clustered greedily
+(≤4 centres), and distance is measured to those centres *and to the segments between them*,
+because a blend of two backdrop colours is still backdrop.
+
+This exists because of the second failure mode generators have. Asked for transparency, the
+tool will paint an opaque **grey-and-white checkerboard** — a picture of transparency
+(2026-09-09 plate run, tries 1 and 2). One flat colour cannot describe it.
+
+**A checkerboard is keyable but not safely pocketable.** Its two colours are the same colours
+as the wagon's chrome — roof rack, window trim, the cream border on the wood panel, the plate
+surround. Every one of those is an enclosed region matching the backdrop palette, so opening
+pockets punched holes clean through them (verified over magenta: the rack all but vanished).
+Requiring a pocket to contain *both* palette entries does not help, because chrome is shaded
+and contains both. **The colours genuinely overlap, and no test on colour alone separates
+them** — so pockets are off for a patterned backdrop unless `--pockets` is passed explicitly.
+
+The practical consequence: a checkerboard source keys at the border but keeps its enclosed
+backdrop (the roof-rack slot stays filled). **Get a better source instead.** Ask the
+generator for a flat solid magenta backdrop — `rgb(255,0,255)` appears nowhere in the
+artwork — which keys perfectly and pockets safely. That is what tries 3 and 4 delivered.
+
+## Knobs (`key.mjs`), and the two judgement calls
 
 `--tol 26` backdrop, `--soft 60` subject, `--band 4` max feather depth, `--floor 8` alpha
-snap, `--pockets 200` minimum enclosed-pocket size.
+snap, `--pockets 200` minimum enclosed-pocket size, `--flat 0.98` required border coverage.
 
-Only `--pockets` is a real judgement call. **Pockets** are backdrop the subject completely
+**`--flat` is the other judgement call.** The 98% default assumes the subject is inset from
+the frame. A car whose roof rack runs to the top edge and whose tyres run to the bottom puts
+real subject in the border ring, and no backdrop palette will ever explain it — the 2026-09-09
+generations sat at 87–89%. The refusal prints the unexplained pixels' colours and edges so
+you can tell the two cases apart: near-black and tan on the top and bottom edges only, and
+nothing on the left or right, is a subject touching the frame, not a background. Lower
+`--flat` for that, and **look at the result**. Do not lower it to get past a real background.
+
+`--pockets` is the first judgement call. **Pockets** are backdrop the subject completely
 surrounds — on the wagon, the slot between the roof rack and the roof. Left opaque, a
 pocket is a slate bar floating inside the silhouette; opened by a global key, subject
 detail goes with it. So pockets are taken as connected components and only large ones are
