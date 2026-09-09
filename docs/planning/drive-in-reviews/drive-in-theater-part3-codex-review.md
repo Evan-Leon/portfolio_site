@@ -1,7 +1,7 @@
 # Drive-In Theater roadmap — Part 3 review (Codex, run by Evan, 2026-08-25)
 
 Receipt for the third-lens review of `docs/roadmaps/drive-in-theater-roadmap.md` @ `647f093`,
-launched from `docs/roadmaps/drive-in-theater-part3-prompt.md`. Findings are reproduced as
+launched from `docs/planning/drive-in-reviews/drive-in-theater-part3-prompt.md`. Findings are reproduced as
 returned (the reviewer's DT0 scratch diff is omitted; it is summarised under finding 4).
 Triage outcome is recorded in the corrective commit and in the roadmap Changelog.
 

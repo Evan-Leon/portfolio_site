@@ -7,7 +7,7 @@ revision is frozen at portfolio_site `647f093`; do not edit the roadmap until th
 **Launch** (from any directory; the sandbox mode matters — `EVO-TOOL-105`):
 
 ```bash
-mkdir -p /tmp/dt-part3 && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/roadmaps/drive-in-theater-part3-prompt.md \
+mkdir -p /tmp/dt-part3 && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/planning/drive-in-reviews/drive-in-theater-part3-prompt.md \
   | codex exec -s workspace-write -c sandbox_workspace_write.network_access=true -C /tmp/dt-part3 --skip-git-repo-check -
 ```
 

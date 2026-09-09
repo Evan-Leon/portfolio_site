@@ -1,7 +1,7 @@
 # Drive-In Theme — Design Spec
 
 **Date:** 2026-09-08 (rev 2 — after the Codex adversarial review, receipt at
-`docs/roadmaps/drive-in-theme-spec-codex-review.md`: 8 MAJOR / 5 MINOR, all 13 accepted)
+`docs/planning/drive-in-reviews/drive-in-theme-spec-codex-review.md`: 8 MAJOR / 5 MINOR, all 13 accepted)
 **Status:** Source for the DT11–DT15 roadmap (Part 2)
 **Extends:** `docs/superpowers/specs/2026-08-25-drive-in-theater-design.md` (the theater
 itself: DTF, DT0–DT10). Phase IDs continue that sequence.

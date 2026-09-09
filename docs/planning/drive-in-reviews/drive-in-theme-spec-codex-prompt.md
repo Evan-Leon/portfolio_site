@@ -9,7 +9,7 @@ in-session on his per-instance approval). Reviewed revision frozen at portfolio_
 **Launch** (`EVO-TOOL-105`: workspace-write + network, from a scratch dir outside every repo):
 
 ```bash
-mkdir -p /tmp/claude-1000/dt-theme-spec-review && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/roadmaps/drive-in-theme-spec-codex-prompt.md \
+mkdir -p /tmp/claude-1000/dt-theme-spec-review && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/planning/drive-in-reviews/drive-in-theme-spec-codex-prompt.md \
   | codex exec -s workspace-write -c sandbox_workspace_write.network_access=true -C /tmp/claude-1000/dt-theme-spec-review --skip-git-repo-check -
 ```
 

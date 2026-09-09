@@ -12,7 +12,7 @@ Confirm the banner prints `model: gpt-5.6-sol`, `reasoning effort: high` and
 **Launch** (from any directory):
 
 ```bash
-mkdir -p /tmp/claude-1000/dt13-review && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/roadmaps/drive-in-theme-dt13-prompt.md \
+mkdir -p /tmp/claude-1000/dt13-review && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/planning/drive-in-reviews/drive-in-theme-dt13-prompt.md \
   | codex exec -s workspace-write -c sandbox_workspace_write.network_access=true -c model=gpt-5.6-sol -c model_reasoning_effort=high -C /tmp/claude-1000/dt13-review --skip-git-repo-check - \
   | tee /tmp/claude-1000/dt13-review/review.md
 ```

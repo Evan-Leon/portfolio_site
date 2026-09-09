@@ -12,7 +12,7 @@ not edit the roadmap until the review returns.
 **Launch** (from any directory):
 
 ```bash
-mkdir -p /tmp/claude-1000/dt-theme-part3 && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/roadmaps/drive-in-theme-part3-prompt.md \
+mkdir -p /tmp/claude-1000/dt-theme-part3 && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/planning/drive-in-reviews/drive-in-theme-part3-prompt.md \
   | codex exec -s workspace-write -c sandbox_workspace_write.network_access=true -c model=gpt-5.6-sol -c model_reasoning_effort=high -C /tmp/claude-1000/dt-theme-part3 --skip-git-repo-check - \
   | tee /tmp/claude-1000/dt-theme-part3/review.md
 ```
@@ -81,7 +81,7 @@ PRIOR REVIEW — METHODS AND ACCESS (not conclusions)
   f4cfda3, instructed to verify code truth, composability/feasibility, outcome validity
   of the falsifier and the art acceptance, omissions and strategic risk. Its findings
   were folded into spec rev 2 (14f398b); receipt at
-  docs/roadmaps/drive-in-theme-spec-codex-review.md.
+  docs/planning/drive-in-reviews/drive-in-theme-spec-codex-review.md.
   Roadmap (Part 2), two cold Claude Opus agents on 4882883, no session context:
     Agent A (code truth): read access to portfolio_site, jourNOW, the shared rules
     index; ran the unit suite, tsc, a scratch build + preview + Chromium; instructed to

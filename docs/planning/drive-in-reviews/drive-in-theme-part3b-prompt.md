@@ -14,7 +14,7 @@ Confirm the banner prints `model: gpt-5.6-sol`, `reasoning effort: high` and
 **Launch** (from any directory):
 
 ```bash
-mkdir -p /tmp/claude-1000/dt-theme-part3b && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/roadmaps/drive-in-theme-part3b-prompt.md \
+mkdir -p /tmp/claude-1000/dt-theme-part3b && awk '/^````/{f=!f;next} f' /home/evan/EVOsystem/portfolio_site/docs/planning/drive-in-reviews/drive-in-theme-part3b-prompt.md \
   | codex exec -s workspace-write -c sandbox_workspace_write.network_access=true -c model=gpt-5.6-sol -c model_reasoning_effort=high -C /tmp/claude-1000/dt-theme-part3b --skip-git-repo-check - \
   | tee /tmp/claude-1000/dt-theme-part3b/review.md
 ```
@@ -53,9 +53,9 @@ TARGET (note the revisions — the roadmap has moved since the partial run)
   Spec:     /home/evan/EVOsystem/portfolio_site/docs/superpowers/specs/2026-09-08-drive-in-theme-design.md @ 14f398b
   Standard: /home/evan/EVOsystem/docs/meta-prompts/roadmap/roadmap-meta-prompt.md @ 0dad739
   Partial-review receipt (what the first half established):
-            /home/evan/EVOsystem/portfolio_site/docs/roadmaps/drive-in-theme-part3-codex-review.md
+            /home/evan/EVOsystem/portfolio_site/docs/planning/drive-in-reviews/drive-in-theme-part3-codex-review.md
   Original full prompt (for the framing you are continuing):
-            /home/evan/EVOsystem/portfolio_site/docs/roadmaps/drive-in-theme-part3-prompt.md
+            /home/evan/EVOsystem/portfolio_site/docs/planning/drive-in-reviews/drive-in-theme-part3-prompt.md
   Consumers / cross-repo dependencies:
     /home/evan/EVOsystem/portfolio_site/theater/** — the vendored Vite/TS theater the
       phases edit; read src/lot/*, src/styles/*, src/main.ts, e2e/**,
