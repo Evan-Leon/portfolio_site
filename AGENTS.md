@@ -12,6 +12,8 @@ itself and no application test suite — the content *is* the source files.
 - `images/<slug>/` — per-project screenshots (`01.png`, `02.png`, …).
 - `theater/` — self-contained Vite + TypeScript drive-in theater workspace;
   `theater/dist/` is a generated build artefact and is never committed.
+  `theater/public/art/` holds generated sprites — never commit one as the image
+  tool returned it; use the `treating-art-sprites` skill (`scripts/art/`).
 - `404.html`, `nginx.conf`, `Dockerfile`, `docker-compose.yml`, `.dockerignore`
   — serving config baked into the image at build time (no bind mounts, no hot
   reload; a rebuild is required for any change to be served).
@@ -38,6 +40,12 @@ Run from the repository root (`/home/evan/EVOsystem/portfolio_site`).
   `pnpm theater:test`; build with `pnpm theater:build`.
 - Validate the Codex setup: `python3 scripts/validate_codex_setup.py`
   (or `pnpm validate:codex`).
+- Treat a generated theater sprite before committing it (key the backdrop off,
+  fit it to its contract, check it): `pnpm -C scripts/art install
+  --ignore-workspace` once, then see `scripts/art/README.md` and the
+  `treating-art-sprites` skill. `scripts/art/` is deliberately outside the pnpm
+  workspace — `sharp` is a native binary, and formatting the static site must
+  not require building it.
 - Serve a change (rebuild the image + recreate the container): use the
   `$rebuild-restart` skill —
   `docker compose build && docker compose up -d --force-recreate`.

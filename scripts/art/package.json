@@ -1,0 +1,13 @@
+{
+  "name": "portfolio-art-tools",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "On-demand sprite treatment for theater/public/art. NOT a pnpm workspace package — install here explicitly; see README.md.",
+  "scripts": {
+    "treat": "node treat.mjs"
+  },
+  "dependencies": {
+    "sharp": "0.34.3"
+  }
+}
