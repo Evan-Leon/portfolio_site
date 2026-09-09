@@ -110,6 +110,36 @@ else
     fi
 fi
 
+# DT14'S SPRITES, served out of `theater/public/` and copied into `dist/`
+# unhashed. The lot declares them through the asset loader and the stylesheet
+# masks eighty-eight trees with them, so a 404 here is a lot with no scenery and
+# no wagon — and, because the loader never rejects, a page that reveals itself
+# looking merely empty.
+#
+# The extension is READ OUT OF `src/lot/art.ts` rather than spelled here.
+# `ART_EXTENSION: ArtExtension` is one decision — DT14 either produced raster
+# sprites or fell back to the SVG placeholders, for the whole set at once — and
+# a second copy of it in this script would keep passing against `car.png` on the
+# day the set becomes SVG, checking a file nothing references (`EVO-UNI-057`).
+art_ext="$(grep -oE "ART_EXTENSION: ArtExtension = ['\"](png|svg)" \
+    "${REPO_ROOT}/theater/src/lot/art.ts" | grep -oE 'png|svg')"
+
+if [ -z "${art_ext}" ]; then
+    printf 'FAIL  %-46s no ART_EXTENSION in theater/src/lot/art.ts\n' \
+        "/theater/art/car.<ext> is served"
+    failures=$((failures + 1))
+else
+    case "${art_ext}" in
+        png) art_type=image/png ;;
+        svg) art_type=image/svg+xml ;;
+    esac
+
+    report "/theater/art/car.${art_ext} is served" 200 \
+        "$(status_of "/theater/art/car.${art_ext}")"
+    report "/theater/art/car.${art_ext} is ${art_type}" "${art_type}" \
+        "$(content_type_of "/theater/art/car.${art_ext}")"
+fi
+
 # The site's own files, one level above the theater. The lot's posters and its
 # links are site-absolute (see `src/projects.ts`), so a theater served correctly
 # in front of a site that is not shows eight dark screens and eight dead links.
