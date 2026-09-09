@@ -35,7 +35,8 @@ explicit exception and keeps that guard intact:
   so tinted glass and bumper shading are structurally safe.
 - **Refuses (exit 3) unless ≥ 98 % of the border ring is within tolerance of one colour** —
   it is a studio-backdrop cutter, not a background remover. Verified against a synthetic
-  gradient: refused at 7.4 % flat.
+  gradient: refused at 7.4 % flat. (As at `77cd80d`; superseded later this session by the
+  backdrop *palette* and `--flat`, below.)
 - **Feathers and despills the edge** (`observed = a·F + (1−a)·B`, solved for F), so no slate
   rim survives against the night palette.
 - **Opens enclosed pockets by connected component, not by colour.** On the wagon that split
@@ -49,9 +50,43 @@ destination only when all three pass, so a half-treated sprite can never be left
 looking committable. Verified: a refused source leaves neither the destination nor the
 intermediate behind.
 
+**Done — the treatment became an orchestration, on Evan's instruction mid-session.** DT14's
+tooling only *treated* a sprite someone else had generated. `scripts/art/new-run.sh` now
+scaffolds a Codex run (scratch workspace outside every repo, tools and deps, edit target and
+references re-encoded to plain PNG), `PROMPT-TEMPLATE.md` carries the prompt shape that
+works, and the `treating-art-sprites` skill covers scaffold → prompt → launch → check →
+integrate. What was reconstructed from a session log this morning is now in the repo.
+
+**Done — the plate and the ring, through that loop.** Evan asked for a vintage Connecticut
+plate reading `Evan Leon` over `EVOsystem` (two lines, on his instruction mid-run, replacing
+an initial three-line design) and his wedding ring. Codex (`gpt-6-astra`, medium, four tries)
+generated; try 3 accepted after Evan compared it against the current artwork and chose it.
+Bumper stickers were **dropped** by Evan before the run.
+
+**Attempted and recorded — the generator does not do local edits on this sprite.** Every try
+regenerated the whole frame, so the face, wood grain and roof rack are redrawn — close, not
+identical. Evan saw both and chose the new one. Two alternatives were offered and not taken:
+transplanting only the plate onto the approved artwork, and a re-run spending tries on
+likeness.
+
+**Attempted and abandoned — keying a checkerboard is not safely pocketable, and this is the
+session's most useful negative result.** Tries 1 and 2 returned an opaque grey-and-white
+checkerboard, a picture of transparency. `key.mjs` was generalised from one flat colour to a
+*palette* (greedy clustering of the border ring, distance measured to centres and to the
+segments between them, since a blend of two backdrop colours is still backdrop), which keys
+the border fine. But opening its enclosed pockets punched holes clean through the roof rack,
+window trim and plate surround — a checkerboard's two greys **are** the wagon's chrome greys.
+Requiring a pocket to contain both palette entries does not help: chrome is shaded and
+contains both. No test on colour alone separates them, so pockets are now off for a patterned
+backdrop unless asked for explicitly. The real fix is a better source, and the prompt template
+now asks for flat magenta up front.
+
 ## Commits
 
 - portfolio_site `77cd80d` — `fix(theater): restore car.png transparency, make the treatment reusable`
+- portfolio_site `c7ec852` — `docs(session): car.png transparency restored, art treatment made reusable`
+- portfolio_site `4cba0d9` — `feat(art): make Codex-driven sprite changes a repeatable process`
+- portfolio_site `488ae85` — `feat(theater): EVOsystem plate and wedding ring on the wagon`
 
 ## Uncommitted work left behind
 
@@ -85,12 +120,35 @@ Run and **passing**:
 - `fold_back_audit.py docs/session-logs/` at session start — `pending=0 needs_decision=0`,
   nothing stale to clear.
 
+Second half of the session:
+
+- `node check.mjs theater/public/art/*.png` — all four PASS after the new car landed; card
+  inspected by eye across white, black and the six palettes.
+- Residual backdrop spill measured, not eyeballed: 4629 opaque magenta-cast px on try 3
+  before `--edge`, 280 (0.031% of visible pixels) after `--soft 180 --edge 8`.
+- Red tail lights proved untouched by the spill suppression at every `--edge` from 3 to 14
+  (identical pixel count and mean rgb) — the narrow band is the safety property.
+- `key.mjs` regression on the flat-slate source: same palette, same 3 pockets opened.
+- `new-run.sh` scaffolded a throwaway run end to end; its duplicate-name and missing-arg
+  guards both fire.
+- `pnpm format:check` — failed on `index.html` (Evan's own copy edit), fixed with
+  `prettier --write`; verified the rewrap left his words byte-identical, then clean.
+- `pnpm theater:typecheck` clean; `pnpm theater:test` 402 pass. `validate_codex_setup` PASSED.
+- `docker compose build && up -d --force-recreate`; `/theater/art/car.png` 200 with bytes
+  identical to source, `/` 200 serving the new meta description, and the six preview PNGs
+  confirmed **absent** from the image (`ls` inside the container).
+- Codex run exit 0, four tries, runlog complete.
+
 **Skipped:** `pnpm theater:e2e` — no theater source changed; the sprite is an asset the
 existing DT16 specs already cover, and they run against the same declared art URLs.
 
 ## Blockers
 
-None.
+None. Codex's own final report called all four tries failures; it was **wrong about tries 3
+and 4**, because it only had the pre-`--flat` `treat.mjs`, which refuses any sprite whose
+subject touches the frame edge. This car's roof rack reaches the top and its tyres reach the
+bottom, so it measured 87% border coverage against a 98% gate. Worth knowing: a subagent's
+verdict is only as good as the tool version it was handed.
 
 ## Open flags
 
@@ -115,6 +173,20 @@ None.
   formatting the static site must not require building it). That means `pnpm install` at the
   root does *not* provide it and a stale `scripts/art/node_modules` will never be noticed by
   CI. Documented in AGENTS.md and the README; still a footgun.
+- **The wagon's face is redrawn.** Evan chose try 3 over the previously approved artwork with
+  both in front of him, so this is a decision, not a regression — but the likeness is not
+  identical to `f7a6603`'s and nobody should "fix" it back without asking.
+- **`--soft` is source-dependent and there is no safe default.** A backdrop near the subject's
+  colours (slate) needs the narrow 60; a strongly chromatic one (magenta) blends across a far
+  longer path and needed 180. Getting it wrong the low way leaves a coloured rim; the high way
+  starts eating subject. The tan body sits 206 from magenta, only 26 beyond the 180 used —
+  closer than is comfortable. A future magenta sprite should re-measure rather than copy 180.
+- **`--flat 0.85` was used on a real sprite.** Justified by the refusal's own diagnosis
+  (unexplained pixels near-black and tan, top and bottom edges only, zero left or right) but
+  it is a loosened guard, and the loosening is now easy to repeat without reading the evidence.
+- **The preview PNGs briefly lived in the served art directory** at Evan's request so he could
+  view them, and were deleted before the rebuild. A rebuild in that window would have baked
+  six stray files into the nginx image.
 - **Pre-existing, untouched:** `fold_back_audit.py` reports one `APPLIED_NO_COMMIT` finding
   in `2026-09-08-12-30-claude-code-drive-in-theme-roadmap.md:69` — an `APPLIED` bullet for
   memory files outside any repo, so it has no hash to cite. Not this session's to resolve.
@@ -152,6 +224,20 @@ None.
   rather than by numbers; served as written
 - NO-CHANGE: `scripts/validate_codex_setup.py` — caught the over-long wrapper on the first
   run with an actionable message (byte counts and the ceiling); served as written
+- APPLIED: the orchestration loop — `new-run.sh`, `PROMPT-TEMPLATE.md`, and the skill extended
+  from "treat a sprite" to the whole generate→integrate loop, on Evan's mid-session request
+  ("make this a re-usable process") → `scripts/art/*`, `.claude/skills/treating-art-sprites/`
+  (see Commits: `4cba0d9`)
+- APPLIED: `key.mjs` learns the backdrop as a palette, refuses with a self-diagnosing message,
+  and suppresses rim spill; pockets disabled for patterned backdrops → `scripts/art/key.mjs`
+  (see Commits: `4cba0d9`, `488ae85`)
+- APPLIED: `PROMPT-TEMPLATE.md` gained "real alpha, not a picture of transparency" with the
+  flat-magenta fallback, folded in *during* the run that discovered it → (see Commits: `4cba0d9`)
+- NO-CHANGE: `scripts/validate_codex_setup.py` — caught the over-long Codex wrapper again on
+  the extended skill; the 25%-of-canonical ceiling is doing real work; served as written
+- REJECTED (decided-by: human): bumper stickers on the tailgate — Evan dropped them
+  ("Let's skip the bumber stickers for now") after being asked how they should look; the
+  question and its options are not carried forward as a pending item
 - REJECTED (decided-by: human): weakening `fit.mjs`'s exit-3 on an alpha-less source so it
   could key backdrops itself. The refusal is the guard that keeps a photographic background
   from being silently keyed into a fringed sprite; the keying belongs in a separate script
@@ -159,11 +245,13 @@ None.
 
 ## Next steps
 
-1. Look at the wagon on real hardware at the new framing before treating it as final.
+1. Look at the wagon on real hardware — both the new framing and the redrawn likeness.
 2. If the `theater/public/` rule above is wanted, add it to the theater rules-index with the
    failure story attached.
 3. Three distinct completed days of raw logs are not yet present in the root (2026-09-08 and
    2026-09-09 only), so no sweep is due; run `sweeping-session-logs` once a third day lands.
+4. If the bumper stickers are wanted later, the loop is ready and the run's prompt is
+   archived — start from `docs/planning/drive-in-reviews/car-plate-ring-codex-prompt.md`.
 
 ## Pointers
 
@@ -172,3 +260,6 @@ None.
 - Checker: `docs/spikes/art-check.html`
 - The session that generated the original sprites: `docs/session-logs/2026-09-09-13-12-claude-code-dt14-sprites-via-codex.md`
 - Roadmap: `docs/roadmaps/drive-in-theme-roadmap.md` § Phase DT14
+- This session's Codex run: `docs/planning/drive-in-reviews/car-plate-ring-codex-prompt.md`
+  and `…-runlog.md`
+- Prompt template for the next run: `scripts/art/PROMPT-TEMPLATE.md`
