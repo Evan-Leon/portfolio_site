@@ -11,7 +11,7 @@ reach that project's page. The existing homepage, project pages and card grid st
 exactly as they are and remain the fallback path.
 
 **Architecture:** `theater/` is a self-contained Vite + strict-TypeScript project vendored
-from `/home/evan/EVOsystem/scroll-driven-skeleton` (engine, `gsapTimeline` adapter,
+from `/home/evan/EVOsystem/projects/scroll-driven-skeleton` (engine, `gsapTimeline` adapter,
 conformance kit, loader, host, chrome — lottie/frame-sequence/Wix dropped), managed with
 pnpm as a workspace member of the repo root. One scene, `lot`, holds a CSS-3D lot built
 by a `GsapTimelineBuilder`: one tween moves the whole lot toward the camera along Z as
@@ -38,7 +38,7 @@ falsified first, cheaply, on a probe that reproduces the production rendering pa
 **Prerequisites:** Node `^20.19.0 || >=22.12.0` and pnpm on the WSL host (host has Node
 24.16.0 / pnpm 11.15.1, verified 2026-08-25); Docker with the external `evo-net` network
 (the existing `rebuild-restart` skill); ffmpeg for DT9 (host has 6.1.1); the sibling
-checkout `/home/evan/EVOsystem/scroll-driven-skeleton` at commit `7e5d44a` for DT0's
+checkout `/home/evan/EVOsystem/projects/scroll-driven-skeleton` at commit `7e5d44a` for DT0's
 vendoring; **DTF must record `GO` or `GO-REDUCED` before DT0 runs**; ~~`images/el-blackjack/01.png` was a 68-byte 1×1 placeholder~~ — **replaced with a real
 487×946 portrait screenshot on 2026-08-25 (`feat(images)` commit); DT3's poster-dimension
 test now passes on all eight**;
@@ -125,8 +125,8 @@ Applicable rules from the shared tier for this phase:
 <reference_material>
 Read these files before writing any code:
 - `docs/wireframes/theater.html` — the `.lot`, `.lot__world`, `.screen` CSS block, the lit/unlit screen rules (`filter: brightness`, marquee glow) and the eight `nth-of-type` placements: the probe reproduces exactly this transform stack with `<video>` in place of `<img>`. Do not copy the annotations (`.note`) or the beats.
-- `/home/evan/EVOsystem/scroll-driven-skeleton/src/engine/engine.ts` — the frame loop (`Lenis({ autoRaf: false })` ticked from rAF, one scroll read, `seek(progress)`): the probe's loop must have this shape, not a `scroll` listener.
-- `/home/evan/EVOsystem/scroll-driven-skeleton/src/adapters/gsap-timeline.ts` — how progress is applied (`timeline.progress(p)`), which the probe mirrors.
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/src/engine/engine.ts` — the frame loop (`Lenis({ autoRaf: false })` ticked from rAF, one scroll read, `seek(progress)`): the probe's loop must have this shape, not a `scroll` listener.
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/src/adapters/gsap-timeline.ts` — how progress is applied (`timeline.progress(p)`), which the probe mirrors.
 - `docs/superpowers/specs/2026-08-25-drive-in-theater-design.md` — "Core assumption" section, for what the result feeds.
 </reference_material>
 
@@ -209,7 +209,7 @@ build.
 ## Load skills first — do this before writing any code
 
 1. `AGENTS.md` — repo orientation (no `project-context` skill exists here)
-2. `/home/evan/EVOsystem/infra/skills/rules-index/references/universal.md`, `tooling.md`, `react-frontend.md` — shared rules index; and `/home/evan/EVOsystem/scroll-driven-skeleton/skills/rules-index/SKILL.md` — the `SDS-*` law this phase copies in
+2. `/home/evan/EVOsystem/infra/skills/rules-index/references/universal.md`, `tooling.md`, `react-frontend.md` — shared rules index; and `/home/evan/EVOsystem/projects/scroll-driven-skeleton/skills/rules-index/SKILL.md` — the `SDS-*` law this phase copies in
 3. `.claude/skills/writing-session-logs/SKILL.md`
 
 <context>
@@ -225,7 +225,7 @@ build.
   `grep -E '\.(html|css|js)$'` and runs `node_modules/.bin/prettier --check` on them;
   it is installed with `git config core.hooksPath .githooks`. `.gitignore` ignores
   `node_modules/` and `*.log` at any depth. There is no `theater/` directory and no CI.
-- The skeleton at `/home/evan/EVOsystem/scroll-driven-skeleton` @ `7e5d44a` (Vite
+- The skeleton at `/home/evan/EVOsystem/projects/scroll-driven-skeleton` @ `7e5d44a` (Vite
   `^8.2.1`, Vitest `^4.1.10`, TypeScript `^5.9.3`, `@playwright/test ^1.62.1`, ESLint
   10 flat config, `gsap ^3.15.0`, `lenis ^1.3.26`, `lottie-web`, `vitest-canvas-mock`,
   `jsdom`; **npm** with `package-lock.json`). Its layout: `src/engine/` (engine.ts,
@@ -284,12 +284,12 @@ Applicable rules from the shared tier and the skeleton's law for this phase:
 
 <reference_material>
 Read these files before writing any code:
-- `/home/evan/EVOsystem/scroll-driven-skeleton/AGENTS.md` — "Where things live" and "What not to change without understanding the consequences"; the vendoring must preserve every load-bearing shape listed there.
-- `/home/evan/EVOsystem/scroll-driven-skeleton/src/test-setup.ts` — its header names the three jsdom gaps it fills; item 3 (canvas) exists for the frame-sequence adapter this phase drops.
-- `/home/evan/EVOsystem/scroll-driven-skeleton/src/adapters/dynamic-import-boundary.test.ts` — mocks `lottie-web`; after the drop, keep only its `gsap` half (the test's point — no static `gsap` import in the entry graph — still applies).
-- `/home/evan/EVOsystem/scroll-driven-skeleton/src/index.ts` — the library entry; drop the `frameSequence`/`lottie` export blocks, keep the rest. `src/main.ts` must never import it (it reaches `vitest`).
-- `/home/evan/EVOsystem/scroll-driven-skeleton/vite.config.ts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js` — copy, then edit per `<constraints>`.
-- `/home/evan/EVOsystem/scroll-driven-skeleton/docs/deployment.md` — "The sub-path trap": why `base` matters and why every asset URL must be built from `import.meta.env.BASE_URL` with no leading slash.
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/AGENTS.md` — "Where things live" and "What not to change without understanding the consequences"; the vendoring must preserve every load-bearing shape listed there.
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/src/test-setup.ts` — its header names the three jsdom gaps it fills; item 3 (canvas) exists for the frame-sequence adapter this phase drops.
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/src/adapters/dynamic-import-boundary.test.ts` — mocks `lottie-web`; after the drop, keep only its `gsap` half (the test's point — no static `gsap` import in the entry graph — still applies).
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/src/index.ts` — the library entry; drop the `frameSequence`/`lottie` export blocks, keep the rest. `src/main.ts` must never import it (it reaches `vitest`).
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/vite.config.ts`, `playwright.config.ts`, `tsconfig.json`, `eslint.config.js` — copy, then edit per `<constraints>`.
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/docs/deployment.md` — "The sub-path trap": why `base` matters and why every asset URL must be built from `import.meta.env.BASE_URL` with no leading slash.
 - `.githooks/pre-commit` — line 59, the staged-file filter to widen.
 - `AGENTS.md` (this repo) — "Setup & verification commands" and the dependency policy paragraph; update both to mention `theater/`.
 </reference_material>
@@ -313,7 +313,7 @@ Read these files before writing any code:
 </constraints>
 
 <branch>
-Check `/home/evan/EVOsystem/scroll-driven-skeleton/src/test-setup.ts` before writing any code:
+Check `/home/evan/EVOsystem/projects/scroll-driven-skeleton/src/test-setup.ts` before writing any code:
 - If, after dropping `frame-sequence.ts` and its test, **no remaining vendored file calls the canvas API** — `grep -rnE '\.getContext\(|HTMLCanvasElement' theater/src` is empty (match the API, not the word: several vendored comments say "canvas" in prose, and `adapter-contract.test.ts` creates a `<canvas>` element as an opaque fixture without ever drawing on it — neither needs the mock) → remove the `vitest-canvas-mock` import and its numbered item from `test-setup.ts`'s header, leave `vitest-canvas-mock` out of `theater/package.json`, **and delete the `canvas 2d fill` `describe` block from `src/test-setup.test.ts`** — its two tests exist only to prove the mock and fail the moment it is gone (a scratch run of this exact removal on `7e5d44a` failed 2 of 233 tests for that reason); keep that file's `matchMedia` and `ResizeObserver` tests. **This is the expected outcome** as of `7e5d44a`; the `<rules>` bullet for `EVO-UNI-012` assumes it.
 - If something still calls the API → keep `vitest-canvas-mock` as a devDependency and its header item, and record which file needs it in the test-setup header.
 </branch>
@@ -1112,7 +1112,7 @@ Applicable rules from the shared tier for this phase:
 Read these files before writing any code:
 - `theater/e2e/helpers/app.ts` — the settle-based `scrollTo` and the reveal helpers; extend it with the theater's selectors rather than duplicating them in each spec.
 - `theater/playwright.config.ts` — confirm the webServer command and port.
-- `/home/evan/EVOsystem/scroll-driven-skeleton/e2e/scrubbing.spec.ts`, `reduced-motion.spec.ts`, `keyboard.spec.ts` — the *shape* of a spec against this engine (how a reveal is awaited, how reduced motion is emulated with `page.emulateMedia({ reducedMotion: 'reduce' })`, how stepped motion was asserted). **Do not copy their canvas-frame assertions** — there is no canvas here.
+- `/home/evan/EVOsystem/projects/scroll-driven-skeleton/e2e/scrubbing.spec.ts`, `reduced-motion.spec.ts`, `keyboard.spec.ts` — the *shape* of a spec against this engine (how a reveal is awaited, how reduced motion is emulated with `page.emulateMedia({ reducedMotion: 'reduce' })`, how stepped motion was asserted). **Do not copy their canvas-frame assertions** — there is no canvas here.
 - `theater/src/lot/geometry.ts` — to compute target scroll positions for a given screen from `screenProgress` and the spacer's measured top/height.
 </reference_material>
 

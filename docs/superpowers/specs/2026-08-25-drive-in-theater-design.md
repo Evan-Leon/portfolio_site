@@ -16,7 +16,7 @@ card grid remain exactly as they are and stay the fallback path.
 ## Premise and constraints
 
 - The engine is the `scroll-driven-skeleton` project
-  (`/home/evan/EVOsystem/scroll-driven-skeleton`), built for a collaborator and
+  (`/home/evan/EVOsystem/projects/scroll-driven-skeleton`), built for a collaborator and
   due to be transferred to him. The portfolio must not depend on that repo's
   future, so the engine is **vendored**, not linked.
 - `portfolio_site` is a no-build static site: `Dockerfile` is `COPY . …` into
@@ -238,7 +238,7 @@ recorded in the roadmap.
 Prior-art search (Step 1, 2026-08-25): `grep -rniE 'theater|drive-in|video|scroll-driven|gif' docs/session-logs/`
 → no hits; nothing in this repo has touched the feature. The cross-repo
 dependency (Step 5b) is the skeleton's source, read directly — every citation
-below names a file and line in `/home/evan/EVOsystem/scroll-driven-skeleton`.
+below names a file and line in `/home/evan/EVOsystem/projects/scroll-driven-skeleton`.
 No external service is involved (Step 5 N/A).
 
 | File | Layer | Status |
@@ -348,7 +348,7 @@ scopes cannot collide with anything). Rows are in execution order.
 1. **Shared EVOsystem tier** — `/home/evan/EVOsystem/infra/skills/rules-index/references/{universal,tooling,react-frontend}.md`
    (`EVO-UNI-*`, `EVO-TOOL-*`, `EVO-FE-*`; the FE file's Vitest/jsdom/Playwright
    rows apply even though the theater is framework-free vanilla TS).
-2. **The skeleton's project law** — `/home/evan/EVOsystem/scroll-driven-skeleton/skills/rules-index/SKILL.md`
+2. **The skeleton's project law** — `/home/evan/EVOsystem/projects/scroll-driven-skeleton/skills/rules-index/SKILL.md`
    (`SDS-*`). These transfer with the vendored code and DT0 copies that file
    into `theater/skills/rules-index/SKILL.md` (minus `SDS-007`/`SDS-008`, whose
    subjects — frame budget, Wix single-file — are not vendored; their IDs get
