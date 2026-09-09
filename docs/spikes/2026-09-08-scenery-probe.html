@@ -617,10 +617,24 @@
       /* DIAGNOSTIC ONLY (&road=lifted) — never production. The rule above puts
          the road at exactly the asphalt's depth; measured, both are their own
          composited layer (420x20800 and 4000x20800) at the same Z, which is the
-         classic z-fighting setup. This lifts it 1px so the two surfaces have an
-         order. Default is OFF: the page as shipped is DT13 as specified. */
+         classic z-fighting setup. This lifts it clear so the two surfaces have
+         an order. Default is OFF: the page as shipped is DT13 as specified.
+
+         THE SIGN IS NEGATIVE, AND THAT IS NOT A TYPO. The parent is rotated
+         `rotateX(-90deg)`, which maps a child's local +Z onto world *down*
+         (rotateX by -90 sends local (0,0,1) to (0,1,0), and CSS y points down).
+         So `translateZ(1px)` pushes the road 1px UNDER the asphalt, where the
+         opaque plane hides it — Evan hit exactly that on 2026-09-08: the road
+         vanished, and flickered back into view on scroll-back. Negative is up,
+         out of the ground, toward the sky.
+
+         Headless Chromium cannot check this: renders at translateZ of none,
+         +1px, -1px and -4px are pixel-identical (2148 road-line pixels each),
+         because software rasterisation sorts coplanar surfaces deterministically
+         and never shows the artifact. Real GPU hardware is the only instrument
+         here, the same way it is for fps. */
       .sds-lot[data-road="lifted"] .sds-lot__ground::after {
-        transform: translateZ(1px);
+        transform: translateZ(-1px);
       }
 
       .sds-screen {
