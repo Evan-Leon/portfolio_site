@@ -37,6 +37,8 @@ frame loop died during `start()`.
 portfolio_site:
 
 - `c63b11f` feat(theater): every load starts the drive at the beginning
+- `9393daa` docs(session): the theater starts every load at the beginning
+- `fa36520` docs: route sessions to the theater's rules index from CLAUDE.md
 
 ## Uncommitted work left behind
 
@@ -75,14 +77,13 @@ None.
   the probe above almost certainly disqualified bfcache (`about:blank`), so this
   session has no evidence either way. If a visitor ever reports coming back
   mid-drive, that is the first place to look.
-- **`theater/skills/rules-index/` exists and is not routed to from anywhere a
-  session reads at startup.** Its own description says "Load first at every
-  session start", but neither the root `CLAUDE.md` nor the skill listing puts it
-  in front of a session — and the immediately preceding session log
-  (`2026-09-09-17-40-…`) records "None. (No rules-index in this repo.)", which is
-  a session having looked and concluded wrongly. Not retro-edited here: item 9
-  of the fold-back lifecycle covers clearing an open *disposition*, not
-  correcting a committed log's prose. Carried as a candidate below instead.
+- **The previous session log's rules-index line is wrong and stays wrong.**
+  `2026-09-09-17-40-…` records "None. (No rules-index in this repo.)" when
+  `theater/skills/rules-index/` exists. Not retro-edited: item 9 of the fold-back
+  lifecycle covers clearing an open *disposition*, not correcting a committed
+  log's prose. The cause — nothing routed a session to the index — is fixed in
+  `fa36520`; the log entry itself is left standing as the evidence that it
+  needed fixing.
 - **`docs/wireframes/theater.html` is still stale**, and `global.css` still
   calls it "the approved composition". Unchanged from the previous session's
   flag; this session did not touch either.
@@ -107,19 +108,20 @@ a preference with no failure story behind it.
   Served as written.
 - NO-CHANGE: `writing-session-logs` — template and triage vocabulary applied
   without ambiguity. Served as written.
-- PENDING (decided-by: human): defer — route `theater/skills/rules-index` from
-  the root `CLAUDE.md` so a session meets the project's law before it starts
-  editing, as that skill's own description asks. Deferred rather than applied:
-  `CLAUDE.md` is the instruction file every session in this repo loads, so a new
-  standing directive in it is a behaviour change with repo-wide blast radius,
-  not the mechanical correction APPLY-AT-ORIGIN is for. Next action: Evan rules
-  on whether the pointer goes in, and whether it reads as "load first" or as
-  "cite by ID when load-bearing".
+- APPLIED: route `theater/skills/rules-index` from the root `CLAUDE.md`, so a
+  session meets the vendored engine's law before it starts editing → `CLAUDE.md`
+  (see Commits: `fa36520`). Raised as a DEFER — a new standing directive in the
+  file every session loads is a behaviour change with repo-wide blast radius,
+  not the mechanical correction APPLY-AT-ORIGIN is for — and Evan authorized it
+  at the triage prompt. The open sub-question ("load first" vs "cite by ID when
+  load-bearing") was settled by scope rather than by strength: the directive
+  says *before touching anything under `theater/`*, and says both things, since
+  the index governs the engine and not the marketing pages, and a rule aimed at
+  sessions it does not apply to is a rule that gets ignored by everyone.
 
 ## Next steps
 
-1. Rule on the `CLAUDE.md` → rules-index pointer above.
-2. Still outstanding from 2026-09-09-17-40 and untouched here: trees 2 and 3 in
+1. Still outstanding from 2026-09-09-17-40 and untouched here: trees 2 and 3 in
    the kept `/tmp/art-run-trees-realistic/` workspace, and the decision about
    `docs/wireframes/theater.html`.
 
