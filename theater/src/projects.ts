@@ -28,8 +28,23 @@
 export interface TheaterProject {
   /** Directory and page stem — `images/<slug>/`, `projects/<slug>.html`. */
   slug: string;
-  /** Display name. This is the marquee text, and the link's accessible name. */
+  /** Display name. This is the crest text, and the link's accessible name. */
   name: string;
+  /**
+   * One line for the readerboard under the crest — the black push-in letters.
+   *
+   * Copied from the project page's own `<meta name="description">` rather than
+   * written fresh, so the lot and the page say the same thing about a project.
+   * Nothing at runtime reads both, so `projects.test.ts` compares them: a
+   * description edited on the page and not here diverges in silence.
+   *
+   * Length is capped by `projects.test.ts`, at what fits the board's three
+   * lines. The bound lives there and only there, hardcoded: a guard that
+   * imports the number it is guarding passes for every value of it
+   * (`EVO-UNI-109`). Over it, the panel overflows rather than truncating — a
+   * layout bug nobody sees until they drive past that one screen.
+   */
+  blurb: string;
   /** The site page a screen links to. Site-absolute — see the header. */
   href: string;
   /** The still shown on the screen surface, and what the ring waits for. */
@@ -43,6 +58,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "budget-app",
     name: "Leon's Budget",
+    blurb:
+      "Upload bank PDFs, categorize transactions, and track spending trends automatically.",
     href: "/projects/budget-app.html",
     poster: "/images/budget-app/01.png",
     clip: "/images/budget-app/demo.mp4",
@@ -50,6 +67,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "nom-noms",
     name: "Nom Nom's",
+    blurb:
+      "Recipe scraper with LLM-assisted parsing, cook mode, and shop mode.",
     href: "/projects/nom-noms.html",
     poster: "/images/nom-noms/01.png",
     clip: "/images/nom-noms/demo.mp4",
@@ -57,6 +76,7 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "el-blackjack",
     name: "El Blackjack",
+    blurb: "Mobile blackjack trainer for learning optimal strategy.",
     href: "/projects/el-blackjack.html",
     poster: "/images/el-blackjack/01.png",
     clip: "/images/el-blackjack/demo.mp4",
@@ -64,6 +84,7 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "classic-golf",
     name: "The Classic",
+    blurb: "Golf tournament management and scoring app.",
     href: "/projects/classic-golf.html",
     poster: "/images/classic-golf/01.png",
     clip: "/images/classic-golf/demo.mp4",
@@ -71,6 +92,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "spead-read",
     name: "Spead Read",
+    blurb:
+      "Read any article up to 3× faster. RSVP speed reading with ORP highlighting for Chrome.",
     href: "/projects/spead-read.html",
     poster: "/images/spead-read/01.png",
     clip: "/images/spead-read/demo.mp4",
@@ -78,6 +101,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "chunk-norris",
     name: "Chunk Norris",
+    blurb:
+      "Knowledge manager that turns raw documents into RAG-ready vector collections for AI agents.",
     href: "/projects/chunk-norris.html",
     poster: "/images/chunk-norris/01.png",
     clip: "/images/chunk-norris/demo.mp4",
@@ -85,6 +110,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "app-dash",
     name: "app-dash",
+    blurb:
+      "Self-hosted dashboard that tracks every side project through its build lifecycle.",
     href: "/projects/app-dash.html",
     poster: "/images/app-dash/01.png",
     clip: "/images/app-dash/demo.mp4",
@@ -92,6 +119,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "prompt-heus",
     name: "Prompt-heus",
+    blurb:
+      "Builds and serves versioned, LLM-refined system prompts for a fleet of AI personas.",
     href: "/projects/prompt-heus.html",
     poster: "/images/prompt-heus/01.png",
     clip: "/images/prompt-heus/demo.mp4",
@@ -99,6 +128,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "voice-trainer",
     name: "Voice Trainer",
+    blurb:
+      "Curates LoRA training pairs for each AI persona — and casts the voice it speaks in.",
     href: "/projects/voice-trainer.html",
     poster: "/images/voice-trainer/01.png",
     clip: "/images/voice-trainer/demo.mp4",
@@ -106,6 +137,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "chudios",
     name: "chudios",
+    blurb:
+      "A post-production pipeline where AI does the work and every stage stops for your yes.",
     href: "/projects/chudios.html",
     poster: "/images/chudios/01.png",
     clip: "/images/chudios/demo.mp4",
@@ -113,6 +146,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "chud",
     name: "CHUD",
+    blurb:
+      "A local-LLM agent that runs a self-built app portfolio: briefings, approvals, telemetry.",
     href: "/projects/chud.html",
     poster: "/images/chud/01.png",
     clip: "/images/chud/demo.mp4",
@@ -120,6 +155,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "co-host",
     name: "co-host",
+    blurb:
+      "A production desk that walks a podcast episode from premise to teleprompter.",
     href: "/projects/co-host.html",
     poster: "/images/co-host/01.png",
     clip: "/images/co-host/demo.mp4",
@@ -127,6 +164,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "mind-palace",
     name: "Mind Palace",
+    blurb:
+      "A graph of history you walk rather than search, built on the method of loci.",
     href: "/projects/mind-palace.html",
     poster: "/images/mind-palace/01.png",
     clip: "/images/mind-palace/demo.mp4",
@@ -134,6 +173,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "logson",
     name: "Logson",
+    blurb:
+      "Observability for AI agents — records every run and span, replays the execution tree.",
     href: "/projects/logson.html",
     poster: "/images/logson/01.png",
     clip: "/images/logson/demo.mp4",
@@ -141,6 +182,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "graces-tree",
     name: "Grace's Tree",
+    blurb:
+      "A private family tree that turns each relative into an interview worth recording.",
     href: "/projects/graces-tree.html",
     poster: "/images/graces-tree/01.png",
     clip: "/images/graces-tree/demo.mp4",
@@ -148,6 +191,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "journow",
     name: "jourNOW",
+    blurb:
+      "Speak your journal; Whisper transcribes it and any month exports as a typeset PDF.",
     href: "/projects/journow.html",
     poster: "/images/journow/01.png",
     clip: "/images/journow/demo.mp4",
@@ -155,6 +200,8 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "co-author",
     name: "Co-Author",
+    blurb:
+      "A story planning studio that turns scattered ideas into a timeline and a script.",
     href: "/projects/co-author.html",
     poster: "/images/co-author/01.png",
     clip: "/images/co-author/demo.mp4",
@@ -162,6 +209,7 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "media-cloud-web-tools",
     name: "Media Cloud Web Tools",
+    blurb: "Media analysis platform for researchers and journalists.",
     href: "/projects/media-cloud-web-tools.html",
     poster: "/images/media-cloud-web-tools/01.png",
     clip: "/images/media-cloud-web-tools/demo.mp4",
@@ -169,6 +217,7 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "media-cloud-vitals",
     name: "Media Cloud Vitals",
+    blurb: "Performance monitoring dashboard for the Media Cloud platform.",
     href: "/projects/media-cloud-vitals.html",
     poster: "/images/media-cloud-vitals/01.png",
     clip: "/images/media-cloud-vitals/demo.mp4",
@@ -176,6 +225,7 @@ export const projects: readonly TheaterProject[] = [
   {
     slug: "showrunner-digest",
     name: "ShowRunner Digest",
+    blurb: "Data visualization platform for television industry insights.",
     href: "/projects/showrunner-digest.html",
     poster: "/images/showrunner-digest/01.png",
     clip: "/images/showrunner-digest/demo.mp4",

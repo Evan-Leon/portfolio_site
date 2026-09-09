@@ -638,12 +638,21 @@ a {
 .sds-screen__base {
   position: relative;
   width: 100%;
-  height: 96px;
+  /* Tall enough for the sign plus the legs showing under it. The screen's
+     BOTTOM is pinned to the ground line, so every pixel added here lifts the
+     surface — away from the wagon at the bottom of the frame, and toward the
+     chrome at the top. That is the direction to check when this number moves. */
+  height: 168px;
 }
 
+/* The two legs the sign stands on. They run to the ground and the sign paints
+   over their top two-thirds, so what reads is a sign on legs rather than a
+   panel floating under a screen. Appended before the sign in `build-lot.ts`,
+   which is what puts them behind it — there is no `z-index` here to get wrong
+   in a `preserve-3d` world. */
 .sds-screen__post {
   position: absolute;
-  top: 0;
+  top: 96px;
   bottom: 0;
   width: 14px;
   background: var(--sds-screen-post);
@@ -657,43 +666,152 @@ a {
   right: 70px;
 }
 
+/* The sign: a dark frame carrying a lit crest over a white readerboard, with a
+   row of bulbs along its bottom edge.
+
+   Nearly the screen's full width, and that is load-bearing rather than taste —
+   the readerboard holds a whole sentence in wrapped uppercase, and a narrow
+   panel turns every blurb into four cramped lines. `projects.test.ts` caps the
+   blurb at what three lines of this width hold. */
 .sds-screen__marquee {
   position: absolute;
-  top: 14px;
+  top: 0;
   left: 50%;
+  display: flex;
+  width: 480px;
+  height: 124px;
+  flex-direction: column;
+  padding: 7px 7px 13px;
+  border-radius: 4px;
+  background: var(--sds-marquee-frame);
+  /* Only the HALO scales with the period, as it did when this was one amber
+     plate: a lit sign is a lit sign at noon as much as at midnight, and it is
+     the bloom around it that daylight washes out. */
+  box-shadow:
+    0 0 18px
+      color-mix(
+        in srgb,
+        var(--sds-bulb) calc(var(--sds-screen-lit, 0) * var(--sds-glow) * 34%),
+        transparent
+      ),
+    0 2px 6px rgb(0 0 0 / 45%);
+  transform: translateX(-50%);
+}
+
+/* The row of incandescent bulbs along the bottom edge.
+
+   A `radial-gradient` tiled by `background-size` rather than a
+   `repeating-radial-gradient` — that one repeats in rings, concentrically, and
+   would paint a bullseye rather than a row of bulbs. `repeat-x` and a
+   background box one bulb tall are what make it a line of them.
+
+   `drop-shadow` and not `box-shadow`: the bulbs are painted alpha inside this
+   box, so a box shadow would halo the RECTANGLE. A drop shadow follows what was
+   actually drawn, which is the dots. */
+.sds-screen__marquee::after {
+  position: absolute;
+  right: 7px;
+  bottom: 2px;
+  left: 7px;
+  height: 9px;
+  background-image: radial-gradient(
+    circle at 50% 50%,
+    color-mix(
+        in srgb,
+        var(--sds-bulb) calc(var(--sds-screen-lit, 0) * 100%),
+        var(--sds-bulb-dim)
+      )
+      0 2.4px,
+    transparent 3.1px
+  );
+  background-repeat: repeat-x;
+  background-position: center;
+  background-size: 17px 9px;
+  content: "";
+  filter: drop-shadow(
+    0 0 4px
+      color-mix(
+        in srgb,
+        var(--sds-bulb) calc(var(--sds-screen-lit, 0) * var(--sds-glow) * 80%),
+        transparent
+      )
+  );
+}
+
+/* The title band over the board. Lit letters, not bulb-outlined ones: the
+   reference outlines each glyph in its own bulbs, which CSS cannot do without
+   turning the title into an image — and an image cannot be twenty different
+   project names. The glow and the bulb row below carry the same read. */
+.sds-screen__crest {
   overflow: hidden;
-  width: 320px;
-  padding: var(--sds-space-2) var(--sds-space-4);
-  border: 3px solid
+  height: 34px;
+  padding: 0 var(--sds-space-2);
+  border-bottom: 2px solid
     color-mix(
       in srgb,
       var(--sds-marquee-edge-lit) calc(var(--sds-screen-lit, 0) * 100%),
       var(--sds-marquee-edge)
     );
-  border-radius: 6px;
-  background: color-mix(
+  color: color-mix(
     in srgb,
-    var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 100%),
-    var(--sds-marquee-dim)
+    var(--sds-crest) calc(var(--sds-screen-lit, 0) * 100%),
+    var(--sds-crest-dim)
   );
-  /* Only the HALO scales with the period. The marquee's own background and
-     border stay at `* 100%`: a lit marquee is a lit sign at noon as much as at
-     midnight, and it is the bloom around it that daylight washes out. */
-  box-shadow: 0 0 14px
-    color-mix(
-      in srgb,
-      var(--sds-marquee) calc(var(--sds-screen-lit, 0) * var(--sds-glow) * 30%),
-      transparent
-    );
-  color: var(--sds-marquee-ink);
-  font-size: 1.125rem;
+  font-size: 1.45rem;
   font-weight: var(--sds-weight-bold);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.11em;
+  line-height: 32px;
   text-align: center;
   text-overflow: ellipsis;
+  text-shadow: 0 0 12px
+    color-mix(
+      in srgb,
+      var(--sds-bulb) calc(var(--sds-screen-lit, 0) * var(--sds-glow) * 70%),
+      transparent
+    );
   text-transform: uppercase;
-  transform: translateX(-50%);
   white-space: nowrap;
+}
+
+/* The readerboard: black push-in plastic letters on a lit white panel.
+
+   This is the one thing in the lot that WRAPS, which is why it is the only
+   text here without `nowrap`. The rails are the channels the letters slide
+   into — a `repeating-linear-gradient` on the same rhythm as `line-height`, so
+   each line of type sits in a track rather than across one.
+
+   Unlit it is grey, not black: an unlit sign is a sign with the house lights
+   off, and a black panel under a dark screen reads as a hole in the lot — the
+   same reason `--sds-unlit-floor` exists for the surface above. */
+.sds-screen__board {
+  display: flex;
+  overflow: hidden;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 2px;
+  background-color: color-mix(
+    in srgb,
+    var(--sds-board) calc(var(--sds-screen-lit, 0) * 100%),
+    var(--sds-board-dim)
+  );
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent 0 15px,
+    var(--sds-board-rail) 15px 16px
+  );
+  color: color-mix(
+    in srgb,
+    var(--sds-board-ink) calc(var(--sds-screen-lit, 0) * 100%),
+    color-mix(in srgb, var(--sds-board-ink) 55%, var(--sds-board-dim))
+  );
+  font-size: 0.78rem;
+  font-weight: var(--sds-weight-bold);
+  letter-spacing: 0.05em;
+  line-height: 16px;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .sds-screen:focus-visible {
@@ -761,9 +879,47 @@ a {
     margin-left: -150px;
   }
 
+  /* The sign scales with the screen. The board keeps three lines at this width
+     too — the type drops further than the panel does, which is what buys that
+     back — and the legs shorten with the base so they stay legs. */
+  .sds-screen__base {
+    height: 122px;
+  }
+
+  .sds-screen__post {
+    top: 68px;
+  }
+
   .sds-screen__marquee {
-    width: 220px;
-    font-size: 0.9rem;
+    width: 288px;
+    height: 92px;
+    padding: 5px 5px 10px;
+  }
+
+  .sds-screen__marquee::after {
+    right: 5px;
+    left: 5px;
+    height: 7px;
+    background-size: 13px 7px;
+  }
+
+  .sds-screen__crest {
+    height: 24px;
+    font-size: 0.98rem;
+    letter-spacing: 0.08em;
+    line-height: 22px;
+  }
+
+  .sds-screen__board {
+    padding: 3px 6px;
+    background-image: repeating-linear-gradient(
+      180deg,
+      transparent 0 12px,
+      var(--sds-board-rail) 12px 13px
+    );
+    font-size: 0.58rem;
+    letter-spacing: 0.03em;
+    line-height: 13px;
   }
 
   /* The treeline hugs the corridor. Smaller planes, and both sides pulled in to

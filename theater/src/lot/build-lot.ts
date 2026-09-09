@@ -154,7 +154,17 @@ export const SCREEN_SURFACE_CLASS = "sds-screen__surface";
 export const SCREEN_POSTER_CLASS = "sds-screen__poster";
 export const SCREEN_BASE_CLASS = "sds-screen__base";
 export const SCREEN_POST_CLASS = "sds-screen__post";
+/**
+ * The sign under a screen: a dark frame carrying a lit crest over a white
+ * readerboard, with a row of bulbs along its bottom edge.
+ *
+ * The crest is the project's name in lit letters — the theater's own title
+ * board. The readerboard is the blurb in black push-in letters, which is where
+ * the wrapping happens and why the frame is the screen's full width.
+ */
 export const SCREEN_MARQUEE_CLASS = "sds-screen__marquee";
+export const SCREEN_CREST_CLASS = "sds-screen__crest";
+export const SCREEN_BOARD_CLASS = "sds-screen__board";
 
 /** Which screen this is, in drive order. Read back by `lot-scene.ts`. */
 export const SCREEN_INDEX_ATTRIBUTE = "data-screen-index";
@@ -186,7 +196,7 @@ export const SCREEN_YAW_PROPERTY = "--sds-screen-yaw";
  * Whether the surface got its poster.
  *
  * `pending` until `load()` settles, then `ready` or `missing`. A missing poster
- * still renders a screen — dark surface, marquee lit as normal — because a hole
+ * still renders a screen — dark surface, sign lit as normal — because a hole
  * in the lot reads as a broken page while a dark screen reads as a screen with
  * nothing showing (`EVO-UNI-053`).
  */
@@ -252,7 +262,7 @@ export function buildLot(
     /*
      * The GSAP adapter marks its root `aria-hidden`, which is right for a
      * decorative animation and wrong for this one: the lot is one link per
-     * project, and the marquee is each link's accessible name.
+     * project, and the crest is each link's accessible name.
      * Hiding them would leave a screen reader with the exit-beat list alone —
      * which does exist, but as the no-JS fallback, not as the accessible copy
      * of a control the page is showing.
@@ -422,7 +432,7 @@ function buildTree(placement: TreePlacement): HTMLElement {
   return tree;
 }
 
-/** One screen: surface on top, marquee riding on two posts below it. */
+/** One screen: surface on top, the sign riding on two posts below it. */
 function buildScreen(project: TheaterProject, i: number): HTMLAnchorElement {
   const { x, z, yaw } = screenPlacement(i);
 
@@ -467,10 +477,24 @@ function buildScreen(project: TheaterProject, i: number): HTMLAnchorElement {
     element("span", `${SCREEN_POST_CLASS} ${SCREEN_POST_CLASS}--r`),
   );
 
-  /* The marquee text is the link's accessible name — there is no other text in
-   * here, and the poster is decorative (`alt=""`). */
+  /* The crest is the link's accessible name. The poster is decorative
+   * (`alt=""`) and the readerboard is hidden from the accessibility tree just
+   * below, so the crest is the only text the name is computed from — a link
+   * announced as "Leon's Budget" rather than as its name followed by a
+   * ninety-character sentence, twenty times down the lot. */
   const marquee = element("span", SCREEN_MARQUEE_CLASS);
-  marquee.textContent = project.name;
+  const crest = element("span", SCREEN_CREST_CLASS);
+  crest.textContent = project.name;
+
+  /* Hidden from the accessibility tree, not from the page: the blurb is the
+   * project page's own meta description, so a screen reader that follows the
+   * link is about to be told the same sentence by the page itself. Sighted
+   * visitors read it off the board; nobody hears it twice. */
+  const board = element("span", SCREEN_BOARD_CLASS);
+  board.textContent = project.blurb;
+  board.setAttribute("aria-hidden", "true");
+
+  marquee.append(crest, board);
   base.append(marquee);
 
   screen.append(surface, base);

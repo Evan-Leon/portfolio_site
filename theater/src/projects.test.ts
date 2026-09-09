@@ -57,6 +57,21 @@ const MIN_PORTRAIT = { width: 400, height: 640 };
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
+/**
+ * The longest blurb the readerboard holds without overflowing.
+ *
+ * Three lines of the board's condensed uppercase at its widest, measured
+ * against the longest entry the registry has today (`chunk-norris`, 91). The
+ * board does not truncate — `text-overflow` on a wrapping panel does nothing —
+ * so a longer blurb pushes its letters off the sign rather than clipping them,
+ * and only on the one screen it belongs to.
+ *
+ * Hardcoded here and nowhere else, like {@link MIN_LANDSCAPE} above and for the
+ * same reason: a guard that imports the number it is guarding passes for every
+ * value of it (`EVO-UNI-109`).
+ */
+const BLURB_MAX = 95;
+
 /** Width and height as the PNG's IHDR chunk declares them. */
 function pngSize(path: string): { width: number; height: number } {
   const bytes = readFileSync(path);
@@ -74,6 +89,27 @@ function pngSize(path: string): { width: number; height: number } {
     width: bytes.readUInt32BE(16),
     height: bytes.readUInt32BE(20),
   };
+}
+
+/**
+ * The `<meta name="description">` of a project's own page.
+ *
+ * Whitespace-collapsed before it is compared, because Prettier wraps the longer
+ * `content` attributes across lines in the page source and the registry holds
+ * them on one. Comparing raw would fail for every project whose description ran
+ * long — which is to say, for exactly the ones worth checking.
+ */
+function pageDescription(slug: string): string {
+  const html = readFileSync(`${REPO_ROOT}projects/${slug}.html`, "utf8");
+
+  const content = /<meta\s+name="description"\s+content="([^"]*)"/.exec(
+    html,
+  )?.[1];
+  if (content === undefined) {
+    throw new Error(`projects/${slug}.html has no <meta name="description">`);
+  }
+
+  return content.split(/\s+/).join(" ").trim();
 }
 
 /** Every `href` in `index.html`'s exit-beat list, in document order. */
@@ -109,6 +145,16 @@ describe("projects — the registry itself", () => {
   it("names every project", () => {
     for (const project of projects) expect(project.name).not.toBe("");
   });
+
+  it("gives every project a blurb the readerboard can hold", () => {
+    for (const project of projects) {
+      expect(project.blurb).not.toBe("");
+      expect(
+        project.blurb.length,
+        `${project.slug}: the blurb is ${project.blurb.length} characters — over ${BLURB_MAX}, it overflows the board`,
+      ).toBeLessThanOrEqual(BLURB_MAX);
+    }
+  });
 });
 
 describe("projects — the files they point at", () => {
@@ -135,6 +181,15 @@ describe("projects — the files they point at", () => {
         landscape || portrait,
         `${project.slug}: the poster is ${width}×${height} — too small to be a real screenshot`,
       ).toBe(true);
+    },
+  );
+});
+
+describe("projects — agreement with the project pages", () => {
+  it.each(projects.map((project) => [project.slug, project] as const))(
+    "%s's blurb is its page's own meta description",
+    (slug, project) => {
+      expect(project.blurb).toBe(pageDescription(slug));
     },
   );
 });

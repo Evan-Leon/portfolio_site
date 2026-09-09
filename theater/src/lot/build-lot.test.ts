@@ -35,7 +35,8 @@ import {
   POSTER_STATE_ATTRIBUTE,
   SCREEN_CLASS,
   SCREEN_INDEX_ATTRIBUTE,
-  SCREEN_MARQUEE_CLASS,
+  SCREEN_BOARD_CLASS,
+  SCREEN_CREST_CLASS,
   SCREEN_POSTER_CLASS,
   SCREEN_SURFACE_CLASS,
   SCREEN_X_PROPERTY,
@@ -137,17 +138,26 @@ describe("buildLot — the DOM the lot is made of", () => {
     ).toEqual(projects.map((_, i) => String(i)));
   });
 
-  it("names each link with its marquee, which is the only text in it", async () => {
+  it("names each link with its crest, and hides the board from the name", async () => {
     await mountLot();
 
     const screen = container.querySelector<HTMLAnchorElement>(
       `[${SCREEN_INDEX_ATTRIBUTE}="0"]`,
     );
 
-    expect(screen?.querySelector(`.${SCREEN_MARQUEE_CLASS}`)?.textContent).toBe(
+    expect(screen?.querySelector(`.${SCREEN_CREST_CLASS}`)?.textContent).toBe(
       "Leon's Budget",
     );
-    expect(screen?.textContent).toBe("Leon's Budget");
+
+    const board = screen?.querySelector(`.${SCREEN_BOARD_CLASS}`);
+    expect(board?.textContent).toBe(projects[0]?.blurb);
+
+    /* The blurb is on the sign but out of the accessibility tree, so the link
+     * is announced as its project and not as a ninety-character sentence —
+     * twenty times down the lot. `textContent` sees it either way, so the
+     * `aria-hidden` is the assertion that means anything here. */
+    expect(board?.getAttribute("aria-hidden")).toBe("true");
+    expect(screen?.textContent).toBe(`Leon's Budget${projects[0]?.blurb}`);
   });
 
   it("places the screens where the geometry says, alternating sides", async () => {
@@ -398,7 +408,7 @@ describe("buildLot — posters", () => {
     expect(
       container
         .querySelector(`[${SCREEN_INDEX_ATTRIBUTE}="1"]`)
-        ?.querySelector(`.${SCREEN_MARQUEE_CLASS}`)?.textContent,
+        ?.querySelector(`.${SCREEN_CREST_CLASS}`)?.textContent,
     ).toBe("Nom Nom's");
   });
 });

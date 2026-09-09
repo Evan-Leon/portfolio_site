@@ -65,6 +65,27 @@
   --sds-lot-marquee-ink: #2b1d05;
   --sds-lot-marquee-edge: #3b2f12;
   --sds-lot-marquee-edge-lit: #8a6a35;
+
+  /* The readerboard: a white panel of black push-in plastic letters, under a
+   * lit crest, inside a dark frame with a row of bulbs along its bottom edge.
+   *
+   * `--sds-marquee`'s amber is the BULBS and the crest's glow here, not the
+   * panel. That is the inversion the sign went through: the old marquee was one
+   * amber plate with dark ink on it, and a real readerboard is white with black
+   * letters, lit from behind and framed in incandescent bulbs.
+   *
+   * `-dim` is the unlit board — grey, not black. An unlit sign is still a sign
+   * with the house lights off; a black rectangle under a dark screen reads as a
+   * hole in the lot, which is the same reason `--sds-unlit-floor` exists. */
+  --sds-lot-board: #eceae0;
+  --sds-lot-board-dim: #4a4740;
+  --sds-lot-board-ink: #0d0c0a;
+  --sds-lot-board-rail: rgba(13, 12, 10, 0.14);
+  --sds-lot-frame: #0a0812;
+  --sds-lot-crest: #fdf6e6;
+  --sds-lot-crest-dim: #6f6852;
+  --sds-lot-bulb: #ffd489;
+  --sds-lot-bulb-dim: #4a3f28;
   --sds-lot-asphalt: #14102b;
 
   /* The night half of docs/wireframes/theater-drive-in-theme.html. The five
@@ -202,6 +223,16 @@
   --sds-marquee-ink: var(--sds-lot-marquee-ink);
   --sds-marquee-edge: var(--sds-lot-marquee-edge);
   --sds-marquee-edge-lit: var(--sds-lot-marquee-edge-lit);
+
+  --sds-board: var(--sds-lot-board);
+  --sds-board-dim: var(--sds-lot-board-dim);
+  --sds-board-ink: var(--sds-lot-board-ink);
+  --sds-board-rail: var(--sds-lot-board-rail);
+  --sds-marquee-frame: var(--sds-lot-frame);
+  --sds-crest: var(--sds-lot-crest);
+  --sds-crest-dim: var(--sds-lot-crest-dim);
+  --sds-bulb: var(--sds-lot-bulb);
+  --sds-bulb-dim: var(--sds-lot-bulb-dim);
 
   /* The header's backdrop: a fade, not a `backdrop-filter`. It keeps the logo
    * and the percentage legible over a bright daylight sky without blurring what
