@@ -18,10 +18,10 @@ Revised the portrait on user feedback: replaced the open collar with the origina
 `a849bc3` — initial session log commit inadvertently included concurrently staged documentation changes; disclosed to user, history not rewritten.
 
 ## Uncommitted work left behind
-theater/public/art/car.png contains the requested illustrated occupant replacement.
-index.html and images/evan-about.png contain the requested portrait update. Pre-existing docs/plans deletion and docs/planning files left untouched.
+None. User requested committing all remaining changes: the About Me reference, final portrait, and theater car illustration.
 
 ## Verification
+Final commit checks: Prettier check on index.html and git diff --check passed; configured pre-commit hook remains enabled.
 Car update: Docker build (including theater TypeScript check and Vite build) and recreation passed. /theater/art/car.png returned HTTP 200 and SHA-256 matched the source. git diff --check passed.
 Prettier check on index.html and git diff --check passed. Docker build and recreation passed after sandbox escalation. Homepage and portrait returned HTTP 200. Served portrait SHA-256 matches source and homepage references new asset.
 Fold-back audit: no pending decisions; one pre-existing APPLIED_NO_COMMIT finding.
