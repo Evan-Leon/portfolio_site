@@ -135,15 +135,26 @@ and `runlog.md` — copy them under `docs/planning/` when the run is worth citin
 
 - `fit.mjs` exits 3 on a source with **no real alpha**. That guard is what stops a
   photographic background being quietly keyed into a fringed sprite. Do not soften it.
-- `key.mjs` exits 3 unless the border ring is **provably flat** (≥98% within tolerance of
-  one colour). It cuts a studio backdrop, nothing else. If it refuses, regenerate the
-  source with a transparent background — do not raise `--tol` until it gives in.
+- `key.mjs` exits 3 unless its backdrop **palette explains ≥`--flat` of the border ring**.
+  It cuts a studio backdrop, nothing else; a photograph has hundreds of colours and no
+  handful of centres covers it. The refusal prints the unexplained pixels' colours and which
+  edges they sit on, because the honest answer is often "that is the subject touching the
+  frame" — near-black and tan on the top and bottom only is a roof rack and tyres, not a
+  background, and that is the one case for lowering `--flat`. Never lower it, or raise
+  `--tol`, to force a real background through.
 - `key.mjs` fills from the border rather than keying globally, so tinted glass and shadows
   inside the subject are structurally safe. Keep it that way.
 - `treat.mjs` writes its destination only if all three stages pass, so a failed run leaves
   the committed sprite untouched.
 
-The one genuine judgement call is `--pockets` (minimum size of an enclosed backdrop region
+**Ask for a flat magenta backdrop, and expect to tune `--soft` for it.** `rgb(255,0,255)`
+appears nowhere in the artwork, so it keys perfectly — but being far from every subject
+colour, it blends across a long path, and half-blended pixels survive `--soft 60` as tinted
+subject. The 2026-09-09 wagon needed `--soft 180 --edge 8`; a slate backdrop needs the narrow
+default. Check for a coloured rim before accepting: count opaque pixels carrying the
+backdrop's cast, don't just eyeball the thumbnail.
+
+The other genuine judgement call is `--pockets` (minimum size of an enclosed backdrop region
 to open — the slot between the wagon's roof rack and its roof is one). `key.mjs` prints what
 it opened and what it kept on every run; if a real hole is still filled, lower `--pockets`
 and look again.

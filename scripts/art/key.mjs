@@ -67,6 +67,7 @@ const FLOOR = flag("floor", 8); // alpha below this is snapped to 0, above 255-t
 const BAND = flag("band", 4); // how many px a partial-alpha edge may travel from solid backdrop
 const POCKETS = flag("pockets", 200); // open enclosed backdrop components >= this many px; 0 = report only
 const FLAT = flag("flat", 0.98); // fraction of the border ring the backdrop palette must explain
+const EDGE = flag("edge", 3); // px from the alpha edge where leftover backdrop spill is suppressed
 const POCKETS_FORCED = args.includes("--pockets"); // opening pockets on a patterned backdrop must be deliberate
 
 const { data, info } = await sharp(inp).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
@@ -320,6 +321,64 @@ for (let p = 0; p < N; p++) {
   data[i + 3] = a;
 }
 
+// 7. Suppress backdrop SPILL on the opaque rim.
+//
+// Despilling partial pixels is not enough. A thin bright feature — the wagon's roof rack —
+// picks up the backdrop's colour across a band wider than the alpha ramp, so pixels end up
+// fully opaque and still tinted. Shipping try 3 without this put a visible magenta fringe
+// along the whole rack (4629 opaque magenta-cast px, worst on rows 90-92). Widening --soft
+// only halves it, and buying the rest that way starts eating real subject.
+//
+// So: for opaque pixels within EDGE px of the alpha edge, remove the component of their
+// chroma that points along the BACKDROP's chroma. A contaminated chrome highlight loses its
+// magenta and stays the same brightness; a pixel whose colour leans the other way (tan body
+// against a slate backdrop) projects negative and is left alone. Interior colours that would
+// project positive — red tail lights against magenta — are never in the band, which is what
+// makes the narrow EDGE the safety property rather than a tuning knob.
+const spill = (() => {
+  const B = [...PALETTE].sort((a, b) => b.share - a.share)[0]?.centre;
+  if (!B) return 0;
+  const mB = (B[0] + B[1] + B[2]) / 3;
+  const v = [B[0] - mB, B[1] - mB, B[2] - mB];
+  const v2 = v[0] * v[0] + v[1] * v[1] + v[2] * v[2];
+  if (v2 < 400) return 0; // a near-neutral backdrop (white, grey checkerboard) has no chroma to spill
+
+  // distance to the alpha edge, over opaque pixels only, capped at EDGE
+  const near = new Uint8Array(N);
+  let front = [];
+  for (let p = 0; p < N; p++) if (data[p * 4 + 3] < 255) front.push(p);
+  for (let d = 1; d <= EDGE; d++) {
+    const next = [];
+    for (const p of front) {
+      const x = p % W;
+      const y = (p / W) | 0;
+      for (const q of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, y > 0 ? p - W : -1, y < H - 1 ? p + W : -1]) {
+        if (q >= 0 && !near[q] && data[q * 4 + 3] === 255) {
+          near[q] = 1;
+          next.push(q);
+        }
+      }
+    }
+    front = next;
+  }
+
+  let touched = 0;
+  for (let p = 0; p < N; p++) {
+    if (!near[p]) continue;
+    const i = p * 4;
+    const m = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const c = [data[i] - m, data[i + 1] - m, data[i + 2] - m];
+    const proj = (c[0] * v[0] + c[1] * v[1] + c[2] * v[2]) / v2;
+    if (proj <= 0) continue; // leans away from the backdrop — real subject colour, leave it
+    const k = Math.min(proj, 1);
+    for (let ch = 0; ch < 3; ch++) {
+      data[i + ch] = Math.max(0, Math.min(255, Math.round(data[i + ch] - k * v[ch])));
+    }
+    touched++;
+  }
+  return touched;
+})();
+
 fs.mkdirSync(path.dirname(path.resolve(out)), { recursive: true });
 await sharp(data, { raw: { width: W, height: H, channels: 4 } })
   .png({ compressionLevel: 9 })
@@ -327,6 +386,7 @@ await sharp(data, { raw: { width: W, height: H, channels: 4 } })
 
 console.log(
   `keyed ${W}x${H} backdrop ${PATTERNED ? "palette" : ""} ${PALETTE.map((p) => `rgb(${p.centre.join(",")})`).join(" + ")} ` +
+    (spill ? `[despilled ${spill} opaque rim px within ${EDGE}px of the edge] ` : "") +
     `(border ${(flat * 100).toFixed(1)}% explained, tol ${TOL}/${SOFT}) -> ` +
     `${((transparent / N) * 100).toFixed(1)}% transparent, ${partial} feathered px; wrote ${out}`,
 );

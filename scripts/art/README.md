@@ -128,7 +128,33 @@ you can tell the two cases apart: near-black and tan on the top and bottom edges
 nothing on the left or right, is a subject touching the frame, not a background. Lower
 `--flat` for that, and **look at the result**. Do not lower it to get past a real background.
 
-`--pockets` is the first judgement call. **Pockets** are backdrop the subject completely
+`--pockets` is the first judgement call.
+
+### Spill, and why `--soft` is source-dependent
+
+`--edge 3` suppresses leftover backdrop colour on the **opaque** rim. Despilling the
+partial-alpha pixels alone is not enough: a thin bright feature picks up backdrop colour
+across a band wider than the alpha ramp, so pixels end up fully opaque and still tinted.
+The 2026-09-09 wagon shipped a visible magenta fringe along the whole roof rack this way
+(4629 opaque magenta-cast px). The suppression removes the component of a rim pixel's chroma
+that points along the *backdrop's* chroma — a contaminated chrome highlight loses its magenta
+and keeps its brightness; tan body against a slate backdrop projects negative and is
+untouched. The narrow band is the safety property: interior colours that *would* project
+positive (red tail lights against magenta) are never in it — verified, their pixel count and
+mean colour are identical at every `--edge` from 3 to 14.
+
+**`--soft` depends on how far the backdrop sits from the subject's colours.** A backdrop near
+them (slate, `rgb(77,106,113)`) needs the narrow default — widen it and it eats subject. A
+strongly chromatic one (magenta) blends toward the subject across a much longer path, so
+half-blended pixels land far outside `--soft 60` and survive as tinted subject. The magenta
+wagon needed `--soft 180`. Its actual command, for reproduction:
+
+```bash
+node treat.mjs raw/car-try3.png ../../theater/public/art/car.png -- \
+  --flat 0.85 --soft 180 --edge 8
+```
+
+That took residual spill from 4629 px to 280 (0.031% of visible pixels). **Pockets** are backdrop the subject completely
 surrounds — on the wagon, the slot between the roof rack and the roof. Left opaque, a
 pocket is a slate bar floating inside the silhouette; opened by a global key, subject
 detail goes with it. So pockets are taken as connected components and only large ones are
