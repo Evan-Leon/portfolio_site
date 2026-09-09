@@ -407,6 +407,141 @@ a {
   transform-origin: 50% 0;
 }
 
+/* A TREE: a flat plane standing on the ground line, cut to a silhouette by a
+   mask and filled with the period's tree colour.
+
+   THE FILL IS A COLOUR AND THE SPRITE IS ONLY A SHAPE. That is what lets one
+   set of three PNGs serve all six periods — a tree at noon and the same tree at
+   dusk are the same silhouette in two different colours, and `--sds-tree`
+   carries the difference. It also means the sprites' own colours are never
+   seen, which is why DT14's checker only ever asserted their alpha.
+
+   THE MASK IMAGE IS NOT IN THIS RULE. `lot-scene.ts` sets `mask-image` inline,
+   per variant, from the URL the asset loader already resolved. A `url()` here
+   would be a fetch the loader knows nothing about — eighty-eight trees'
+   worth — and the ring would reach 100% with the masks still arriving
+   (`SDS-006`). Everything else about the mask (where it sits, how it scales,
+   that it does not repeat) is static and does live here.
+
+   HIDDEN UNTIL THE MASK LANDS, and this is load-bearing rather than tidy: with
+   no mask the plane is not a faint tree, it is a filled 260x390 rectangle of
+   tree colour standing in the lot. `visibility` rather than `display` so the
+   element keeps its place in the 3D world either way (`EVO-UNI-053`).
+
+   The bottom is the ground line, exactly as `.sds-screen`'s is — NOT the
+   wireframe's literal `42%`. Same reason the screens do not use it: the horizon
+   is `GROUND_LINE` in `lot/geometry.ts`, pushed onto the stage as a property,
+   and a second copy here drifts the moment the composition moves
+   (`EVO-UNI-057`). */
+.sds-tree {
+  position: absolute;
+  bottom: calc(100% - var(--sds-ground-line));
+  left: 50%;
+  width: 260px;
+  height: 390px;
+  margin-left: -130px;
+  background: var(--sds-tree);
+  mask: center bottom / contain no-repeat;
+  -webkit-mask: center bottom / contain no-repeat;
+  /* Scale about the foot, so a jittered tree grows upward out of the ground
+     rather than sinking into it or floating above it. */
+  transform-origin: 50% 100%;
+  transform: translate3d(var(--sds-tree-x, 0px), 0, var(--sds-tree-z, 0px))
+    scale(var(--sds-tree-scale, 1));
+  /* The world already opts its subtree out; stated here as well because the
+     trees are the one thing in it numerous enough that a future change to the
+     world's rule would be felt as eighty-eight new hit-test targets. */
+  pointer-events: none;
+  visibility: hidden;
+}
+
+/* No `filter` and no `transform-style` on the rule above, deliberately: either
+   one promotes eighty-eight planes to their own composited layers, which is the
+   cost centre DT11 measured on a lot with a fraction of that. A masked
+   background paints on the world's layer. */
+
+.sds-tree[data-mask="ready"] {
+  visibility: visible;
+}
+
+/* THE VISITOR'S WAGON AND ITS HEADLIGHTS.
+
+   Both sit on the STAGE, not in the world: the world is what the drive
+   translates, and this car is the one the camera is sitting in. In the world it
+   would recede at the speed of the drive.
+
+   BOTH OPT OUT OF HIT-TESTING, AND THIS IS THE WHOLE OF "THE CAR NEVER STEALS A
+   CLICK". `.sds-lot__world` opts its subtree out; the STAGE does not, so
+   anything appended to it hit-tests by default — and the car is a wide box at
+   `z-index: 3` lying across the bottom of the frame, exactly where a near
+   screen's lower half is. Without these two declarations the click lands on the
+   car and goes nowhere, which is the same silent failure DT6 found in the world
+   element and which nothing about the page's appearance would reveal. DT16
+   falsifies precisely this, at both viewports, against the *computed* value. */
+.sds-lot__beam {
+  position: absolute;
+  z-index: 2;
+  bottom: 22%;
+  left: 50%;
+  width: 46%;
+  height: 20%;
+  background: linear-gradient(to top, var(--sds-beam), transparent);
+  /* A trapezoid narrowing toward the horizon: wide at the bumper, converging on
+     the vanishing point. */
+  clip-path: polygon(30% 100%, 70% 100%, 56% 0, 44% 0);
+  opacity: var(--sds-headlight);
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.sds-lot__car {
+  position: absolute;
+  z-index: 3;
+  bottom: -1%;
+  left: 50%;
+  width: clamp(320px, 38vw, 620px);
+  /* THE BOX KEEPS ITS HEIGHT WITH NO SPRITE IN IT. A missing car still has to
+     leave the beam and the two tail-light glows where they belong, and those
+     glows are positioned as percentages of this box — with no image and no
+     aspect ratio it collapses to nothing and they land on the floor
+     (`EVO-UNI-053`). */
+  aspect-ratio: 16 / 9;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.sds-lot__car-sprite {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* `contain`, so a sprite whose aspect is not exactly 16:9 letterboxes inside
+     the box rather than stretching the wagon. */
+  object-fit: contain;
+}
+
+/* The tail-light glows. They inherit `pointer-events: none` from the car, so
+   they need no declaration of their own. */
+.sds-lot__car::before,
+.sds-lot__car::after {
+  position: absolute;
+  bottom: 34%;
+  width: 22%;
+  height: 18%;
+  border-radius: var(--sds-radius-full);
+  background: radial-gradient(closest-side, var(--sds-tail-light), transparent);
+  content: "";
+  filter: blur(6px);
+  opacity: var(--sds-headlight);
+}
+
+.sds-lot__car::before {
+  left: 9%;
+}
+
+.sds-lot__car::after {
+  right: 9%;
+}
+
 /* A screen is a column whose BOTTOM sits on the ground line: surface on top,
    then the marquee riding on two posts.
 
@@ -629,5 +764,40 @@ a {
   .sds-screen__marquee {
     width: 220px;
     font-size: 0.9rem;
+  }
+
+  /* The treeline hugs the corridor. Smaller planes, and both sides pulled in to
+     a fixed offset — at phone width the wide setback puts every tree off-frame,
+     so the lot loses its edges entirely.
+
+     `!important` for the same reason `.sds-screen`'s is, and it is not a
+     shortcut: `lot/build-lot.ts` writes `--sds-tree-x` into each tree's INLINE
+     style, because the jitter is per-index arithmetic with no static rule to
+     live in, and an inline declaration outranks every stylesheet rule whatever
+     its media query or specificity. Only x is restated — `--sds-tree-z` is the
+     drive itself and `--sds-tree-scale` is the variation that keeps the line
+     from reading as wallpaper. */
+  .sds-tree {
+    width: 180px;
+    height: 270px;
+    margin-left: -90px;
+  }
+
+  .sds-tree--left {
+    --sds-tree-x: -360px !important;
+  }
+
+  .sds-tree--right {
+    --sds-tree-x: 360px !important;
+  }
+
+  /* Wider in proportion, because the frame is: a wagon at 38vw reads as a toy
+     on a phone. The beam widens with it. */
+  .sds-lot__car {
+    width: 64vw;
+  }
+
+  .sds-lot__beam {
+    width: 70%;
   }
 }

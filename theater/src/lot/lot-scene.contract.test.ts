@@ -38,6 +38,7 @@ import {
 import { adapterContract } from "../adapters/adapter-contract";
 import { projects } from "../projects";
 import { createFakeImages, type FakeImages } from "../test-helpers/fake-image";
+import { artUrls } from "./art";
 import { lotScene, type LotAdapter } from "./lot-scene";
 
 /** Big enough to pass `MIN_POSTER_PX`, and shaped like the real screenshots. */
@@ -73,9 +74,18 @@ describe("lotScene — before the contract run", () => {
 
     await adapter.load(() => {});
 
-    expect(fake.inFlight().map((image) => image.src)).toEqual(
-      projects.map((project) => project.poster),
-    );
+    /* "And nothing else" is the point of this assertion, so it is WIDENED as
+     * the scene declares more rather than relaxed: DT15 added the wagon and the
+     * three tree masks, which arrive after the posters and in that order. A
+     * fetch this list does not name is a fetch the loading ring is not counting
+     * (`SDS-006`), which is exactly what it exists to catch. */
+    const art = artUrls("/");
+
+    expect(fake.inFlight().map((image) => image.src)).toEqual([
+      ...projects.map((project) => project.poster),
+      art.car,
+      ...art.trees,
+    ]);
     expect(adapter.snapshot().loadedPosters).toBe(projects.length);
 
     adapter.destroy();

@@ -173,6 +173,22 @@
   --sds-tree: var(--sds-lot-tree);
   --sds-beam: var(--sds-lot-beam);
   --sds-headlight: 1;
+  /*
+   * The wagon's own tail lamps, and THE ONE SCENERY ROLE NO PERIOD RESTATES.
+   *
+   * Every other value in this group is ambient — the tree colour and the beam
+   * are what the hour does to them, so all six blocks below carry their own.
+   * A tail light is a lamp on the car: it emits the same red at noon as at
+   * midnight, and what the hour changes is only how much of it reads against
+   * the sky, which `--sds-headlight` already carries as the opacity of both the
+   * beam and these glows. A per-period copy would be six identical values that
+   * one of them would eventually drift away from.
+   *
+   * Added by DT15 rather than DT13 because DT15 is where it got a consumer;
+   * the wireframe spells this colour as a literal, and `global.css` never
+   * spells a colour (`EVO-UNI-001`).
+   */
+  --sds-tail-light: rgba(255, 70, 60, 0.55);
 
   --sds-screen-dark: var(--sds-lot-screen-off);
   --sds-screen-bezel: var(--sds-lot-bezel);

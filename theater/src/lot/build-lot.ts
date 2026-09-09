@@ -81,6 +81,7 @@ import {
   screenPlacement,
   screenProgress,
 } from "./geometry";
+import { treePlacements, type TreePlacement } from "./scenery";
 
 /** The perspective stage. One viewport, the starfield, nothing 3D of its own. */
 export const LOT_CLASS = "sds-lot";
@@ -95,6 +96,57 @@ export const LOT_GROUND_CLASS = "sds-lot__ground";
  * the one thing it must not do is move with the drive.
  */
 export const LOT_ORB_CLASS = "sds-lot__orb";
+
+/**
+ * The visitor's own wagon, parked at the bottom of the frame.
+ *
+ * On the *stage* for the same reason the orb is, arrived at from the opposite
+ * direction: the orb must not move because it is infinitely far away, and the
+ * car must not move because it is the thing the camera is sitting in. Putting
+ * it in the world would drive it away from the visitor at the speed of the
+ * drive.
+ */
+export const LOT_CAR_CLASS = "sds-lot__car";
+/** The decoded sprite `lot-scene.ts` hangs inside the car element. */
+export const CAR_SPRITE_CLASS = "sds-lot__car-sprite";
+/** The headlight trapezoid thrown on the road ahead. Behind the car. */
+export const LOT_BEAM_CLASS = "sds-lot__beam";
+
+/**
+ * Whether the wagon got its sprite.
+ *
+ * `pending` until `load()` settles, then `ready` or `missing`. A missing sprite
+ * still leaves the beam and the tail-light glows drawn in a box of real height
+ * (`aspect-ratio` gives it one with no image in it), because the composition
+ * without a car reads as a lot with its lights on, while a collapsed box reads
+ * as a broken page (`EVO-UNI-053`).
+ */
+export const CAR_STATE_ATTRIBUTE = "data-car";
+
+/** One tree plane in the world, masked to a silhouette. */
+export const TREE_CLASS = "sds-tree";
+/** Which of the three silhouettes this tree is, 0 to 2. */
+export const TREE_VARIANT_ATTRIBUTE = "data-tree-variant";
+/**
+ * Whether this tree's silhouette arrived.
+ *
+ * `pending` until `load()` settles, then `ready` or `missing`. **The CSS keeps a
+ * tree `visibility: hidden` unless this says `ready`** — a tree plane with no
+ * mask is a filled 260×390 rectangle of tree colour, which is far worse than no
+ * tree at all (`EVO-UNI-053`).
+ */
+export const MASK_STATE_ATTRIBUTE = "data-mask";
+
+/**
+ * Where a tree stands, as the three custom properties the stylesheet composes.
+ *
+ * Same reasoning as {@link SCREEN_X_PROPERTY}: the numbers are per-tree, so they
+ * cannot live in a static rule, and the narrow layout has to be able to restate
+ * `x` without knowing the arithmetic (`EVO-UNI-057`).
+ */
+export const TREE_X_PROPERTY = "--sds-tree-x";
+export const TREE_Z_PROPERTY = "--sds-tree-z";
+export const TREE_SCALE_PROPERTY = "--sds-tree-scale";
 
 /** One screen — an `<a>`, because the whole thing is a link to the project. */
 export const SCREEN_CLASS = "sds-screen";
@@ -224,6 +276,16 @@ export function buildLot(
     const world = element("div", LOT_WORLD_CLASS);
     world.append(element("div", LOT_GROUND_CLASS));
 
+    /*
+     * The treeline: after the asphalt so it paints over it, before the screens
+     * so a tree can never land on top of one. All three are in the same
+     * `preserve-3d` world, so paint order is mostly the compositor's business —
+     * but the trees stand well outside the lane and the screens well inside it,
+     * and a source order that matches the depth order is one less thing to
+     * reason about when a screen looks occluded.
+     */
+    world.append(...treePlacements(count).map(buildTree));
+
     const screens = projects.map((project, i) => buildScreen(project, i));
     world.append(...screens);
     stage.append(world);
@@ -238,6 +300,31 @@ export function buildLot(
     const orb = element("div", LOT_ORB_CLASS);
     orb.setAttribute("aria-hidden", "true");
     stage.append(orb);
+
+    /*
+     * The visitor's vehicle, on the stage rather than in the world. Beam first
+     * so the car paints over it — the trapezoid starts on the road and runs
+     * back under the bumper, and the sprite is what hides its near end.
+     *
+     * Both are decorative and unlabelled, so both are hidden from assistive
+     * technology on their own: the container's `aria-hidden` was removed above
+     * because the screens inside it are links, and that removal exposed
+     * everything else on the stage along with them.
+     *
+     * NEITHER OPTS OUT OF HIT-TESTING HERE — the stylesheet does it, with
+     * `pointer-events: none` on both rules. The stage itself does not opt out
+     * (only `.sds-lot__world` does), so a car sitting across the bottom of the
+     * frame at `z-index: 3` would otherwise swallow every click aimed at the
+     * screen behind it. That is what DT16's click-through test falsifies.
+     */
+    const beam = element("div", LOT_BEAM_CLASS);
+    beam.setAttribute("aria-hidden", "true");
+
+    const car = element("div", LOT_CAR_CLASS);
+    car.setAttribute("aria-hidden", "true");
+    car.setAttribute(CAR_STATE_ATTRIBUTE, "pending");
+
+    stage.append(beam, car);
 
     container.append(stage);
 
@@ -302,6 +389,37 @@ export function buildLot(
 
     return timeline;
   };
+}
+
+/**
+ * One tree: an empty plane placed by three properties, masked once its
+ * silhouette arrives.
+ *
+ * No `<img>` and no `mask-image` here — for the same reason there is no poster
+ * element here. A `mask-image: url(...)` written at build time is a fetch the
+ * asset loader knows nothing about, so the ring would reach 100% with eighty-
+ * eight masks still arriving (`SDS-006`). `lot-scene.ts` sets the mask from the
+ * URL the loader already resolved, which makes that a cache hit.
+ *
+ * Decorative, and there are dozens of them: `aria-hidden` on each rather than
+ * one wrapper, because a wrapper would be another element in the `preserve-3d`
+ * world and every level of nesting there is a chance to flatten it.
+ */
+function buildTree(placement: TreePlacement): HTMLElement {
+  const tree = element(
+    "span",
+    `${TREE_CLASS} ${TREE_CLASS}--${placement.side}`,
+  );
+  tree.setAttribute("aria-hidden", "true");
+  tree.setAttribute(TREE_VARIANT_ATTRIBUTE, String(placement.variant));
+  tree.setAttribute(MASK_STATE_ATTRIBUTE, "pending");
+  tree.style.setProperty(TREE_X_PROPERTY, `${placement.x}px`);
+  tree.style.setProperty(TREE_Z_PROPERTY, `${placement.z}px`);
+  /* Unitless — it is a `scale()` factor, and `1.05px` would make the whole
+   * transform invalid rather than just that component. */
+  tree.style.setProperty(TREE_SCALE_PROPERTY, String(placement.scale));
+
+  return tree;
 }
 
 /** One screen: surface on top, marquee riding on two posts below it. */

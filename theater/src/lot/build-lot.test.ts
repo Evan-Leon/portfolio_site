@@ -19,14 +19,19 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { projects } from "../projects";
 import { createFakeImages, type FakeImages } from "../test-helpers/fake-image";
 import {
+  buildLot,
+  CAR_STATE_ATTRIBUTE,
   GROUND_DEPTH_PROPERTY,
   GROUND_LEAD_PROPERTY,
   GROUND_LINE_PROPERTY,
+  LOT_BEAM_CLASS,
+  LOT_CAR_CLASS,
   LOT_CLASS,
   LOT_GROUND_CLASS,
   GROUND_SQUASH_PROPERTY,
   LOT_ORB_CLASS,
   LOT_WORLD_CLASS,
+  MASK_STATE_ATTRIBUTE,
   POSTER_STATE_ATTRIBUTE,
   SCREEN_CLASS,
   SCREEN_INDEX_ATTRIBUTE,
@@ -36,9 +41,15 @@ import {
   SCREEN_X_PROPERTY,
   SCREEN_YAW_PROPERTY,
   SCREEN_Z_PROPERTY,
+  TREE_CLASS,
+  TREE_SCALE_PROPERTY,
+  TREE_VARIANT_ATTRIBUTE,
+  TREE_X_PROPERTY,
+  TREE_Z_PROPERTY,
 } from "./build-lot";
 import { GROUND_SQUASH, groundDepth, SPACING } from "./geometry";
 import { lotScene, type LotAdapter } from "./lot-scene";
+import { treePlacements } from "./scenery";
 
 /** A landscape screenshot, comfortably past `MIN_POSTER_PX`. */
 const POSTER_SIZE = { width: 1280, height: 800 };
@@ -233,6 +244,103 @@ describe("buildLot — the DOM the lot is made of", () => {
     expect(orbs[0]?.closest(`.${LOT_WORLD_CLASS}`)).toBe(null);
     expect(orbs[0]?.parentElement?.className).toBe(LOT_CLASS);
     expect(orbs[0]?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("lines the drive with trees, left side first then right", async () => {
+    await mountLot();
+
+    const trees = [
+      ...container.querySelectorAll<HTMLElement>(`.${TREE_CLASS}`),
+    ];
+    const placements = treePlacements(COUNT);
+
+    expect(trees).toHaveLength(placements.length);
+
+    /* The DOM order IS the placement order — left block then right — which is
+     * what lets a reader looking at DevTools predict which is which. */
+    expect(trees.map((tree) => tree.className)).toEqual(
+      placements.map(
+        (placement) => `${TREE_CLASS} ${TREE_CLASS}--${placement.side}`,
+      ),
+    );
+  });
+
+  it("writes the first tree's placement as three inline properties", async () => {
+    await mountLot();
+
+    const first = container.querySelector<HTMLElement>(`.${TREE_CLASS}`);
+
+    /* The literal placement, not `treePlacements(COUNT)[0]` recomputed — the
+     * arithmetic is `scenery.test.ts`'s subject, and this is about the three
+     * properties reaching the element with their units intact. The scale is
+     * UNITLESS: `1.05px` would invalidate the whole `transform`, not just its
+     * own component. */
+    expect(first?.style.getPropertyValue(TREE_X_PROPERTY)).toBe("-900px");
+    expect(first?.style.getPropertyValue(TREE_Z_PROPERTY)).toBe("-100px");
+    expect(first?.style.getPropertyValue(TREE_SCALE_PROPERTY)).toBe("1.05");
+    expect(first?.getAttribute(TREE_VARIANT_ATTRIBUTE)).toBe("0");
+    expect(first?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("builds every tree inside the world, and masks none of them itself", async () => {
+    /*
+     * `buildLot` directly, not through the scene — the subject is what this
+     * file alone produces, BEFORE `lot-scene.ts` has placed a single mask.
+     * Going through `mountLot()` could not show it: `load()` resolves only
+     * after the art has settled, so the pending state would already be gone.
+     */
+    const { gsap } = await import("gsap");
+    const bare = document.createElement("div");
+    document.body.append(bare);
+    const timeline = buildLot(projects)({ container: bare, gsap });
+
+    const trees = [...bare.querySelectorAll<HTMLElement>(`.${TREE_CLASS}`)];
+
+    expect(trees.length).toBeGreaterThan(0);
+    for (const tree of trees) {
+      expect(tree.getAttribute(MASK_STATE_ATTRIBUTE)).toBe("pending");
+      /* No `mask-image` from this file: a `url()` here would be a fetch the
+       * asset loader never counted, and the ring would reach 100% with the
+       * masks still arriving (`SDS-006`). */
+      expect(tree.style.getPropertyValue("mask-image")).toBe("");
+      expect(tree.closest(`.${LOT_WORLD_CLASS}`)).not.toBe(null);
+    }
+
+    /* And the wagon starts pending for the same reason. */
+    expect(
+      bare
+        .querySelector(`.${LOT_CAR_CLASS}`)
+        ?.getAttribute(CAR_STATE_ATTRIBUTE),
+    ).toBe("pending");
+    expect(bare.querySelector(`.${LOT_CAR_CLASS} img`)).toBeNull();
+
+    timeline.kill();
+    bare.remove();
+  });
+
+  it("parks the wagon and its beam on the stage, outside the world", async () => {
+    await mountLot();
+
+    const beam = container.querySelector<HTMLElement>(`.${LOT_BEAM_CLASS}`);
+    const car = container.querySelector<HTMLElement>(`.${LOT_CAR_CLASS}`);
+
+    /*
+     * On the stage for the opposite reason the orb is: the orb must not move
+     * because it is infinitely far away, the car must not move because it is
+     * the vehicle the camera is sitting in. Inside the world it would recede at
+     * the speed of the drive.
+     */
+    expect(car?.closest(`.${LOT_WORLD_CLASS}`)).toBe(null);
+    expect(beam?.closest(`.${LOT_WORLD_CLASS}`)).toBe(null);
+    expect(car?.parentElement?.className).toBe(LOT_CLASS);
+    expect(beam?.parentElement?.className).toBe(LOT_CLASS);
+
+    /* Beam immediately before car in source, so the sprite paints over the near
+     * end of the trapezoid rather than the trapezoid over the bumper. */
+    expect(beam?.nextElementSibling).toBe(car);
+
+    expect(car?.getAttribute("aria-hidden")).toBe("true");
+    expect(beam?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("exposes the links to assistive technology", async () => {

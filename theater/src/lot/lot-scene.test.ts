@@ -4,14 +4,23 @@ import { REDUCED_MOTION_QUERY } from "../engine/engine";
 import { projects } from "../projects";
 import { setMediaQuery } from "../test-setup";
 import { createFakeImages } from "../test-helpers/fake-image";
+import { artUrls } from "./art";
 import {
+  CAR_SPRITE_CLASS,
+  CAR_STATE_ATTRIBUTE,
   CLIP_STATE_ATTRIBUTE,
+  LOT_BEAM_CLASS,
+  LOT_CAR_CLASS,
+  MASK_STATE_ATTRIBUTE,
   SCREEN_CLASS,
   SCREEN_INDEX_ATTRIBUTE,
   SCREEN_VIDEO_CLASS,
+  TREE_CLASS,
+  TREE_VARIANT_ATTRIBUTE,
 } from "./build-lot";
 import { screenProgress } from "./geometry";
 import { lotScene, type LotAdapter } from "./lot-scene";
+import { treePlacements } from "./scenery";
 
 const THREE_PROJECTS = projects.slice(0, 3);
 const midBand = (i: number): number =>
@@ -240,5 +249,120 @@ describe("lotScene — clip lifecycle", () => {
     ).toBe(true);
     expect(container.querySelector("video[src]")).toBe(null);
     expect(adapter.snapshot().playing).toBe(null);
+  });
+});
+
+/*
+ * DT15's scenery: the wagon, its beam, and the three tree masks.
+ *
+ * These build their own lot rather than using the shared `beforeEach` one,
+ * because what they are about is a *particular* sprite failing while the rest
+ * succeed — which is what `createFakeImages`'s per-URL `autoSettle` exists for.
+ * The base is `/` because that is what Vitest reports for Vite's `BASE_URL`;
+ * `artUrls` is the same pure function the scene itself calls, so the URLs match
+ * without either side spelling them out.
+ */
+describe("lotScene — the wagon and the treeline", () => {
+  const ART = artUrls("/");
+
+  /** A lot whose images settle per URL. Torn down by the shared `afterEach`. */
+  async function lotWhere(
+    autoSettle: (url: string) => { width: number; height: number } | null,
+  ): Promise<LotAdapter> {
+    adapter.destroy();
+    container.remove();
+
+    vi.stubGlobal("Image", createFakeImages({ autoSettle }).Image);
+    container = document.createElement("div");
+    document.body.append(container);
+    adapter = lotScene(THREE_PROJECTS)(container) as LotAdapter;
+    await adapter.load(() => {});
+
+    return adapter;
+  }
+
+  /** Everything decodes at a real size — the ordinary case. */
+  const ALL_GOOD = (): { width: number; height: number } => ({
+    width: 1280,
+    height: 800,
+  });
+
+  it("hangs the decoded wagon in its box", () => {
+    const car = container.querySelector(`.${LOT_CAR_CLASS}`);
+
+    expect(car?.getAttribute(CAR_STATE_ATTRIBUTE)).toBe("ready");
+    expect(car?.querySelector(`img.${CAR_SPRITE_CLASS}`)).not.toBeNull();
+    expect(adapter.snapshot().car).toBe("ready");
+  });
+
+  it("keeps the beam and the empty box when the wagon is too small to use", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    /* Only the car fails, and it fails by DECODING TOO SMALL rather than by
+     * 404ing — bytes, a clean decode, and nothing worth drawing, which is the
+     * case nothing but the size check can see. */
+    await lotWhere((url) =>
+      url === ART.car ? { width: 1, height: 1 } : ALL_GOOD(),
+    );
+
+    const car = container.querySelector(`.${LOT_CAR_CLASS}`);
+
+    expect(car?.getAttribute(CAR_STATE_ATTRIBUTE)).toBe("missing");
+    expect(car?.querySelector("img")).toBeNull();
+    expect(adapter.snapshot().car).toBe("missing");
+    /* The headlights still shine: a lot with its lights on and no wagon is the
+     * degraded state, not a hole in the frame (`EVO-UNI-053`). */
+    expect(container.querySelector(`.${LOT_BEAM_CLASS}`)).not.toBeNull();
+  });
+
+  it("masks the trees of every variant whose silhouette arrived", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    /* The middle silhouette 404s; the other two land. */
+    await lotWhere((url) => (url === ART.trees[1] ? null : ALL_GOOD()));
+
+    const ofVariant = (k: number): HTMLElement[] => [
+      ...container.querySelectorAll<HTMLElement>(
+        `.${TREE_CLASS}[${TREE_VARIANT_ATTRIBUTE}="${k}"]`,
+      ),
+    ];
+
+    for (const k of [0, 2]) {
+      expect(ofVariant(k).length).toBeGreaterThan(0);
+      for (const tree of ofVariant(k)) {
+        expect(tree.getAttribute(MASK_STATE_ATTRIBUTE)).toBe("ready");
+        /* The URL the LOADER was given, not the absolutised `img.src` — the
+         * point of setting this here is that the CSS's fetch hits the cache the
+         * loader just filled (`SDS-006`). */
+        expect(tree.style.getPropertyValue("mask-image")).toBe(
+          `url("${ART.trees[k === 0 ? 0 : 2]}")`,
+        );
+        expect(tree.style.getPropertyValue("-webkit-mask-image")).toBe(
+          `url("${ART.trees[k === 0 ? 0 : 2]}")`,
+        );
+      }
+    }
+
+    /* And the ones whose mask never came stay hidden rather than standing in
+     * the lot as filled rectangles. */
+    expect(ofVariant(1).length).toBeGreaterThan(0);
+    for (const tree of ofVariant(1)) {
+      expect(tree.getAttribute(MASK_STATE_ATTRIBUTE)).toBe("missing");
+      expect(tree.style.getPropertyValue("mask-image")).toBe("");
+    }
+  });
+
+  it("reports the treeline it built, and nothing once it is torn down", () => {
+    expect(adapter.snapshot().trees).toBe(
+      treePlacements(THREE_PROJECTS.length).length,
+    );
+
+    adapter.destroy();
+
+    /* A count of what is in the container now, so teardown is visible in the
+     * same field that proves the build. The car's state is deliberately NOT
+     * reset — "the wagon was missing" is a fact about the load. */
+    expect(adapter.snapshot().trees).toBe(0);
+    expect(adapter.snapshot().car).toBe("ready");
   });
 });

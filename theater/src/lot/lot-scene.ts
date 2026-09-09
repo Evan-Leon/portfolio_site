@@ -42,10 +42,15 @@ import { REDUCED_MOTION_QUERY } from "../engine/engine";
 import { clamp01 } from "../engine/progress";
 import { sharedAssetLoader } from "../loader/asset-loader";
 import type { TheaterProject } from "../projects";
+import { artUrls } from "./art";
 import {
   buildLot,
+  CAR_SPRITE_CLASS,
+  CAR_STATE_ATTRIBUTE,
   CLIP_STATE_ATTRIBUTE,
+  LOT_CAR_CLASS,
   LOT_WORLD_CLASS,
+  MASK_STATE_ATTRIBUTE,
   POSTER_STATE_ATTRIBUTE,
   SCREEN_CLASS,
   SCREEN_INDEX_ATTRIBUTE,
@@ -53,6 +58,8 @@ import {
   SCREEN_POSTER_CLASS,
   SCREEN_SURFACE_CLASS,
   SCREEN_VIDEO_CLASS,
+  TREE_CLASS,
+  TREE_VARIANT_ATTRIBUTE,
 } from "./build-lot";
 import { activeScreen, lotZ } from "./geometry";
 
@@ -63,6 +70,26 @@ import { activeScreen, lotZ } from "./geometry";
  * this exists to catch, so it needs no tuning to stay useful.
  */
 export const MIN_POSTER_PX = 64;
+
+/**
+ * The smallest a decoded car sprite may be before it is treated as missing.
+ *
+ * Higher than {@link MIN_POSTER_PX} because the car is drawn far larger than it
+ * is tall — `clamp(320px, 38vw, 620px)` wide at a 16:9 aspect — so a sprite
+ * that would pass the poster threshold still upscales to a blur across the
+ * bottom of the frame. 640×360 is the smallest source that survives that at the
+ * clamp's lower end, and DT14's art checker rejects anything near it anyway.
+ */
+export const MIN_CAR_PX = 640;
+
+/** And its height, which the 16:9 box makes the binding dimension. */
+const MIN_CAR_HEIGHT_PX = 360;
+
+/** The smallest a decoded tree mask may be. Same reasoning as the poster's. */
+const MIN_MASK_PX = 64;
+
+/** Whether the wagon got its sprite. See {@link CAR_STATE_ATTRIBUTE}. */
+export type CarState = "pending" | "ready" | "missing";
 
 /** What the lot is currently showing. */
 export interface LotSnapshot {
@@ -96,6 +123,24 @@ export interface LotSnapshot {
    * stays dark.
    */
   lit: number[];
+  /**
+   * How many tree planes are in the container right now.
+   *
+   * `0` before the inner adapter has built the lot, and `0` again after
+   * `destroy()` has removed it — a count of what is there, not of what was
+   * placed, which is what makes it a check on teardown as well as on build. Not
+   * a layout read (`SDS-004`): it is `querySelectorAll().length`.
+   */
+  trees: number;
+  /**
+   * Whether the wagon got its sprite.
+   *
+   * Read off the car element's attribute while it exists, so the kit sees what
+   * was rendered rather than what was intended. Deliberately **not** reset by
+   * `destroy()`: the element goes with the lot, but "the car was missing" is a
+   * fact about the load that a teardown should not erase.
+   */
+  car: CarState;
 }
 
 /** The lot's public shape — {@link AnimationAdapter} plus the kit's observer. */
@@ -158,6 +203,24 @@ class LotScene implements LotAdapter {
   #loadedPosters = 0;
   #clipsWired = false;
   #destroyed = false;
+  /* Mirrors the car element's attribute, so the snapshot survives teardown. */
+  #car: CarState = "pending";
+
+  /*
+   * THE ONE PLACE IN `lot/` THE ENVIRONMENT'S BASE PATH IS READ.
+   *
+   * `art.ts` takes the base as a parameter precisely so it can be imported by
+   * things that have no environment to give it: Vitest reports `/` here rather
+   * than `/theater/`, and Playwright's Node runner has no `env` object at all —
+   * reading `BASE_URL` off `undefined` throws, and `e2e/helpers/app.ts` imports
+   * `build-lot.ts` under exactly that runner. So `build-lot.ts` and `scenery.ts`
+   * stay free of it and this line is the only one that touches it.
+   *
+   * Resolved ONCE, as a field, rather than rebuilt in `load()` and again in
+   * `destroy()`: it makes "release exactly what was declared" structural rather
+   * than a matching pair of calls that a later edit could put out of step.
+   */
+  readonly #art = artUrls(import.meta.env.BASE_URL);
 
   constructor(
     container: HTMLElement,
@@ -187,7 +250,10 @@ class LotScene implements LotAdapter {
   async load(onProgress: (fraction: number) => void): Promise<void> {
     onProgress(0);
 
-    const units = this.#projects.length + 1;
+    const art = this.#art;
+
+    /* Posters, the wagon, three tree masks, and the inner adapter's own load. */
+    const units = this.#projects.length + 4 + 1;
     let settled = 0;
     let innerFraction = 0;
     const report = (): void => {
@@ -206,6 +272,30 @@ class LotScene implements LotAdapter {
       report();
       return { i, image, project };
     });
+
+    /*
+     * The sprites, queued after the posters and in the same pass, so the ring
+     * counts them (`SDS-006`) and they are in flight before GSAP's chunk
+     * arrives. The car first — it is the one the visitor looks at.
+     *
+     * The URL is carried alongside the element rather than read back off it:
+     * assigning `src` absolutises it (`/theater/art/tree-1.png` comes back as
+     * `http://host/theater/art/tree-1.png`), and the string the CSS needs is the
+     * one the loader was *given*, or the `mask-image` fetch misses the cache the
+     * loader just filled.
+     */
+    const declare = async (url: string): Promise<LoadedArt> => {
+      const image = await sharedAssetLoader.add({ url, kind: "image" });
+      settled += 1;
+      report();
+      return { url, image };
+    };
+
+    const carSprite = declare(art.car);
+    const masks = art.trees.map(async (url, k) => ({
+      ...(await declare(url)),
+      k: k as 0 | 1 | 2,
+    }));
 
     await this.#inner.load((fraction) => {
       innerFraction = fraction;
@@ -247,6 +337,16 @@ class LotScene implements LotAdapter {
       for (const poster of arrived) {
         this.#placePoster(poster.i, poster.image, poster.project);
       }
+    }
+
+    /* Same shape as the posters, and after the inner load for the same reason:
+     * none of these elements exists until `buildLot` has run. */
+    const car = await carSprite;
+    if (!this.#destroyed) this.#placeCar(car.url, car.image);
+
+    for (const mask of await Promise.all(masks)) {
+      if (this.#destroyed) break;
+      this.#placeMask(mask.k, mask.url, mask.image);
     }
 
     onProgress(1);
@@ -305,6 +405,12 @@ class LotScene implements LotAdapter {
       sharedAssetLoader.release(project.poster);
     }
 
+    /* The four sprites, released like the posters — the same strings `load()`
+     * declared, because both read the one field. A release under a different
+     * base would silently free nothing. */
+    sharedAssetLoader.release(this.#art.car);
+    for (const url of this.#art.trees) sharedAssetLoader.release(url);
+
     this.#inner.destroy();
   }
 
@@ -328,6 +434,12 @@ class LotScene implements LotAdapter {
       lit: [...screens].map((screen) =>
         round2(screen.style.getPropertyValue(SCREEN_LIT_PROPERTY)),
       ),
+      trees: this.#container.querySelectorAll(`.${TREE_CLASS}`).length,
+      /* From the element while it exists; the remembered value once `destroy()`
+       * has taken it away. See {@link LotSnapshot.car}. */
+      car:
+        (this.#carElement()?.getAttribute(CAR_STATE_ATTRIBUTE) as
+          CarState | null | undefined) ?? this.#car,
     };
   }
 
@@ -442,6 +554,102 @@ class LotScene implements LotAdapter {
     surface.setAttribute(POSTER_STATE_ATTRIBUTE, "ready");
     this.#loadedPosters += 1;
   }
+
+  #carElement(): HTMLElement | null {
+    return this.#container.querySelector<HTMLElement>(`.${LOT_CAR_CLASS}`);
+  }
+
+  /**
+   * Hang the decoded wagon in its box, or mark the box as having none.
+   *
+   * A missing sprite is not a missing car: the box keeps its height (the
+   * stylesheet gives it a 16:9 `aspect-ratio`, which needs no image to resolve),
+   * so the tail-light glows on its pseudo-elements and the beam behind it are
+   * still drawn where they belong. What the visitor loses is the wagon, not the
+   * headlights — a lot with its lights on reads as a drive-in; a collapsed box
+   * with two glows floating at the bottom of the frame reads as a bug
+   * (`EVO-UNI-053`).
+   */
+  #placeCar(url: string, image: HTMLImageElement): void {
+    const car = this.#carElement();
+    if (!car) return;
+
+    const usable =
+      image.naturalWidth >= MIN_CAR_PX &&
+      image.naturalHeight >= MIN_CAR_HEIGHT_PX;
+
+    if (!usable) {
+      /* The loader already warned about a sprite that never arrived; this is
+       * the other case — bytes, a clean decode, and nothing worth drawing. */
+      if (image.naturalWidth > 0) {
+        console.warn(
+          `[sds] ${url} decoded ${image.naturalWidth}×${image.naturalHeight}, ` +
+            `smaller than ${MIN_CAR_PX}×${MIN_CAR_HEIGHT_PX} — drawing the beam without the wagon`,
+        );
+      }
+      this.#car = "missing";
+      car.setAttribute(CAR_STATE_ATTRIBUTE, "missing");
+      return;
+    }
+
+    image.className = CAR_SPRITE_CLASS;
+    /* Decorative: it is the visitor's own car, and it names nothing. */
+    image.alt = "";
+    car.append(image);
+    this.#car = "ready";
+    car.setAttribute(CAR_STATE_ATTRIBUTE, "ready");
+  }
+
+  /**
+   * Mask every tree of one variant with the silhouette that just arrived.
+   *
+   * `url` is threaded through from what the loader was *given* rather than read
+   * back off `image.src`, which the DOM absolutises — the point of setting the
+   * mask here at all is that the CSS's own fetch hits the cache the loader
+   * filled (`SDS-006`), and an absolute URL against a relative one is two cache
+   * entries and two requests.
+   *
+   * A variant whose mask never arrived stays `missing`, and the stylesheet keeps
+   * those trees `visibility: hidden`. That is the whole reason the state is an
+   * attribute: an unmasked tree plane is not a faint tree, it is a filled
+   * 260×390 rectangle of tree colour standing in the lot (`EVO-UNI-053`).
+   */
+  #placeMask(k: 0 | 1 | 2, url: string, image: HTMLImageElement): void {
+    const trees = this.#container.querySelectorAll<HTMLElement>(
+      `.${TREE_CLASS}[${TREE_VARIANT_ATTRIBUTE}="${k}"]`,
+    );
+
+    const usable =
+      image.naturalWidth >= MIN_MASK_PX && image.naturalHeight >= MIN_MASK_PX;
+
+    if (!usable) {
+      if (image.naturalWidth > 0) {
+        console.warn(
+          `[sds] ${url} decoded ${image.naturalWidth}×${image.naturalHeight}, ` +
+            `smaller than ${MIN_MASK_PX}px — hiding the trees of variant ${k}`,
+        );
+      }
+      for (const tree of trees) {
+        tree.setAttribute(MASK_STATE_ATTRIBUTE, "missing");
+      }
+      return;
+    }
+
+    const mask = `url("${url}")`;
+    for (const tree of trees) {
+      tree.style.setProperty("mask-image", mask);
+      /* Safari still wants the prefix, and the unprefixed `mask` shorthand in
+       * the stylesheet does not cover it. */
+      tree.style.setProperty("-webkit-mask-image", mask);
+      tree.setAttribute(MASK_STATE_ATTRIBUTE, "ready");
+    }
+  }
+}
+
+/** One sprite the loader settled, carried with the URL it was asked for. */
+interface LoadedArt {
+  url: string;
+  image: HTMLImageElement;
 }
 
 /** A tween's current value, to two decimals — enough to compare, not to jitter. */
