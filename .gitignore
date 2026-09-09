@@ -40,3 +40,8 @@ __pycache__/
 
 # Misc
 *.log
+
+# Card screenshots written by scripts/art/check.mjs — run artefacts, never sources.
+# Written next to the CWD check.mjs is run from, so both spellings are ignored.
+cards/
+scripts/art/cards/

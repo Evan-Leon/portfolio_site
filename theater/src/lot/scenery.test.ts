@@ -21,6 +21,7 @@ import { describe, expect, it } from "vitest";
 
 import { lotZ } from "./geometry";
 import {
+  PAVED_HALF_WIDTH,
   TREE_JITTER,
   TREE_LEAD,
   TREE_SETBACK,
@@ -54,15 +55,74 @@ describe("the treeline's constants", () => {
 
   it("varies over eight rows, so the line reads as irregular", () => {
     expect(TREE_JITTER).toEqual([
-      { dx: 0, scale: 1.05 },
-      { dx: 60, scale: 0.9 },
-      { dx: 0, scale: 1.15 },
-      { dx: 40, scale: 0.95 },
-      { dx: 0, scale: 1.1 },
-      { dx: 80, scale: 1.0 },
-      { dx: 0, scale: 1.05 },
-      { dx: 40, scale: 0.9 },
+      { dx: 0, scale: 1.05, tint: 0 },
+      { dx: 60, scale: 0.9, tint: 0.1 },
+      { dx: 0, scale: 1.15, tint: 0.04 },
+      { dx: 40, scale: 0.95, tint: 0.16 },
+      { dx: 0, scale: 1.1, tint: 0.08 },
+      { dx: 80, scale: 1.0, tint: 0 },
+      { dx: 0, scale: 1.05, tint: 0.12 },
+      { dx: 40, scale: 0.9, tint: 0.06 },
     ]);
+  });
+
+  it("does not let the shade track the size, so one variation is not two", () => {
+    /* The table is walked cyclically and read at two different offsets by the
+     * two sides, so its columns are only decorrelated if they are decorrelated
+     * IN THE TABLE. Were `tint` to rise with `scale`, every big tree would also
+     * be a pale one and the line would read as one axis of variation seen twice
+     * — which is the thing the table exists to avoid (`EVO-UNI-207` would let a
+     * check derived from the table itself pass either way, so this compares the
+     * two orderings against each other). */
+    const bySize = [...TREE_JITTER].sort((a, b) => a.scale - b.scale);
+    const byShade = [...TREE_JITTER].sort((a, b) => a.tint - b.tint);
+
+    expect(bySize).not.toEqual(byShade);
+  });
+
+  it("never lifts a tree past its own crown colour", () => {
+    /* `tint` is a fraction spent inside `color-mix()`, and the one-directional
+     * rule in `TreeJitter.tint` is what keeps `--sds-tree` the darkest a tree
+     * can be at any hour. A row above 1 would be invalid CSS; a row below 0
+     * would silently drop the whole gradient stop. */
+    for (const row of TREE_JITTER) {
+      expect(row.tint).toBeGreaterThanOrEqual(0);
+      expect(row.tint).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+describe("the verge", () => {
+  it("stops the paving inside the treeline, so no tree stands in asphalt", () => {
+    /*
+     * THE REASON `PAVED_HALF_WIDTH` LIVES IN THIS FILE. The stylesheet paints
+     * the apron at twice it and the grass everywhere else, so this comparison
+     * is the whole difference between a treeline in grass and eighty-eight
+     * trees standing in tarmac — and CSS cannot make it.
+     *
+     * The bound is the NEAREST trunk, which is a jitter row with `dx: 0`; the
+     * pushed-back rows only ever move a tree further into the grass.
+     */
+    const nearest = Math.min(
+      ...treePlacements(A_BIG_LOT).map((tree) => Math.abs(tree.x)),
+    );
+
+    expect(PAVED_HALF_WIDTH).toBeLessThan(nearest);
+    /* And by enough to read as a verge rather than as a kerb. */
+    expect(nearest - PAVED_HALF_WIDTH).toBeGreaterThanOrEqual(120);
+  });
+
+  it("is the number the composition was approved at", () => {
+    /* A literal, for the reason the file header gives: derived from
+     * `OFFSET + TREE_SETBACK` it would pass for every value it could take. */
+    expect(PAVED_HALF_WIDTH).toBe(750);
+  });
+
+  it("leaves the paving wider than the lane it carries", () => {
+    /* The apron has to hold the 420px road and the parking either side of it.
+     * Below this the grass would swallow the parking rows and the lot would
+     * read as a country lane. */
+    expect(PAVED_HALF_WIDTH * 2).toBeGreaterThan(420);
   });
 });
 
@@ -81,6 +141,7 @@ describe("treePlacements", () => {
       x: -900,
       z: -100,
       scale: 1.05,
+      tint: 0,
       variant: 0,
     });
   });
@@ -95,6 +156,7 @@ describe("treePlacements", () => {
       x: 940,
       z: -300,
       scale: 0.95,
+      tint: 0.16,
       variant: 1,
     });
   });

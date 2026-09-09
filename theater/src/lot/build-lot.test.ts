@@ -43,14 +43,16 @@ import {
   SCREEN_YAW_PROPERTY,
   SCREEN_Z_PROPERTY,
   TREE_CLASS,
+  PAVED_HALF_PROPERTY,
   TREE_SCALE_PROPERTY,
+  TREE_TINT_PROPERTY,
   TREE_VARIANT_ATTRIBUTE,
   TREE_X_PROPERTY,
   TREE_Z_PROPERTY,
 } from "./build-lot";
 import { GROUND_SQUASH, groundDepth, SPACING } from "./geometry";
 import { lotScene, type LotAdapter } from "./lot-scene";
-import { treePlacements } from "./scenery";
+import { PAVED_HALF_WIDTH, treePlacements } from "./scenery";
 
 /** A landscape screenshot, comfortably past `MIN_POSTER_PX`. */
 const POSTER_SIZE = { width: 1280, height: 800 };
@@ -234,6 +236,13 @@ describe("buildLot — the DOM the lot is made of", () => {
     expect(stage?.style.getPropertyValue(GROUND_SQUASH_PROPERTY)).toBe(
       String(GROUND_SQUASH),
     );
+    /* Where the paving stops and the verge starts. In `px`, because the
+     * stylesheet spends it inside `calc()` against percentages of the plane's
+     * own width — see `PAVED_HALF_WIDTH` for why the number lives in
+     * `scenery.ts` rather than here or in the CSS. */
+    expect(stage?.style.getPropertyValue(PAVED_HALF_PROPERTY)).toBe(
+      `${PAVED_HALF_WIDTH}px`,
+    );
     expect(container.querySelectorAll(`.${LOT_GROUND_CLASS}`)).toHaveLength(1);
   });
 
@@ -275,21 +284,38 @@ describe("buildLot — the DOM the lot is made of", () => {
     );
   });
 
-  it("writes the first tree's placement as three inline properties", async () => {
+  it("writes the first tree's placement as four inline properties", async () => {
     await mountLot();
 
     const first = container.querySelector<HTMLElement>(`.${TREE_CLASS}`);
 
     /* The literal placement, not `treePlacements(COUNT)[0]` recomputed — the
-     * arithmetic is `scenery.test.ts`'s subject, and this is about the three
+     * arithmetic is `scenery.test.ts`'s subject, and this is about the four
      * properties reaching the element with their units intact. The scale is
      * UNITLESS: `1.05px` would invalidate the whole `transform`, not just its
-     * own component. */
+     * own component. The tint is the opposite case and just as narrow — a bare
+     * `0` there is not a valid `color-mix()` percentage, and the stop it sits in
+     * would be dropped. */
     expect(first?.style.getPropertyValue(TREE_X_PROPERTY)).toBe("-900px");
     expect(first?.style.getPropertyValue(TREE_Z_PROPERTY)).toBe("-100px");
     expect(first?.style.getPropertyValue(TREE_SCALE_PROPERTY)).toBe("1.05");
+    expect(first?.style.getPropertyValue(TREE_TINT_PROPERTY)).toBe("0%");
     expect(first?.getAttribute(TREE_VARIANT_ATTRIBUTE)).toBe("0");
     expect(first?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("writes a tinted tree's shade as a readable percentage", async () => {
+    await mountLot();
+
+    const trees = [
+      ...container.querySelectorAll<HTMLElement>(`.${TREE_CLASS}`),
+    ];
+
+    /* Tree 3 reads the jitter table's fourth row, `tint: 0.16`. Asserted
+     * because the first tree's `0%` cannot show the conversion working — and
+     * because `0.16 * 100` is `16.000000000000004` in binary floating point,
+     * which is the rounding this is really here to pin (`EVO-UNI-057`). */
+    expect(trees[3]?.style.getPropertyValue(TREE_TINT_PROPERTY)).toBe("16%");
   });
 
   it("builds every tree inside the world, and masks none of them itself", async () => {

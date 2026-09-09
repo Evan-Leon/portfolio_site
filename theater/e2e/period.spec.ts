@@ -221,13 +221,18 @@ for (const { period, sky: expectedSky, stars, floor } of LOOK) {
  * periods rather than one — a road that only survived at night would look like a
  * working road to the pinned suite and vanish at noon.
  *
- * It is also the only assertion that reads the ground plane at all. The phase's
- * own `<verification>` greps `global.css` for `sds-road-line`, which proves the
- * token is spelled somewhere and nothing about whether a road is painted
- * (`EVO-UNI-017`).
+ * It is also the only assertion that reads the ground plane at all — which is
+ * why the verge is asserted here too rather than in a spec of its own. The
+ * grass, its mottle and the three flower grids are layers in this same
+ * background stack (they cannot be their own element: a coplanar surface at the
+ * asphalt's depth is the blink DT11 measured), so a spec that read the stack
+ * without them would go green on a lot that had quietly lost its verge. The
+ * phase's own `<verification>` greps `global.css` for `sds-road-line`, which
+ * proves the token is spelled somewhere and nothing about whether any of this
+ * is painted (`EVO-UNI-017`).
  */
 for (const period of ["afternoon", "night"] as const) {
-  test(`the road is painted, and identically, in ${period}`, async ({
+  test(`the ground is painted, and the road identically, in ${period}`, async ({
     page,
   }) => {
     await page.goto(`${APP_PATH}?period=${period}`);
@@ -257,22 +262,68 @@ for (const period of ["afternoon", "night"] as const) {
             image,
           )?.[1],
         ),
-        /* the apron: the asphalt fade's near stop */
-        apron: channels(
-          /linear-gradient\((rgb\([^)]*\)) 0%, rgb\([^)]*\) 70%\)/.exec(
-            image,
-          )?.[1],
-        ),
+        /*
+         * The two near→far fades in the stack, in paint order: the asphalt
+         * apron, then the grass verge under it.
+         *
+         * COLLECTED RATHER THAN `exec`'d, because they are the same SHAPE. The
+         * verge was added with exactly the asphalt's `0%`/`70%` stops (it is
+         * the same recession, on grass), so a single `exec` silently returns
+         * whichever comes first — correct today and quietly comparing the lane
+         * against the GRASS the first time the stack is reordered. Two matches
+         * is asserted below, so a third fade fails here instead of shifting
+         * which layer this spec thinks it is reading (`EVO-UNI-118`).
+         */
+        fades: [
+          ...image.matchAll(
+            /linear-gradient\((rgb\([^)]*\)) 0%, rgb\([^)]*\) 70%\)/g,
+          ),
+        ].map((match) => channels(match[1])),
       };
     });
 
     /*
-     * Five layers, and the three road ones are the strips: a 14px centre line
-     * and two 420px-wide lane layers, over the full-width parking rows and
-     * asphalt (`auto`). Exact equality, not a substring — dropping a road layer
-     * shortens this list, and a substring check would not notice.
+     * ELEVEN LAYERS, IN PAINT ORDER, AND EVERY SIZE IN THE LIST IS LOAD-BEARING.
+     * Exact equality, not a substring — dropping a layer shortens this list,
+     * and a substring check would not notice.
+     *
+     *   14px 100%      the dashed centre line
+     *   420px 100%     the two edge lines
+     *   420px 100%     the lane surface
+     *   1500px 100%    the parking rows, now sized to the apron
+     *   100% 100%      the worn seam at each paving edge, drawn across the plane
+     *   1500px 100%    THE APRON, which is what makes the verge a verge: every
+     *                  layer after it is painted full width and shows only where
+     *                  this does not reach. Both `1500px` are `--sds-paved-half`
+     *                  doubled — `PAVED_HALF_WIDTH` in `lot/scenery.ts`.
+     *   113/149/181px  the three flower grids, at pitches with no common factor
+     *   auto, auto     the turf mottle and the grass base, both full width
+     *
+     * THE FLOWER TILES' HEIGHTS ARE THE ASSERTION THAT MATTERS MOST HERE.
+     * `39.25`, `52.75` and `65.75` are 157, 211 and 263 world px divided by
+     * `--sds-ground-squash` — the same cancellation the dash's `35px` pins
+     * below. Undivided, each grid re-tiles at four times its intended pitch
+     * along the depth axis and the flowers thin out to a quarter of them, which
+     * is a change nothing else in this suite can see.
      */
-    expect(road.size).toBe("14px 100%, 420px 100%, 420px 100%, auto, auto");
+    expect(road.size).toBe(
+      "14px 100%, 420px 100%, 420px 100%, 1500px 100%, 100% 100%, " +
+        "1500px 100%, 113px 39.25px, 149px 52.75px, 181px 65.75px, auto, auto",
+    );
+
+    /*
+     * A FLOWER IS ROUND ON THE GROUND, WHICH MEANS ELLIPTICAL IN THE SOURCE.
+     * The plane is laid out a quarter as deep as it is and `scaleY()`d back
+     * out, so a circle drawn here paints as a four-times-too-tall streak. These
+     * are the computed radii — `4px` across by `1px` down, and `3.5px` by
+     * `0.875px` — and they are the only place the vertical half of that
+     * cancellation is visible at all. The horizontal radii are ACROSS the plane
+     * and are deliberately not divided; a spec that divided both would pass on
+     * a stylesheet that divided neither.
+     */
+    expect(road.image).toContain("radial-gradient(4px 1px at 34% 61%");
+    expect(road.image).toContain("radial-gradient(3.5px 0.875px at 72% 23%");
+    expect(road.image).toContain("radial-gradient(3.5px 0.875px at 18% 84%");
 
     /*
      * The dash, with its stops. `35px` and `80px` are `140px` and `320px` of
@@ -318,11 +369,27 @@ for (const period of ["afternoon", "night"] as const) {
      * colours: a `--sds-road-surface` "simplified" to `var(--sds-asphalt)` makes
      * the lane vanish while every layer, size and marking above still checks out.
      */
+    /* Exactly the apron and the verge. See `fades` above for why the count is
+     * asserted rather than assumed. */
+    expect(road.fades).toHaveLength(2);
+    const [apron, verge] = road.fades;
+
     expect(road.lane).toHaveLength(3);
-    expect(road.apron).toHaveLength(3);
+    expect(apron).toHaveLength(3);
     for (const channel of [0, 1, 2]) {
-      expect(road.lane[channel]).toBeLessThan(road.apron[channel]!);
+      expect(road.lane[channel]).toBeLessThan(apron![channel]!);
     }
+
+    /*
+     * And the verge is not the apron. `--sds-grass` could be "simplified" to
+     * `var(--sds-asphalt)` — or a period could forget to restate it, which is
+     * the likelier accident — and every layer, size and marking above would
+     * still check out while the lot lost its grass entirely. Asserted as a
+     * difference rather than as two more transcribed colours, because the pair
+     * is different in all six palettes and the same in none of them.
+     */
+    expect(verge).toHaveLength(3);
+    expect(verge).not.toEqual(apron);
   });
 }
 

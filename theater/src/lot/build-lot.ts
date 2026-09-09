@@ -81,7 +81,11 @@ import {
   screenPlacement,
   screenProgress,
 } from "./geometry";
-import { treePlacements, type TreePlacement } from "./scenery";
+import {
+  PAVED_HALF_WIDTH,
+  treePlacements,
+  type TreePlacement,
+} from "./scenery";
 
 /** The perspective stage. One viewport, the starfield, nothing 3D of its own. */
 export const LOT_CLASS = "sds-lot";
@@ -147,6 +151,15 @@ export const MASK_STATE_ATTRIBUTE = "data-mask";
 export const TREE_X_PROPERTY = "--sds-tree-x";
 export const TREE_Z_PROPERTY = "--sds-tree-z";
 export const TREE_SCALE_PROPERTY = "--sds-tree-scale";
+/**
+ * How far this tree's fill is lifted toward its crown colour, as a percentage.
+ *
+ * The fourth placement property, and the only one that is not a position: see
+ * {@link TreeJitter.tint}. It arrives as a CSS percentage because `color-mix()`
+ * takes one — the placement carries a fraction, and this is where the unit is
+ * put on, exactly as the three above put on `px`.
+ */
+export const TREE_TINT_PROPERTY = "--sds-tree-tint";
 
 /** One screen — an `<a>`, because the whole thing is a link to the project. */
 export const SCREEN_CLASS = "sds-screen";
@@ -239,6 +252,18 @@ export const GROUND_DEPTH_PROPERTY = "--sds-ground-depth";
  */
 export const GROUND_SQUASH_PROPERTY = "--sds-ground-squash";
 
+/**
+ * How far the paving reaches from the lane's centre, in world pixels.
+ *
+ * See {@link PAVED_HALF_WIDTH}. The stylesheet paints the apron at twice this
+ * over a full-width grass base, so the number is the boundary between the lot
+ * and its verge — and, like every other length the composition owns, it is
+ * pushed to CSS rather than spelled there a second time (`EVO-UNI-057`). The
+ * constant it comes from also has to stay inside the treeline, which is a thing
+ * `scenery.test.ts` asserts and a stylesheet copy could not.
+ */
+export const PAVED_HALF_PROPERTY = "--sds-paved-half";
+
 /** How much of a band a screen takes to light up as the camera approaches. */
 const LIT_IN_BANDS = 0.15;
 /** And to go dark once the camera is past it. See the header. */
@@ -282,6 +307,7 @@ export function buildLot(
     stage.style.setProperty(GROUND_LEAD_PROPERTY, `${GROUND_LEAD}px`);
     stage.style.setProperty(GROUND_DEPTH_PROPERTY, `${groundDepth(count)}px`);
     stage.style.setProperty(GROUND_SQUASH_PROPERTY, String(GROUND_SQUASH));
+    stage.style.setProperty(PAVED_HALF_PROPERTY, `${PAVED_HALF_WIDTH}px`);
 
     const world = element("div", LOT_WORLD_CLASS);
     world.append(element("div", LOT_GROUND_CLASS));
@@ -428,6 +454,13 @@ function buildTree(placement: TreePlacement): HTMLElement {
   /* Unitless — it is a `scale()` factor, and `1.05px` would make the whole
    * transform invalid rather than just that component. */
   tree.style.setProperty(TREE_SCALE_PROPERTY, String(placement.scale));
+  /* Rounded for the same reason the ground line is: `0.16 * 100` is
+   * `16.000000000000004`, and a percentage nobody can read in DevTools is a
+   * percentage nobody will recognise when they go looking for it. */
+  tree.style.setProperty(
+    TREE_TINT_PROPERTY,
+    `${Number((placement.tint * 100).toFixed(4))}%`,
+  );
 
   return tree;
 }

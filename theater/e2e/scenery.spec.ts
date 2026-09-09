@@ -219,6 +219,51 @@ test("the first tree stands where the composition puts it", async ({
   expect(matrix.m11).toBeCloseTo(FIRST_LEFT_TREE_SCALE, 3);
 });
 
+test("a tree is filled with a real gradient, and not every tree the same", async ({
+  page,
+}) => {
+  /*
+   * WHY THIS CANNOT BE A UNIT TEST, AND WHY THE MASK CHECKS ABOVE DO NOT COVER IT
+   * -----------------------------------------------------------------------------
+   * DT15 asserts that `--sds-tree-tint` reaches the element; the test above
+   * asserts that a silhouette is cut out of whatever the plane is filled with.
+   * Neither looks at the fill. It is a `linear-gradient` of three nested
+   * `color-mix()`es over four custom properties, and every way that can go
+   * wrong resolves to `background-image: none` — a mistyped property name, a
+   * `--sds-tree-crown` a palette forgot, a `color-mix()` handed a bare `0`
+   * where it wanted `0%`. A tree filled with nothing is a tree-shaped hole in
+   * the lot that still reports `count=88 ready=88 visible=88`, still carries
+   * its three placement properties, and still masks correctly.
+   *
+   * THE SECOND HALF IS WHAT MAKES THE FIRST FALSIFIABLE. A gradient that
+   * resolved but ignored `--sds-tint` — the property spelled one way in
+   * `build-lot.ts` and another in the stylesheet, which is silent in both
+   * directions (`EVO-UNI-057`) — gives eighty-eight identical fills and passes
+   * a check that only asked for "not none". So two trees the jitter table
+   * gives different tints are read and required to differ.
+   */
+  await openPage(page);
+
+  const trees = page.locator(`.${TREE_CLASS}`);
+  const fills = await trees.evaluateAll((elements) =>
+    [0, 3].map((i) => getComputedStyle(elements[i] as Element).backgroundImage),
+  );
+
+  const [plain, tinted] = fills;
+
+  /* A real gradient, with the mixes resolved to colours. An unresolved
+   * `var()` anywhere in the value invalidates the whole declaration, so
+   * `none` is what a broken palette actually computes to. */
+  expect(plain).toContain("linear-gradient");
+  expect(plain).not.toBe("none");
+  expect(plain).not.toContain("var(");
+
+  /* Tree 0 reads the jitter table's first row (`tint: 0`) and tree 3 its
+   * fourth (`tint: 0.16`) — see `TREE_JITTER` in `lot/scenery.ts`. Same
+   * period, same palette, so the fill is the only thing that can differ. */
+  expect(tinted).not.toBe(plain);
+});
+
 test("the wagon is drawn", async ({ page }) => {
   await openPage(page);
 

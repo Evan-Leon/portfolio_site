@@ -65,37 +65,74 @@ export const TREE_SPACING = SPACING / 2;
 /** How far ahead of the gate the first tree stands, so the lot is lined at progress 0. */
 export const TREE_LEAD = 100;
 
+/**
+ * How far the paving reaches from the lane's centre, in world pixels.
+ *
+ * Everything beyond this on the ground plane is the verge: grass, and the
+ * wildflowers in it. `styles/global.css` paints the apron over a full-width
+ * grass base rather than sizing two grass bands, so this one number is the
+ * whole boundary — and it reaches the stylesheet as a property, like every
+ * other length the composition owns (`EVO-UNI-057`).
+ *
+ * **It is here rather than in `geometry.ts` because of what constrains it.**
+ * The paving has to stop INSIDE the treeline, or eighty-eight trees stand in
+ * asphalt — so the number that matters is this one against
+ * `OFFSET + TREE_SETBACK`, and both halves of that comparison now live in one
+ * file where `scenery.test.ts` can assert it. 750 against the treeline's 900
+ * leaves 150px of grass in front of the nearest trunk, which at the drive's
+ * speed is about a wagon's width of verge — enough to read as a verge and not
+ * so much that the lot stops looking like a lot.
+ */
+export const PAVED_HALF_WIDTH = 750;
+
 /** How many silhouettes there are. One mask each; see `art.ts`. */
 export const TREE_VARIANTS = 3;
 
-/** One row of the jitter table: an outward nudge and a size. */
+/** One row of the jitter table: an outward nudge, a size and a shade. */
 export interface TreeJitter {
   /** Extra setback, in world pixels. Always outward, never into the lane. */
   dx: number;
   /** Multiplier on the tree's drawn size. */
   scale: number;
+  /**
+   * How far this tree's fill is lifted toward its own crown colour, 0 to 1.
+   *
+   * A treeline of eighty-eight planes all filled with exactly `--sds-tree` is
+   * one colour repeated, which the eye reads as a texture rather than as trees.
+   * This is the third axis of variation, and it is ONE-DIRECTIONAL on purpose:
+   * `--sds-tree` stays the darkest a tree can be — the shade the six palettes
+   * were approved at — and a lifted tree reads as one standing in more light,
+   * never as one lit from nowhere.
+   *
+   * A fraction here rather than a percentage because it is a placement number
+   * like the other two; `build-lot.ts` is where it becomes a CSS percentage.
+   */
+  tint: number;
 }
 
 /** The table's first row, and the fallback `jitterAt` cannot actually reach. */
-const FIRST_ROW: TreeJitter = { dx: 0, scale: 1.05 };
+const FIRST_ROW: TreeJitter = { dx: 0, scale: 1.05, tint: 0 };
 
 /**
  * The eight-entry variation the treeline is built from. See the header.
  *
  * `dx` is 0 on the even rows so the line has a readable edge to vary *from*;
  * the odd rows push a tree back and shrink or grow it, which is what breaks up
- * the silhouette. Nothing here is tuned to a particular count — the table is
- * walked cyclically, so it is the same table for eight projects or twenty.
+ * the silhouette. `tint` deliberately does NOT track `scale` — a table where the
+ * big trees were also the pale ones would read as one variation seen twice, so
+ * the two columns are shuffled against each other. Nothing here is tuned to a
+ * particular count — the table is walked cyclically, so it is the same table for
+ * eight projects or twenty.
  */
 export const TREE_JITTER: readonly TreeJitter[] = [
   FIRST_ROW,
-  { dx: 60, scale: 0.9 },
-  { dx: 0, scale: 1.15 },
-  { dx: 40, scale: 0.95 },
-  { dx: 0, scale: 1.1 },
-  { dx: 80, scale: 1.0 },
-  { dx: 0, scale: 1.05 },
-  { dx: 40, scale: 0.9 },
+  { dx: 60, scale: 0.9, tint: 0.1 },
+  { dx: 0, scale: 1.15, tint: 0.04 },
+  { dx: 40, scale: 0.95, tint: 0.16 },
+  { dx: 0, scale: 1.1, tint: 0.08 },
+  { dx: 80, scale: 1.0, tint: 0 },
+  { dx: 0, scale: 1.05, tint: 0.12 },
+  { dx: 40, scale: 0.9, tint: 0.06 },
 ];
 
 /**
@@ -119,6 +156,8 @@ export interface TreePlacement {
   z: number;
   /** Multiplier on its drawn size, from the jitter table. */
   scale: number;
+  /** How far its fill is lifted toward its crown colour, 0 to 1. */
+  tint: number;
   /** Which silhouette to mask it with, 0 to 2. */
   variant: 0 | 1 | 2;
 }
@@ -173,6 +212,7 @@ function place(
     x: (onTheRight ? 1 : -1) * (OFFSET + TREE_SETBACK + jitter.dx),
     z,
     scale: jitter.scale,
+    tint: jitter.tint,
     /* Offset by one on the right so the two sides never show the same
      * silhouette at the same depth. */
     variant: ((i + (onTheRight ? 1 : 0)) % TREE_VARIANTS) as 0 | 1 | 2,

@@ -88,6 +88,22 @@
   --sds-lot-bulb-dim: #4a3f28;
   --sds-lot-asphalt: #14102b;
 
+  /* The verge: the grass either side of the paved lot, and the worn strip where
+   * one becomes the other. Night values, like every other drive-in primitive
+   * here; the five daylight blocks restate the two greens. */
+  --sds-lot-grass: #0b1a12;
+  --sds-lot-grass-far: #060d0a;
+  --sds-lot-verge: rgba(196, 180, 152, 0.16);
+
+  /* Wildflowers in the verge. NOT period-dependent, for the same reason the
+   * road markings below are not: a white oxeye daisy is white at every hour,
+   * and what the hour changes is how much light there is to see it by. That is
+   * `--sds-bloom`, one number in the roles below, exactly as `--sds-star-alpha`
+   * is one number for the starfield. */
+  --sds-lot-flower-white: #f2eee0;
+  --sds-lot-flower-warm: #f0c65a;
+  --sds-lot-flower-rose: #dd8fb2;
+
   /* The night half of docs/wireframes/theater-drive-in-theme.html. The five
    * daylight palettes do NOT come through here — see the departure note above
    * the `[data-period]` blocks at the bottom of this file. */
@@ -174,6 +190,33 @@
   --sds-road-line: var(--sds-lot-road-line);
   --sds-road-edge: var(--sds-lot-road-edge);
 
+  /* The verge.
+   *
+   * `--sds-grass-far` IS NOT SIMPLY A DARKER `--sds-grass`, and this is the one
+   * place the verge departs from the asphalt it sits beside. `--sds-asphalt-far`
+   * goes darker at every hour, which is right for a lot the visitor is looking
+   * across at night and wrong for grass under a midday sky: in daylight the
+   * air between here and the treeline LIGHTENS what is behind it, so a verge
+   * that darkened into the distance read as a green wall standing at the
+   * horizon rather than as ground running away to it. So the daylight blocks
+   * take a far value lighter and cooler than their near one, and the dark
+   * blocks (this one, and evening) take a darker one. The asphalt has the same
+   * problem and keeps it — changing the road's own recession is not this
+   * change's business.
+   *
+   * `--sds-bloom` is HOW VISIBLE THE FLOWERS ARE, not what colour they are —
+   * a percentage, because `global.css` spends it inside `color-mix()`. At night
+   * it is not zero: a drive-in lot has its own light, and a few catchlights in
+   * the grass are what stop the verge reading as a flat green slab. The flower
+   * colours themselves are declared once and never restated. */
+  --sds-grass: var(--sds-lot-grass);
+  --sds-grass-far: var(--sds-lot-grass-far);
+  --sds-verge-seam: var(--sds-lot-verge);
+  --sds-flower-white: var(--sds-lot-flower-white);
+  --sds-flower-warm: var(--sds-lot-flower-warm);
+  --sds-flower-rose: var(--sds-lot-flower-rose);
+  --sds-bloom: 14%;
+
   /* ---- Lighting ------------------------------------------------------------
    * How bright the lot's own light sources read against the sky behind them.
    *
@@ -192,6 +235,14 @@
   --sds-unlit-floor: 0.35;
   --sds-glow: 1;
   --sds-tree: var(--sds-lot-tree);
+  /* The two ends of a tree's fill. DERIVED, so no period restates them — same
+   * pattern as `--sds-road-surface` above, and for a stronger reason here: the
+   * crown mixes toward `--sds-sky-low`, which is the light at the horizon, so a
+   * tree is rimmed amber at sunset and pale blue at noon without any palette
+   * having to say so. The base is the same colour with the light taken out of
+   * it, which is where a real canopy shades its own trunk. */
+  --sds-tree-crown: color-mix(in srgb, var(--sds-tree) 84%, var(--sds-sky-low));
+  --sds-tree-base: color-mix(in srgb, var(--sds-tree) 82%, black);
   --sds-beam: var(--sds-lot-beam);
   --sds-headlight: 1;
   /*
@@ -376,9 +427,11 @@
  * night values ARE routed, because night is the base the whole lot was built
  * against and its colours are shared with the rest of the page.
  *
- * Each block restates ONLY what the wireframe restates. `--sds-road-line` and
- * `--sds-road-edge` appear in none of them — paint does not change colour with
- * the hour.
+ * Each block restates ONLY what the wireframe restates. `--sds-road-line`,
+ * `--sds-road-edge` and the three `--sds-flower-*` appear in none of them —
+ * paint is paint and a daisy is white at every hour, and what the hour changes
+ * is the light falling on them. For the flowers that light is `--sds-bloom`,
+ * which every block does restate.
  *
  * `night` restates `--sds-star-alpha` alone: the base block above IS night. It
  * is written out anyway so the attribute is never "missing" from this file, and
@@ -396,6 +449,9 @@
   --sds-asphalt-far: #201a2c;
   --sds-star-alpha: 0.35;
   --sds-tree: #1e2438;
+  --sds-grass: #17301f;
+  --sds-grass-far: #2b3f31;
+  --sds-bloom: 45%;
   --sds-unlit-floor: 0.5;
   --sds-glow: 0.6;
   --sds-headlight: 0.8;
@@ -418,6 +474,9 @@
   --sds-asphalt-far: #2c2c3c;
   --sds-star-alpha: 0;
   --sds-tree: #2e5a34;
+  --sds-grass: #33622f;
+  --sds-grass-far: #55764a;
+  --sds-bloom: 100%;
   --sds-unlit-floor: 0.7;
   --sds-glow: 0.3;
   --sds-headlight: 0;
@@ -440,6 +499,9 @@
   --sds-asphalt-far: #2e2e3a;
   --sds-star-alpha: 0;
   --sds-tree: #234a2a;
+  --sds-grass: #3a6b32;
+  --sds-grass-far: #5c7f5c;
+  --sds-bloom: 100%;
   --sds-unlit-floor: 0.75;
   --sds-glow: 0.2;
   --sds-headlight: 0;
@@ -462,6 +524,9 @@
   --sds-asphalt-far: #140c14;
   --sds-star-alpha: 0;
   --sds-tree: #1a0e14;
+  --sds-grass: #33221c;
+  --sds-grass-far: #3d2b23;
+  --sds-bloom: 55%;
   --sds-unlit-floor: 0.5;
   --sds-glow: 0.6;
   --sds-headlight: 0.5;
@@ -484,6 +549,9 @@
   --sds-asphalt-far: #0c0818;
   --sds-star-alpha: 0.6;
   --sds-tree: #0b0818;
+  --sds-grass: #111c18;
+  --sds-grass-far: #141c1e;
+  --sds-bloom: 28%;
   --sds-unlit-floor: 0.4;
   --sds-glow: 0.9;
   --sds-headlight: 1;

@@ -354,18 +354,50 @@ a {
  *
  * EVERY DEPTH-DIRECTION LENGTH BELOW IS DIVIDED BY THE SAME NUMBER
  * ---------------------------------------------------------------
- * The dash period and the parking rows are lengths in world Z, so they are
- * written `calc(140px / var(--sds-ground-squash))` and cancel against the
- * `scaleY()`. Divide one and forget the other and the road silently re-tiles at
- * a different pitch — which is exactly what happened the first time. Widths
- * (14px, 420px, the 4px edge lines) are ACROSS the plane and are not divided.
+ * The dash period, the parking rows, the flower grids' pitch and the flowers'
+ * own vertical radius are lengths in world Z, so they are written
+ * `calc(140px / var(--sds-ground-squash))` and cancel against the `scaleY()`.
+ * Divide one and forget the other and the road silently re-tiles at a different
+ * pitch — which is exactly what happened the first time. Widths (14px, 420px,
+ * the 4px edge lines, a flower's horizontal radius) are ACROSS the plane and are
+ * not divided. A flower is the clearest case of why: it is a round patch on the
+ * ground, so its two radii differ in the SOURCE by exactly the factor the
+ * `scaleY()` will remove, and an undivided one paints as a four-times-too-tall
+ * streak rather than a bloom.
  *
  * THE ROAD IS IN THIS BACKGROUND STACK AND NOT A PSEUDO-ELEMENT
  * ------------------------------------------------------------
  * It was `::after`, sitting at exactly the same Z as the asphalt under it. Two
  * coplanar composited surfaces have no depth order, so the compositor re-sorted
  * them every frame and the lane visibly blinked (DT11 again). A road drawn *by*
- * the asphalt cannot fight it, and there is one fewer layer. */
+ * the asphalt cannot fight it, and there is one fewer layer. THE VERGE IS HERE
+ * FOR THE SAME REASON — grass in its own element would be a second coplanar
+ * surface and would blink exactly as the road did.
+ *
+ * HOW THE GRASS IS CONFINED TO THE VERGE: IT IS NOT
+ * ------------------------------------------------
+ * The grass, its mottle and all three flower grids are painted across the FULL
+ * 4000px and simply covered up. `--sds-paved-half` (`PAVED_HALF_WIDTH` in
+ * `lot/scenery.ts`, pushed onto the stage) sizes one opaque asphalt apron in the
+ * middle of the stack, and everything below it in the list is hidden wherever
+ * that apron paints. The alternative — sizing and positioning a left and a right
+ * copy of every verge layer — is eight more background layers on the largest
+ * surface the page rasterises, to draw the same picture.
+ *
+ * It also means the boundary is ONE number in one place. The paving has to stop
+ * inside the treeline or eighty-eight trees stand in asphalt, which is an
+ * invariant `scenery.test.ts` asserts against `TREE_SETBACK`; a stylesheet that
+ * spelled the edge itself would put half of that comparison out of its reach.
+ *
+ * WHY THE FLOWERS ARE A FIXED GRID AND NOT SCATTERED
+ * -------------------------------------------------
+ * Same reason `TREE_JITTER` is a table rather than a random number generator:
+ * `SDS-001` says a rebuilt scene is identical to the one it replaced, and there
+ * is no seedable random in CSS at all. Three `radial-gradient`s tiled at pitches
+ * that share no common factor beat against each other over the ~1250px of verge
+ * on each side, so no two of them ever line up twice in the same place and the
+ * eye reads the result as a scatter. Each grid carries its dot at a different
+ * offset inside its own tile, so the three do not stack into clumps. */
 .sds-lot__ground {
   position: absolute;
   top: var(--sds-ground-line);
@@ -393,15 +425,93 @@ a {
     /* the lane itself, darker than the apron either side of it */
     linear-gradient(var(--sds-road-surface), var(--sds-road-surface)) center
       top / 420px 100% no-repeat,
-    /* the parking rows */
+    /* the parking rows — sized to the apron now, because past its edge there is
+       nothing to park on */
     repeating-linear-gradient(
         180deg,
         transparent 0 calc(780px / var(--sds-ground-squash)),
         color-mix(in srgb, var(--sds-star) 5%, transparent)
           calc(780px / var(--sds-ground-squash))
           calc(784px / var(--sds-ground-squash))
+      )
+      center top / calc(var(--sds-paved-half) * 2) 100% no-repeat,
+    /* WHERE THE PAVING ENDS: a worn strip straddling each edge, where the tar
+       has crumbled into the grass. Drawn ACROSS the plane and centred on the
+       boundary, so 4px of it lie on the asphalt and 4px on the verge — a seam
+       that sat wholly on one side would read as a painted line, which is what
+       the lane already has two of. */
+    linear-gradient(
+        90deg,
+        transparent 0 calc(50% - var(--sds-paved-half) - 4px),
+        var(--sds-verge-seam) calc(50% - var(--sds-paved-half) - 4px)
+          calc(50% - var(--sds-paved-half) + 4px),
+        transparent calc(50% - var(--sds-paved-half) + 4px)
+          calc(50% + var(--sds-paved-half) - 4px),
+        var(--sds-verge-seam) calc(50% + var(--sds-paved-half) - 4px)
+          calc(50% + var(--sds-paved-half) + 4px),
+        transparent calc(50% + var(--sds-paved-half) + 4px)
+      )
+      center top / 100% 100% no-repeat,
+    /* THE APRON. Opaque, and this is the layer that makes the verge a verge:
+       everything below it in this list is painted across the whole plane and
+       shows only where this does not reach. See the header. */
+    linear-gradient(180deg, var(--sds-asphalt) 0%, var(--sds-asphalt-far) 70%)
+      center top / calc(var(--sds-paved-half) * 2) 100% no-repeat,
+    /* The wildflowers: three grids at pitches with no common factor. Each dot's
+       vertical radius and its grid's vertical pitch are divided by the squash so
+       it lands on the grass as a round bloom rather than a streak. `--sds-bloom`
+       is how much light there is to see them by at this hour. */
+    radial-gradient(
+        4px calc(4px / var(--sds-ground-squash)) at 34% 61%,
+        color-mix(
+            in srgb,
+            var(--sds-flower-white) var(--sds-bloom),
+            transparent
+          )
+          0 65%,
+        transparent 100%
+      )
+      left top / 113px calc(157px / var(--sds-ground-squash)) repeat,
+    radial-gradient(
+        3.5px calc(3.5px / var(--sds-ground-squash)) at 72% 23%,
+        color-mix(in srgb, var(--sds-flower-warm) var(--sds-bloom), transparent)
+          0 65%,
+        transparent 100%
+      )
+      left top / 149px calc(211px / var(--sds-ground-squash)) repeat,
+    radial-gradient(
+        3.5px calc(3.5px / var(--sds-ground-squash)) at 18% 84%,
+        color-mix(in srgb, var(--sds-flower-rose) var(--sds-bloom), transparent)
+          0 65%,
+        transparent 100%
+      )
+      left top / 181px calc(263px / var(--sds-ground-squash)) repeat,
+    /* Turf. Bands ACROSS the plane, so they run along the depth axis and
+       converge on the vanishing point the way mown stripes do — and, being
+       parallel to the travel direction, they do not strobe as the drive moves
+       past them the way bands across it would.
+
+       FOUR UNEQUAL BANDS IN A 178px PERIOD, at low alpha. Two equal bands at
+       the strength this started on read as corduroy: the eye locks onto the
+       pitch and the verge becomes a woven texture. Unequal widths give the
+       period nothing regular to lock onto, and the alphas are down where the
+       banding is a variation in the turf rather than a pattern printed on it.
+
+       The tone mixed in is `--sds-grass-far`, which means the mottle lightens
+       the turf by day and darkens it at night — following the same aerial
+       perspective the base gradient does, for free. */
+    repeating-linear-gradient(
+        90deg,
+        transparent 0 37px,
+        color-mix(in srgb, var(--sds-grass-far) 26%, transparent) 37px 71px,
+        transparent 71px 104px,
+        color-mix(in srgb, var(--sds-grass-far) 15%, transparent) 104px 127px,
+        transparent 127px 178px
       ),
-    linear-gradient(180deg, var(--sds-asphalt) 0%, var(--sds-asphalt-far) 70%);
+    /* The verge itself, fading with depth exactly as the asphalt above it does
+       — which is most of what sells the lot's distance now that the paving
+       stops short of the treeline. */
+    linear-gradient(180deg, var(--sds-grass) 0%, var(--sds-grass-far) 70%);
   transform: translateZ(var(--sds-ground-lead)) rotateX(-90deg)
     scaleY(var(--sds-ground-squash));
   transform-origin: 50% 0;
@@ -415,6 +525,23 @@ a {
    dusk are the same silhouette in two different colours, and `--sds-tree`
    carries the difference. It also means the sprites' own colours are never
    seen, which is why DT14's checker only ever asserted their alpha.
+
+   THE FILL IS A GRADIENT, NOT ONE COLOUR, and it is the only volume a flat
+   plane can have. `--sds-tree-crown` is `--sds-tree` mixed toward the light at
+   the horizon and `--sds-tree-base` is the same colour with the light taken out
+   (both derived, in `tokens.css`), so the crown catches the sky and the trunk
+   sits in the canopy's own shade — at whatever hour it is, without any palette
+   restating either. The stops are placed against the SPRITE and not spread
+   evenly: the sprites are 800x1200 and this box is 260x390, the same aspect, so
+   `contain` fills it exactly and 62% down the box is reliably the underside of
+   the foliage on all three silhouettes.
+
+   `--sds-tree-tint` LIFTS THE WHOLE FILL, per tree, from the jitter table — see
+   `TreeJitter.tint` in `lot/scenery.ts`. Eighty-eight planes filled with exactly
+   one colour read as a texture rather than as trees, and this is the axis that
+   fixes it without a second sprite. It is applied to each stop rather than to
+   the element, because a `filter` here would promote all eighty-eight to their
+   own composited layers, which is the cost centre DT11 measured.
 
    THE MASK IMAGE IS NOT IN THIS RULE. `lot-scene.ts` sets `mask-image` inline,
    per variant, from the URL the asset loader already resolved. A `url()` here
@@ -440,7 +567,25 @@ a {
   width: 260px;
   height: 390px;
   margin-left: -130px;
-  background: var(--sds-tree);
+  background: linear-gradient(
+    180deg,
+    /* The top is the crown colour at every tint — a lifted tree is one whose
+       LOWER two thirds have come up toward the light its crown is already in,
+       which is what a specimen standing in the open actually looks like. */
+    var(--sds-tree-crown) 0%,
+    color-mix(
+        in srgb,
+        var(--sds-tree-crown) var(--sds-tree-tint, 0%),
+        var(--sds-tree)
+      )
+      62%,
+    color-mix(
+        in srgb,
+        var(--sds-tree-crown) var(--sds-tree-tint, 0%),
+        var(--sds-tree-base)
+      )
+      100%
+  );
   mask: center bottom / contain no-repeat;
   -webkit-mask: center bottom / contain no-repeat;
   /* Scale about the foot, so a jittered tree grows upward out of the ground
