@@ -31,9 +31,9 @@ built and measured:
   deep and `scaleY(4)`d back out — same world Z, a quarter of the texture — and every
   depth-direction length it paints (140/320px dashes, 780/784px parking rows) is divided
   by the same constant so it cancels. 134 → 51 ms/frame. For the twenty projects that
-  ship, the plane rasterises at **4000x5200: one untiled layer, 20.8 Mpx against the
-  19.2 Mpx of the 4800px plane it replaces** — two and a half times the depth for about
-  the same texture. 4 is the largest squash the markings survive: the 4px parking-row
+  ship, the plane rasterises at **4000x5200 CSS pixels — 20.8 Mpx against the 19.2 Mpx of
+  the 4800px plane it replaces**, two and a half times the depth for about the same
+  texture, and inside the texture limit at DPR 1 (see Blockers for the density caveat). 4 is the largest squash the markings survive: the 4px parking-row
   hairline is one texel at 4, two-thirds of one at 6, half at 8, and 6/8 measurably wash
   the rows and the near dash out.
 
@@ -41,6 +41,13 @@ built and measured:
 falsification required by the phase (`EVO-UNI-061`) fails `period.spec.ts` and the restored
 file makes it green; the container serves 200; all six palettes compared against the
 approved wireframe at 1440x900 and 390px.
+
+**Done — two chrome defects Evan found on the served page, neither of them DT13's doing
+but both of them DT13's to fix** (`7af0ade`). `.sds-chrome` blurred the sun and the moon
+with a `backdrop-filter` that has no falloff, and swallowed every click in its own 58px
+because a fixed full-width strip had no opinion about hit-testing. Replaced with a gradient
+scrim and the container-opts-out / control-opts-in pairing already documented twenty lines
+away in the same file. `click-through.spec.ts` gains the regression guard that was missing.
 
 **Done — and confirmed on real hardware the same day.** Evan ran the A/B: squash 1 (the
 unsquashed 20800px plane, reachable live from the console with no rebuild) reproduces DT11's
@@ -52,8 +59,11 @@ hardware the bug was found on.
 ## Commits
 
 - portfolio_site `d4eff15` — `feat(dt13): six time-of-day palettes, sun/moon orb, road markings, geometry-sized ground`
+- portfolio_site `f81b323` — `docs(session): DT13 palettes, orb, road, geometry-sized ground`
 - portfolio_site `7af0ade` — `fix(dt13): the header stops blurring the sky and stops swallowing clicks`
-- portfolio_site `<this commit>` — `docs(session): DT13 palettes, orb, road, geometry-sized ground`
+- portfolio_site `4ec4932` — `docs(session): the header's blur and click trap, found on the served page`
+- portfolio_site `b44cdba` — `docs(dt13): the squash is confirmed on real hardware; the DPR gap is measured`
+- portfolio_site `<this commit>` — `docs(session): audit the DT13 log against the commits it claims`
 
 ## Uncommitted work left behind
 
@@ -336,6 +346,16 @@ DT11's decision row.
   browser instead — `elementsFromPoint` returns the real stack, and omits anything with
   `pointer-events: none`.
   `promote → react-frontend`
+- **Telling a human to "set" a read-only DOM property produces a confident false negative,
+  not an error.** `window.devicePixelRatio = 2` in the console fails *silently* in
+  non-strict mode: nothing throws, the value does not change, and the operator reports back
+  that they tried every level and saw nothing — which is exactly what they would see if the
+  thing under test were fine. Hand-written diagnostic steps for a human need the same
+  scepticism as an automated check (`EVO-UNI-061`): before asking someone to change a value,
+  confirm the mechanism can change it, and have them read the value back as part of the
+  step so a no-op is visible. For `devicePixelRatio` the real levers are browser zoom and OS
+  display scaling.
+  `promote → universal`
 - **A `pgrep`/`grep` whose pattern appears in the checking command's own command line
   matches itself.** Polling for a background job with
   `until ! pgrep -f 'codex exec'; do sleep 30; done` never terminates: the waiting shell's
