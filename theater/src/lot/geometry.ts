@@ -226,23 +226,48 @@ export function groundDepth(count: number): number {
  * ------------------------------------------------------------------
  * {@link GROUND_RASTER_MAX} and the tests that enforce it compare CSS pixels
  * against a `MAX_TEXTURE_SIZE` of 8192, and those are only the same unit at
- * `devicePixelRatio` 1. If Chromium's raster scale tracks DPR, a 5200px plane is
+ * `devicePixelRatio` 1. IF Chromium's raster scale tracks DPR, a 5200px plane is
  * 10400 device texels on a 2x display — back over the limit, and back in DT11's
- * bug. This is stated and NOT resolved: it could not be measured here (headless
- * Chromium rasterises through SwiftShader, which does not reproduce the symptom
- * at any scale), and it was DT11's framing too — its 20800-against-8192
- * comparison is the same unit mismatch. Two things are known: at DPR 1 the
- * shipped plane is comfortably inside the limit, and the lever is this constant.
- * Squash 8 would hold to DPR 2, at the cost of the parking rows (below).
- * **Do not restate "one untiled layer" without qualifying the display.**
+ * bug. That "if" is the open question, and it is open in the useful direction:
+ *
+ *   - Emulating DPR 2 in headless is real (a 400x300 viewport screenshots at
+ *     800x600), and the ground's MARGINAL frame cost — the page with it, minus
+ *     the page without it — is unchanged: 33.8ms at DPR 1 against 32.4ms at
+ *     DPR 2, where a raster scale that tracked DPR would cost about four times
+ *     as much. The same measurement is sharply sensitive to the CSS size (14.2ms
+ *     at squash 8). That is consistent with Chromium pinning the raster scale for
+ *     this layer, which is what it does for a subtree under an animating
+ *     `will-change: transform` — `.sds-lot__world` is exactly that.
+ *   - It is NOT decisive: headless exposes no `LayerTree`, so the layer's real
+ *     texture size was never read, and the symptom is invisible in SwiftShader.
+ *
+ * If it ever needs settling, browser zoom is a real DPR change on real hardware
+ * (Ctrl+= raises `devicePixelRatio`); the blink is the answer, not arithmetic.
+ * Note that both bounds scale together: the texture rule wants
+ * `k >= depth * dpr / 8000` and the one-texel rule wants `k <= 4 * dpr`, so
+ * `k = 4 * dpr` satisfies both at any density and pins the plane at a constant
+ * 5200 device texels. Making the squash DPR-aware is therefore a small, correct
+ * change if a high-density display is ever shown to be affected.
+ * **Until then, do not restate "one untiled layer" without qualifying the
+ * display.**
  *
  * The other bound is the lot's size: at squash 4 the ground crosses
  * {@link GROUND_RASTER_MAX} at 35 projects. `geometry.test.ts` asserts that
  * against `projects.length` itself, so the thirty-fifth project fails the suite
  * rather than shipping a tiled plane.
  *
- * Re-measure on real GPU hardware before changing it. Headless Chromium
- * rasterises in software and cannot see the blinking at all.
+ * CONFIRMED ON REAL HARDWARE (Evan, 2026-09-09). Overriding this constant live
+ * from the console — `document.querySelector('.sds-lot').style.setProperty(
+ * '--sds-ground-squash', '1')` — restores the unsquashed 20800px plane, and the
+ * scene blinks during scroll exactly as DT11 recorded, with a second symptom
+ * DT11 did not name: **scrubbing backwards, the road falls away**. Back at 4 it
+ * is clean. 6 and 8 were tried and make no visible difference, so 4 stands — it
+ * is the value that keeps the parking rows sharpest (see above).
+ *
+ * That console override is the diagnostic to reach for if this ever regresses:
+ * it needs no rebuild, and squash 1 is the known-bad shape to compare against.
+ * Headless Chromium cannot substitute — it rasterises through SwiftShader and
+ * reproduces neither symptom at any value.
  */
 export const GROUND_SQUASH = 4;
 

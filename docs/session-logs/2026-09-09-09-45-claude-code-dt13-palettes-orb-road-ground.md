@@ -42,10 +42,12 @@ falsification required by the phase (`EVO-UNI-061`) fails `period.spec.ts` and t
 file makes it green; the container serves 200; all six palettes compared against the
 approved wireframe at 1440x900 and 390px.
 
-**Attempted, and it is the one thing still owed:** confirming the blinking is actually gone.
-It cannot be done here — headless Chromium rasterises in software and DT11 recorded that it
-cannot see this at all. Everything above is an area measurement. Evan's eyes on real GPU
-hardware are still the gate, and the lever is one constant.
+**Done — and confirmed on real hardware the same day.** Evan ran the A/B: squash 1 (the
+unsquashed 20800px plane, reachable live from the console with no rebuild) reproduces DT11's
+blinking during scroll **and a second symptom DT11 never named — scrubbing backwards, the
+road falls away.** Squash 4 is clean. 6 and 8 make no visible difference, so 4 stands, being
+the value that keeps the parking rows sharpest. The squash is the fix, measured on the
+hardware the bug was found on.
 
 ## Commits
 
@@ -229,13 +231,21 @@ pinned separately. Both fail against the pre-fix stylesheet.
 
 ## Blockers
 
-**The flicker verdict needs real hardware and is not mine to give.** DT11 measured that
-headless Chromium is blind to this class of bug — renders at every `translateZ` variant
-were pixel-identical because software rasterisation sorts coplanar surfaces
-deterministically. So this session could measure *area* and *frame cost* but not the thing
-DT11 actually saw. The two structural causes are both addressed (the coplanar road no
-longer exists; no layer is tiled), and the shipped plane carries about the same texture as
-the one production has today — but that is an argument, not an observation.
+**Cleared during the session.** The flicker verdict needed real hardware and was not mine
+to give — headless Chromium rasterises through SwiftShader and reproduces neither symptom
+at any squash value. Evan ran the A/B on his own machine and confirmed both directions, so
+the argument became an observation. What made that cheap was that the lever reaches CSS as
+a custom property: `--sds-ground-squash` can be overridden from the console, so the
+known-bad shape is one line away and no rebuild is needed to compare.
+
+**Still open, and measured as probably-benign:** whether Chromium's raster scale tracks
+`devicePixelRatio` for this layer. Emulating DPR 2 in headless is real (a 400x300 viewport
+screenshots at 800x600) and the ground's *marginal* frame cost is unchanged — 33.8ms at
+DPR 1 against 32.4ms at DPR 2, where a DPR-tracking raster would cost about four times as
+much, while the same measurement is sharply sensitive to CSS size (14.2ms at squash 8).
+That points at Chromium pinning the raster scale under `.sds-lot__world`'s animating
+`will-change: transform`. Not decisive: headless exposes no `LayerTree` (the same wall
+Codex hit), so the layer's real texture size was never read.
 
 **Not blocking:** DT13 explicitly runs under any DT11 outcome, and nothing here waits on
 DT11's decision row.
@@ -251,8 +261,12 @@ DT11's decision row.
   narrow layout, and my first pass looked at a screenshot and concluded "the narrow layout
   holds", which was a statement about appearance sold as a statement about the layout.
 - **The texture-limit guard is in CSS pixels and the limit it cites is in device texels.**
-  Fine at DPR 1, unproven at 2. Unmeasurable here — SwiftShader does not reproduce the
-  symptom at any scale. Stated in `geometry.ts`; the lever is one constant.
+  Fine at DPR 1; at DPR 2 the evidence now points at Chromium pinning the raster scale
+  rather than doubling it (see Blockers), but the layer's real texture size was never read
+  and the guard still cannot *prove* a high-density display. If it ever needs fixing the
+  shape is known and small: both bounds scale with density — the texture rule wants
+  `k >= depth * dpr / 8000`, the one-texel rule `k <= 4 * dpr` — so `k = 4 * dpr` holds at
+  any DPR and pins the plane at a constant 5200 device texels.
 - **`GROUND_SQUASH` resamples the ground along its depth axis, and the texel floor is now
   guarded at exactly one place.** The road test pins the parking row's computed `195px` /
   `196px` stops. A future phase adding a *finer* depth-direction marking would still soften
@@ -383,11 +397,11 @@ DT11's decision row.
   blink during scroll". If it does, the lever is `GROUND_SQUASH` in
   `theater/src/lot/geometry.ts` — raising it to 6 or 8 halves the texture again at a
   measurable cost to the road markings.
-- **Evan, second question while you are on real hardware:** what is the browser's
-  `devicePixelRatio` there? If it is 2, the ground's 5200 CSS-pixel plane may rasterise at
-  10400 device texels and be back over the 8192 limit — the same class of bug DT11 measured,
-  and the reason the "one untiled layer" claim is now qualified rather than asserted.
-  `window.devicePixelRatio` in the console answers it.
+- **The DPR question, if anyone wants it closed properly.** `window.devicePixelRatio` is
+  read-only, so the obvious test (assigning to it) silently does nothing — that is how the
+  first attempt at this went. The real levers are browser zoom (Ctrl+= genuinely raises it
+  and re-rasterises) or the OS display-scaling setting. The check is the same A/B as the
+  blink: zoom up, scroll, watch. Not urgent — see Blockers for why it is probably moot.
 - **Propose a phase for the narrow lot's hit-testing.** Screens 1–19 are unclickable at
   390px (see Open flags). It is a composition decision — offset the single file so each
   screen shows some of itself, raise the approached screen's z-index, or make passed screens
