@@ -189,11 +189,14 @@ decision row's footnote and repeated under Open flags.
   rebuild, including `--force-recreate` and polling for 200. Served as written.
 - NO-CHANGE: `AGENTS.md`, `.claude/skills/writing-session-logs/SKILL.md` — read as the
   phase directs; nothing unclear.
-- PENDING (decided-by: human): DT14's phase text does not appear to state the empty-row
-  stop that DT15's does, which is the likely reason the tree sprites shipped ahead of the
-  decision row — a phase-text change to a roadmap under active execution is a DEFER, not a
-  mechanical fix; next action: Evan rules on whether to amend DT14's branch block, or
-  record it closed now that DT11 has ruled `GO` and the sprites are in use.
+- REJECTED (decided-by: human): [2026-09-09] **recorded closed.** DT11 ruled `GO`
+  (`91c7e6e`), the sprites are in use, and the roadmap completed at DT16 (`3d3bade`), so
+  amending DT14's branch block now changes nothing that will ever execute. The reusable
+  half is not the phase text but the authoring lesson — a phase gated on a decision row
+  must state its own stop condition, or the gate lives only in the *next* phase and the
+  gated work ships ahead of it, which is exactly what happened here. That belongs in a
+  roadmap-authoring rule rather than in a closed phase's body; raised as a rules-index
+  candidate in the DT16 session log rather than applied here.
 
 ## Next steps
 

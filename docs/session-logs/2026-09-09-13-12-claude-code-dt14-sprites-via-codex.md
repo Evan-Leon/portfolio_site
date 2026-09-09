@@ -108,11 +108,14 @@ None.
   eye check; served as written
 - NO-CHANGE: `docs/spikes/art-check.html` — worked unmodified under headless Playwright
   over `file://`; its `judge()` ported line-for-line with exact parity; served as written
-- PENDING (decided-by: human): defer — DT14's header says `[MANUAL]`, "Executed by Evan,
-  not an agent"; this session showed the phase can be agent-orchestrated with Codex
-  generating and the checker driven headlessly. Whether to relabel the phase (and DT11's
-  measurement, which remains genuinely manual) is Evan's call; next action: Evan decides
-  at the DT11 decision-row step
+- REJECTED (decided-by: human): [2026-09-09] DT14's `[MANUAL]` header is **not** relabelled.
+  The roadmap completed at DT16 (`3d3bade`), so re-labelling a finished phase changes no
+  future execution — and DT11's measurement, the other `[MANUAL]` in the sequence, really
+  is human-only and was never run, so a blanket relabel would have been wrong anyway. The
+  transferable finding — that a sprite-generation phase can be agent-orchestrated with
+  Codex generating and the checker driven headlessly — is already captured outside the
+  roadmap in the `codex-image-generation` memory, which is where a future session will
+  actually look for it.
 
 ## Next steps
 

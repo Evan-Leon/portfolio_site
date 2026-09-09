@@ -60,7 +60,13 @@ portfolio_site:
 - `3d3bade` test(dt16): scenery and art Playwright specs; nginx parity for the sprites
   — the two specs, the parity script, the roadmap's amended `## Done` paragraph and its
   DT16 Changelog row.
-- (this log's own commit, following)
+- `08061c3` docs(session): DT16 scenery and art specs; the desktop overlap does not exist
+  — this log.
+- `e3ade3c` docs(dt16): Evan's real-hardware pass on the shipped lot — Evan's "no lag or
+  blinking" on the served container, into the Changelog row and this log's Open flags.
+- `d908f9e` docs(spec): viewport scope — the lot is desktop-only, measured — the phone
+  occlusion measurement into the spec's Core assumption.
+- (the pending-decision clearances, following)
 
 ## Uncommitted work left behind
 
@@ -194,24 +200,48 @@ None.
   expected URL from it catches both a lost property and one applied to the wrong member.
   promote → tooling
 
+- **A phase gated on a decision row must state its own stop condition; a gate that lives
+  only in the *next* phase does not hold.** DT14 was gated on DT11's decision row but its
+  own body did not say so — DT15's did. The sprites shipped ahead of the row, and the stop
+  was only noticed when DT15 read its own gate and halted. Every phase that depends on an
+  upstream verdict states the verdict check in its own header, even when the phase before
+  it already does. Cleared the DT15 log's pending item as the reusable half of it.
+  promote → universal
+
+- **A click-through suite that runs at one viewport proves nothing about the others, and
+  the gap can hide a total interaction failure rather than a degradation.**
+  `click-through.spec.ts` visited all 20 screens at desktop width from DT6 onward and was
+  read as "every screen is a link". At 390×720 screens 1–19 own **zero** hit-test points —
+  the narrow layout stacks them single-file and each is completely covered by its
+  predecessor, so a tap lands on the previous project. Nothing failed; nothing was
+  looking. Where a responsive layout restates placement (`@media` overriding the custom
+  properties a builder writes inline), the interaction test has to visit that breakpoint
+  too — a layout assertion or a screenshot at that width passes while the page is
+  unusable. Sibling of the desktop/phone split measured in DT16's own car-click scan.
+  promote → tooling
+
 ## Meta-prompt / skill / doc updates
 
+- APPLIED: the spec's "Core assumption" gains a **viewport scope** amendment recording the
+  measured phone-width occlusion (screens 1–19 at zero hit-test points, screen `i-1`
+  owning the frame), why it is accepted rather than fixed now (the theater is desktop-only
+  — `.hero__cta--theater` is `display: none` below 768px), and the two candidate fixes →
+  `docs/superpowers/specs/2026-09-08-drive-in-theme-design.md` (see Commits: `d908f9e`). Ruled by Evan on
+  2026-09-09: document it, queue the fix in Next steps. Sits beside the browser-scope
+  amendment that set the precedent for narrowing this assumption after a measurement.
 - APPLIED: DT16's `## Done` paragraph rewritten to state what the browser proof actually
   covers — the click landed at 390×720 only, the desktop row proving the cascade and the
   measured non-overlap — plus the DT16 Changelog row carrying the full measurement →
   `docs/roadmaps/drive-in-theme-roadmap.md` (see Commits: `3d3bade`). Mechanical under
   fold-back triage item 2: a claim contradicted by this session's own measurement, and its
   companion changelog row.
-- PENDING (decided-by: human): DT16's `<context>` geometry note and `<constraints>`
-  over-generalise a 390×720 measurement into a both-viewport requirement ("the scan
-  reliably finds it"; "**Click-through under the car**, as a loop over **two viewports**"),
-  which is false at 1440×900 and cost this session a failing run to discover. The
-  measurement itself is correctly labelled "measured 2026-09-08 at 390×720" — it is the
-  constraint built on it that over-reaches. Editing an executed phase's `<constraints>` is
-  a spec-body change, not a mechanical correction, so it is not applied here; the finding
-  is recorded in `## Done` and the Changelog instead. Next action: Evan decides whether
-  the phase body is amended in place or left as the historical instruction with the
-  Changelog as its correction.
+- REJECTED (decided-by: human): [2026-09-09] DT16's `<context>` geometry note and
+  `<constraints>` over-generalise a 390×720 measurement into a both-viewport requirement
+  ("the scan reliably finds it"), which is false at 1440×900. **Left as the historical
+  instruction**, with the amended `## Done` paragraph and the Changelog row as the
+  correction beside it — ruled together with DT13's `<constraints>` item on the same
+  principle: on a completed roadmap an executed phase's body records what was asked, and
+  rewriting it retroactively destroys the evidence that instruction and outcome diverged.
 - NO-CHANGE: `.claude/skills/rebuild-restart/SKILL.md` — followed for the parity run
   (`docker compose build && up -d --force-recreate`, then polled `/` for 200 before
   curling, exactly as its Traefik note says); served as written.
@@ -225,8 +255,17 @@ None.
 
 ## Next steps
 
-- DT16 is the roadmap's final phase; the drive-in theme is complete. Nothing is queued
-  behind it.
+- **Queued, not scheduled — the phone lot.** At 390×720 screens 1–19 own zero hit-test
+  points; screen `i-1` covers the whole frame, so a tap lands on the previous project.
+  Measured and documented this session (spec "Core assumption" → viewport scope); Evan
+  ruled document-now, fix-later. Two candidate shapes: a narrow-layout horizontal offset
+  (`--sds-screen-x` restated per side below 768px) so the screens stop occluding each
+  other, or a phone entry guard that renders the exit beat's hand-written project list
+  instead of mounting the lot. Whichever is taken needs its own falsification and a
+  **phone click-through spec** — `click-through.spec.ts` is desktop-only, which is why
+  this survived from DT6 to DT16 unseen. Not a DT phase; the roadmap is closed.
+- DT16 was the roadmap's final phase; the drive-in theme itself is complete. Nothing else
+  is queued behind it.
 - If Evan ever wants DT11's protocol actually run, the probe and checker are still at
   `docs/spikes/2026-09-08-scenery-probe.html` and `docs/spikes/art-check.html`, and the
   decision row can be amended in place. DT16 measured no fps.

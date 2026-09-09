@@ -393,22 +393,25 @@ DT11's decision row.
   a twenty-project registry (trivial, behaviour-neutral, noticed while fixing my own) →
   `theater/src/lot/build-lot.ts`, `theater/src/main.ts`, `theater/e2e/keyboard.spec.ts`
   (see Commits: `d4eff15`)
-- PENDING (decided-by: human): DT13's Manual Verification says "at 390px wide the narrow
-  layout holds", which a screenshot can satisfy while every screen but the first is
-  unclickable. The phase's check should name the interaction, not only the layout. Not
-  edited: changing a phase's verification after executing it is a structural edit to a
-  document DT14–DT16 are written against. Next action: Evan rules whether the narrow check
-  in DT13 (and the same wording wherever DT15/DT16 repeat it) should require a click at
-  phone width.
-- PENDING (decided-by: human): DT13's `<constraints>` specify a single-plane ground and a
-  `::after` road that its own measured warning block contradicts, and its
-  `brightness(calc(var(--sds-unlit-floor)` grep cannot match under the repo's Prettier
-  config. Both were worked around in-session and the outcome is recorded in the phase, but
-  the `<constraints>` text itself still reads as the instruction. Not edited: rewriting a
-  phase's constraints after executing it is a structural change to a document the next
-  phases are written against, and a reasonable person could prefer the original with the
-  resolution block beside it. Next action: Evan rules whether DT13's `<constraints>` should
-  be rewritten to the shipped shape or left as the historical instruction.
+- REJECTED (decided-by: human): [2026-09-09] DT13's Manual Verification says "at 390px wide
+  the narrow layout holds", which a screenshot can satisfy while every screen but the first
+  is unclickable. Evan ruled the phase text is **not** amended to require a phone click —
+  DT13 is executed and closed, and the theater is desktop-only by an earlier decision
+  (`.hero__cta--theater` is `display: none` below 768px, so a phone never sees the link).
+  The underlying behaviour was measured during the DT16 session instead and is **worse than
+  this bullet said**: at each screen's band middle at 390×720, screen 0 owns 1,163
+  hit-test points and **screens 1–19 own zero** — all 9,853 screen-owned pixels belong to
+  screen `i-1`, so a tap lands on the *previous* project rather than on nothing. Documented
+  as an accepted limitation under the spec's "Core assumption" → viewport scope, and the
+  fix is queued in the DT16 log's Next steps (see Commits in
+  `2026-09-09-14-19-claude-code-dt16-scenery-art-specs.md`).
+- REJECTED (decided-by: human): [2026-09-09] DT13's `<constraints>` are **left as the
+  historical instruction**, with the phase's own ✅ RESOLVED block beside them as the
+  correction. Ruled together with the DT16 equivalent below: on a completed roadmap an
+  executed phase's `<constraints>` are a record of what was asked, not a description of
+  what shipped, and rewriting them retroactively destroys the evidence that the phase's
+  instruction and its outcome diverged — which is the very thing the resolution blocks and
+  Changelog rows exist to preserve.
 
 ## Next steps
 
