@@ -8,6 +8,7 @@ repos: [portfolio_site]
 ---
 
 ## Accomplished
+Replaced the theater station wagon's three children with a centered cartoon Evan waving, using the approved portrait as identity reference. Corrected initial roof overlap so his head fits inside the rear window. Saved to theater/public/art/car.png using built-in image generation.
 Additional user correction: reduced exposed neck and raised hoodie neckline using IMG_3366 as anatomical reference, retaining centered EVOsystem lettering.
 Final revision: centered the exact text EVOsystem on the hoodie in matching tonal embossed lettering using the built-in image generator.
 Created a professional casual portrait from both user references using built-in image generation. Updated About Me and rebuilt/recreated the local site.
@@ -17,9 +18,11 @@ Revised the portrait on user feedback: replaced the open collar with the origina
 `a849bc3` — initial session log commit inadvertently included concurrently staged documentation changes; disclosed to user, history not rewritten.
 
 ## Uncommitted work left behind
+theater/public/art/car.png contains the requested illustrated occupant replacement.
 index.html and images/evan-about.png contain the requested portrait update. Pre-existing docs/plans deletion and docs/planning files left untouched.
 
 ## Verification
+Car update: Docker build (including theater TypeScript check and Vite build) and recreation passed. /theater/art/car.png returned HTTP 200 and SHA-256 matched the source. git diff --check passed.
 Prettier check on index.html and git diff --check passed. Docker build and recreation passed after sandbox escalation. Homepage and portrait returned HTTP 200. Served portrait SHA-256 matches source and homepage references new asset.
 Fold-back audit: no pending decisions; one pre-existing APPLIED_NO_COMMIT finding.
 
@@ -39,6 +42,12 @@ None.
 None.
 
 ## Pointers
+Car illustration prompt (built-in image generator):
+
+Use case: identity-preserve / compositing. Edit image 1, the rear-view illustration of a tan wood-paneled station wagon with three children in its open rear window. Remove ALL three children and replace them with ONE adult man centered in the rear window, smiling and waving at the viewer with one raised open hand, his other forearm resting naturally on the window sill. Image 2 is the identity and clothing reference of the man: preserve recognizable dark swept-up hair, thick eyebrows, face shape, warm smile, salt-and-pepper beard, and black hoodie with subtle EVOsystem chest lettering if visible. Translate him into the SAME warm detailed cartoon illustration style as the original children and car, not a photographic face pasted into an illustration. Appropriate adult proportions, comfortably fitting inside the rear window, hand entirely within the window opening, five natural fingers. Preserve the car exactly: rear view, size, position, tan paint, wood panel grain, chrome roof rack and bumpers, red tail lights, tires, blank license plate, rear window shape, perspective and overall 1600x900 landscape composition. Preserve the original background/transparency treatment. Do not add a setting, shadows outside the car, people, objects or license plate text. Only replace the occupants, with natural dark car interior filling the vacated space on either side of the man. One man only, centered and waving.
+
+Follow-up prompt: scale and lower only the man to fit his entire head and waving hand inside the rear window; retain likeness, hoodie, car and composition.
+
 Neck correction prompt (built-in image generator):
 
 Use case: identity-preserve, precise-object-edit. Image 1 is the edit target, the current EVOsystem hoodie portrait. Image 2 is the original real photograph IMG_3366 and is the authoritative anatomical reference. Correct ONLY the neck and hoodie neckline in image 1 to match the real man in image 2: reduce the overly large exposed neck area, match the natural shorter visible neck length and width, bring the folded hoodie neckline higher and closer under the beard like the original black hoodie. Natural anatomically plausible head-to-neck-to-shoulder connection, realistic soft contact shadows, no thick elongated neck or pasted-on head. Preserve the exact face, facial proportions, expression, hair, beard, skin details, head size, shoulders, background, lighting and square framing of image 1 as closely as possible. Preserve the centered exact text "EVOsystem" in subtle dark embossed outline lettering on the chest. Do not regenerate or beautify the face. Do not copy the child or hands from image 2. Make a minimal localized edit around the exposed neck and hood only.
