@@ -8,6 +8,8 @@ repos: [portfolio_site]
 ---
 
 ## Accomplished
+Additional user correction: reduced exposed neck and raised hoodie neckline using IMG_3366 as anatomical reference, retaining centered EVOsystem lettering.
+Final revision: centered the exact text EVOsystem on the hoodie in matching tonal embossed lettering using the built-in image generator.
 Created a professional casual portrait from both user references using built-in image generation. Updated About Me and rebuilt/recreated the local site.
 Revised the portrait on user feedback: replaced the open collar with the original black Puma hoodie and requested more natural neck/shoulder integration, preserving face and background. Built-in image generator used; final asset remains images/evan-about.png.
 
@@ -37,6 +39,14 @@ None.
 None.
 
 ## Pointers
+Neck correction prompt (built-in image generator):
+
+Use case: identity-preserve, precise-object-edit. Image 1 is the edit target, the current EVOsystem hoodie portrait. Image 2 is the original real photograph IMG_3366 and is the authoritative anatomical reference. Correct ONLY the neck and hoodie neckline in image 1 to match the real man in image 2: reduce the overly large exposed neck area, match the natural shorter visible neck length and width, bring the folded hoodie neckline higher and closer under the beard like the original black hoodie. Natural anatomically plausible head-to-neck-to-shoulder connection, realistic soft contact shadows, no thick elongated neck or pasted-on head. Preserve the exact face, facial proportions, expression, hair, beard, skin details, head size, shoulders, background, lighting and square framing of image 1 as closely as possible. Preserve the centered exact text "EVOsystem" in subtle dark embossed outline lettering on the chest. Do not regenerate or beautify the face. Do not copy the child or hands from image 2. Make a minimal localized edit around the exposed neck and hood only.
+
+Final lettering edit prompt:
+
+Use case: text-localization / precise-object-edit. Edit ONLY the chest lettering on the black hoodie in this portrait. Replace "PUMA" with exactly "EVOsystem" (capital E V O, lowercase s y s t e m). Center the complete word horizontally on the sweatshirt chest, aligned with the center of the torso rather than offset to either side. Keep the same understated dark charcoal tonal embossed/outlined athletic lettering style, dimensional edging, low contrast and realistic fabric integration. Fit the entire word visibly within the image with margin below it; maintain natural fabric perspective. Drawstrings may naturally pass in front but the word should remain readable. Remove all old PUMA lettering. Preserve everything else unchanged: exact face and likeness, expression, eyes, hair, beard, skin texture, body, black hoodie shape, pose, lighting, background, framing and image dimensions. No other new text or logos.
+
 Hoodie revision prompt (built-in image generator):
 
 Edit image 1, the generated square professional portrait. Replace the navy open-collared shirt with the SAME black Puma pullover hooded sweatshirt worn by the man in image 2 (original IMG_3366): hood down, substantial softly folded hood around base of neck, black drawstrings and subtle tonal embossed Puma chest lettering if visible within crop. Image 2 is also the authoritative reference for his real head-to-body proportions and natural neck/shoulder connection. Address the pasted-on head appearance: anatomically coherent shoulders and neck, natural relaxed posture, realistic contact shadows where beard meets neck and hoodie, consistent soft light and texture across face and clothing. Preserve exact recognizable likeness, real facial features, smile, hair, salt-and-pepper beard and skin texture, no beauty retouching. Preserve neutral softly blurred professional office background and square head-and-shoulders composition of image 1. Leave comfortable space over hair. Photorealistic single coherent camera portrait, not a collage. No child, no other people or hands. Change clothing and integration only; do not invent a different face.
