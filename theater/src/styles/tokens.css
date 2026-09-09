@@ -187,6 +187,17 @@
   --sds-marquee-edge: var(--sds-lot-marquee-edge);
   --sds-marquee-edge-lit: var(--sds-lot-marquee-edge-lit);
 
+  /* The header's backdrop: a fade, not a `backdrop-filter`. It keeps the logo
+   * and the percentage legible over a bright daylight sky without blurring what
+   * is behind them — see `.sds-chrome` in `global.css` for what the blur did to
+   * the sun. Derived from `--sds-bg`, so it darkens over the lot and lightens
+   * with the light theme. */
+  --sds-chrome-scrim: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--sds-bg) 72%, transparent) 0%,
+    transparent 100%
+  );
+
   /* Loader-specific roles. Named by job, not appearance, so restyling the
    * ring does not mean hunting through component CSS. */
   --sds-loader-track: var(--sds-ink-700);

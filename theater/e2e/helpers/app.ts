@@ -136,6 +136,12 @@ export const SCREEN_SURFACE = `.${SCREEN_SURFACE_CLASS}`;
 export const SCREEN = `a.${SCREEN_CLASS}`;
 
 /**
+ * The fixed header strip. Decorative except for {@link CHROME_LOGO}, and the
+ * thing that used to swallow every click inside its own 58 pixels.
+ */
+export const CHROME = ".sds-chrome";
+
+/**
  * The chrome's percentage readout, driven by the engine's `persistentLayer`
  * every frame. Reads `0%` at the top of the document and `100%` at the bottom,
  * which makes it the page's own evidence that the frame loop is running and

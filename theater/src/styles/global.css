@@ -60,8 +60,32 @@ a {
   background: var(--sds-gradient-accent);
   transform: scaleX(0);
   transform-origin: 0 50%;
+  /* A 2px readout, and 2px of the lot it would otherwise swallow. See below. */
+  pointer-events: none;
 }
 
+/*
+ * THE HEADER IS A FIXED STRIP ACROSS THE TOP OF EVERYTHING, WHICH MAKES IT TWO
+ * HAZARDS AT ONCE. Both were reported from the served page (Evan, 2026-09-09).
+ *
+ * 1. IT SWALLOWED EVERY CLICK IN ITS OWN 58px.
+ *    `position: fixed` at `--sds-z-chrome` over the whole viewport width, with
+ *    one link in it and no opinion about hit-testing — so a project screen whose
+ *    top reached under the bar could not be clicked there, and nothing said so.
+ *    Measured: at 1440x900 screen 0 reaches under it, at 1280x620 screens 0 and
+ *    1 do, and `elementFromPoint` anywhere in the strip returned `.sds-chrome`.
+ *    Same shape as the bug documented on `.sds-lot__world` below, and the same
+ *    fix: the container opts out, the one control in it opts back in.
+ *
+ * 2. `backdrop-filter: blur(8px)` SMEARED THE SKY BEHIND IT.
+ *    Invisible while the top of the lot was empty night sky; the moment DT13 put
+ *    a sun and a moon up there it read as a hard-edged rectangle of blur cutting
+ *    across the orb, because a `backdrop-filter` box has no falloff. Replaced by
+ *    a gradient scrim, which does the job the blur was standing in for — keeping
+ *    the header legible over a bright daylight sky — and fades to nothing at its
+ *    own bottom edge, so there is no edge to see. It is `--sds-bg`-derived, so it
+ *    darkens over the lot and lightens under `[data-theme="light"]`.
+ */
 .sds-chrome {
   position: fixed;
   inset: 0 0 auto 0;
@@ -70,10 +94,13 @@ a {
   align-items: center;
   justify-content: space-between;
   padding: var(--sds-space-4) var(--sds-space-8);
-  backdrop-filter: blur(8px);
+  background: var(--sds-chrome-scrim);
+  pointer-events: none;
 }
 
 .sds-chrome__logo {
+  /* The one thing in the header that is a control. See above. */
+  pointer-events: auto;
   color: var(--sds-text);
   font-weight: var(--sds-weight-bold);
   letter-spacing: var(--sds-tracking-tight);
