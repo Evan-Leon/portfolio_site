@@ -139,11 +139,27 @@
         GO without ever measuring the interaction the number is promising.
 
     (2) THE NATURAL-WHEEL RUN  —  OWNS EVERY ABSOLUTE `>= 50`.
-        Chrome DevTools performance panel recording, real wheel scrolling through
-        the full lot at a natural reading pace, lowest fps over any contiguous
-        1 s window. Recorded for `car-only` and for whichever scenery variant
-        step 5 is about to select. A harness median never decides an absolute
-        threshold.
+        Real wheel scrolling through the full lot at a natural reading pace,
+        lowest fps over any contiguous 1 s window. Recorded for `car-only` and
+        for whichever scenery variant step 5 is about to select. A harness
+        median never decides an absolute threshold.
+
+        INSTRUMENT, changed 2026-09-08 (Evan's call): the protocol named a Chrome
+        DevTools performance recording. `?wheel=1` measures the SAME metric in
+        the page instead — the page stops driving the scroll, you wheel it top to
+        bottom, and it prints `lowestWindowFps()` live: the same function the
+        harness uses and the same definition as the DevTools FPS track. What
+        matters about this protocol is preserved exactly — the scroll comes from
+        real wheel input, so Lenis's smoothing path and the engine update run as
+        they do in production, which is the thing `window.scrollTo()` bypasses.
+        DTF already recorded the rAF-timestamp instrument as an accepted
+        deviation for the harness; this extends it to the wheel run.
+
+        RECORDED LIMIT: rAF timestamps say when a callback ran, not when a frame
+        was presented, so a compositor dropping frames while the main thread
+        keeps ticking reads high. It cannot err the other way — main-thread jank
+        always shows — so a number ABOVE the floor is the weaker claim, and a
+        number below it is solid.
 
     Sampling conditions for both: Chromium, 1440x900 at 100% zoom, mains power,
     no other tab playing media. A result straddling a band boundary is resolved
@@ -1992,6 +2008,94 @@
         };
       }
 
+      /* ===================================================================
+       * THE NATURAL-WHEEL RUN, MEASURED IN THE PAGE  (?wheel=1)
+       *
+       * The protocol's instrument was a DevTools performance recording. This is
+       * the same METRIC through a different instrument: the page never scrolls
+       * itself, you wheel-scroll it top to bottom at a reading pace, and it
+       * prints the lowest number of frames in any contiguous 1 s window since
+       * the last reset — the same `lowestWindowFps()` the harness uses, and the
+       * same definition as the DevTools FPS track, read a different way. DTF
+       * recorded that instrument swap as an accepted deviation for the harness;
+       * this extends it to the wheel run.
+       *
+       * WHAT THIS PRESERVES, and it is the whole point of the second protocol:
+       * the scroll comes from real wheel input, so Lenis's smoothing path and
+       * the engine update run exactly as they do in production. That is what
+       * `window.scrollTo()` bypasses and why a harness median may never be read
+       * as an absolute.
+       *
+       * RECORDED LIMIT: rAF timestamps say when a callback ran, not when a
+       * frame was presented. If the compositor drops frames while the main
+       * thread keeps ticking, this reads high. It cannot read high in the other
+       * direction — main-thread jank always shows — so a number ABOVE the floor
+       * is the weaker claim and a number below it is solid.
+       * =================================================================== */
+      function wheelMeter() {
+        const box = document.createElement("div");
+        box.id = "wheel-meter";
+        box.style.cssText =
+          "position:fixed;inset:auto 0 0 0;z-index:100;padding:12px 18px;" +
+          "background:rgba(0,0,0,.9);color:#f0f0ff;border-top:2px solid #7c3aed;" +
+          "font:14px/1.7 ui-monospace,monospace;white-space:pre";
+        document.body.appendChild(box);
+
+        let stamps = [];
+        let started = false;
+        /* How far down the lot the run actually got — the DEEPEST point reached,
+           not the distance travelled. Accumulated travel would let scrolling up
+           and down in one spot report "100% of the lot" without the run ever
+           passing a screen. */
+        let deepest = 0;
+        let lastY = window.scrollY;
+
+        const reset = () => {
+          stamps = [];
+          started = false;
+          deepest = 0;
+          lastY = window.scrollY;
+        };
+        window.addEventListener("keydown", (e) => {
+          if (e.key.toLowerCase() === "r") reset();
+        });
+
+        function tick(now) {
+          const y = window.scrollY;
+          /* The clock starts on the first real scroll, so time spent reading
+             this box before touching the wheel is not counted as jank. */
+          if (!started && Math.abs(y - lastY) > 0) started = true;
+          if (started) {
+            if (y > deepest) deepest = y;
+            stamps.push(now);
+            /* Keep a bounded buffer: only the worst window matters, and an
+               unbounded array is its own performance problem. */
+            if (stamps.length > 6000) stamps = stamps.slice(-4000);
+          }
+          lastY = y;
+
+          const range = Math.max(
+            1,
+            document.documentElement.scrollHeight - window.innerHeight,
+          );
+          const fps = started ? lowestWindowFps(stamps) : 0;
+          const covered = Math.min(100, Math.round((deepest / range) * 100));
+          box.textContent =
+            `NATURAL-WHEEL RUN — ${VARIANT}${ROAD_LIFTED || GROUND_DEPTH !== GROUND_DEPTH_SPEC ? "  *** DIAGNOSTIC FLAGS ON — not a recordable number ***" : ""}\n` +
+            "wheel-scroll top to bottom at a natural reading pace. Do not use the scrollbar or keys.\n\n" +
+            `  lowest fps over any contiguous 1 s window:  ${started ? fps : "—"}\n` +
+            `  scrolled so far: ${covered}% of the lot   (get to 100%, then read the number)\n` +
+            `  frames sampled: ${stamps.length}   press R to start over\n\n` +
+            (started && covered >= 100
+              ? fps >= FPS_FLOOR
+                ? `  ${fps} >= 50 — clears the floor.`
+                : `  ${fps} < 50 — BELOW the floor.`
+              : "  (keep scrolling)");
+          requestAnimationFrame(tick);
+        }
+        requestAnimationFrame(tick);
+      }
+
       /* What the gate saw when the medians were taken. `?` (never a number) if
          no run in this session ever passed it. */
       function postersResident() {
@@ -2167,6 +2271,10 @@
             return;
           }
 
+          if (PARAMS.get("wheel")) {
+            wheelMeter();
+            return;
+          }
           if (MEASURE) measureFlow();
         });
       }

@@ -577,6 +577,47 @@ behind the camera a third of the way down the lot.
 3. `.claude/skills/rebuild-restart/SKILL.md`
 4. `.claude/skills/writing-session-logs/SKILL.md`
 
+> ## ⚠ MEASURED BEFORE YOU START: the specified ground plane flickers (DT11, 2026-09-08)
+>
+> DT11's probe built this phase's ground and road exactly as specified below, and Evan
+> found the **whole scene blinking during scroll in every variant, `lot20` included** —
+> so it is not caused by the scenery. Production is unaffected today only because it
+> still carries the old `height: 4800px` plane. Two independent causes, both measured in
+> Chromium on Evan's hardware and both reproduced by the probe's `&ground=` / `&road=`
+> switches (`docs/spikes/2026-09-08-scenery-probe.html`):
+>
+> 1. **The ground plane exceeds the GPU's texture limit.** `MAX_TEXTURE_SIZE` is
+>    **8192px**; `groundDepth(20)` is **20800px**, 2.5x that in one dimension, so Chromium
+>    must tile the plane. Composited layers measured at `4000 x 20800 = 83.2 Mpx` for the
+>    ground and `420 x 20800 = 8.7 Mpx` for the road, putting the page at **145 Mpx
+>    (~580 MB of texture)**. Capping the depth at 8000px takes it to 88 Mpx (~354 MB) and
+>    the blinking stops completely.
+> 2. **The road is exactly coplanar with the asphalt.** `.sds-lot__ground::after` is its
+>    own composited layer at the *same* Z as the plane it sits on — two surfaces with no
+>    depth order, re-sorted every frame. Giving it 1px of Z visibly reduces the blinking.
+>    **The sign is negative:** the parent's `rotateX(-90deg)` maps a child's local +Z onto
+>    world *down*, so `translateZ(1px)` buries the road under the opaque asphalt and
+>    `translateZ(-1px)` lifts it out. (Confirmed the hard way — the first diagnostic used
+>    the wrong sign and the road vanished.)
+>
+> **The cap is not the fix.** 20800px *is* this phase's fix for the 20-screen lot, and
+> 8000px re-opens the bug it was solving (the far screens stand on sky again). This phase
+> needs a ground that spans `groundDepth(count)` with **no single layer over ~8192px**.
+> Two candidates, neither yet built or measured:
+> - **Section the plane** — N sibling planes of `groundDepth(count) / N` each, stacked
+>    along Z, with the `linear-gradient(180deg, asphalt, asphalt-far)` sliced across them
+>    so the fade still reads as one surface (a naive split repeats the fade N times).
+> - **Fold the road into the ground's own background stack** — the road is three gradients
+>    and the ground is already a gradient stack; a `420px`-wide, `center`-positioned
+>    background layer would delete the second composited layer and the coplanarity
+>    together, and is worth doing regardless of how cause 1 is solved.
+>
+> Whichever is chosen, **re-check it on real GPU hardware**: headless Chromium cannot see
+> this at all. Renders at `translateZ` of none / `+1px` / `-1px` / `-4px` are
+> pixel-identical, because software rasterisation sorts coplanar surfaces
+> deterministically. The `groundDepth` literals in the tests below (`11200`, `20800`) may
+> need to change with the design; the *depth the plane spans* must not.
+
 <context>
 ## What's already built
 
