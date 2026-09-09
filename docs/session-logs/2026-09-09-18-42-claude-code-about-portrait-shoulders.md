@@ -44,9 +44,17 @@ and sleeve removed and the hoodie shoulder continued through; `PUMA` chest lette
 replaced with `EVOsystem`). His neck width, shoulder line, head tilt and the camera's low
 viewpoint are now photographic and therefore no longer things a generator can get wrong.
 
-Four tries; Evan chose try 1 on sight from all four served side by side. Installed as
-`images/evan-about.png` and rebuilt. `greyFrac` 0.0152 against the target's 0.3393, so the
-squaring margins are painted out.
+Four tries; Evan chose try 1 on sight from all four served side by side (copied into
+`images/` as untracked `_tmp-*` files, served over the rebuilt container so he could compare
+them in a browser, then removed). Installed and rebuilt. `greyFrac` 0.0152 against the
+target's 0.3393, so the squaring margins are painted out.
+
+**Third phase, on request:** cleared this log's own oversized-asset flag. The portrait is now
+a 600 px WebP at 32 KB in place of a 1254 px PNG at 1.9 MB — a 61× reduction for an element
+rendered at 174 px — with `index.html`'s single reference updated and the PNG dropped rather
+than left baked into the nginx image. WebP over a smaller PNG because the subject is
+photographic (PNG at 522 px still cost 124 KB, JPEG 34 KB, WebP 25 KB) and transparency was
+never in play: the circle is CSS and the image is opaque RGB.
 
 Two things deliberately not claimed: the image tool is generative and reconstructs rather
 than compositing, so the result is **photo-derived, not photo-exact** — the run's agent
@@ -63,7 +71,9 @@ portfolio_site:
   `b426795`; the measured correction landed but the result was still wrong on the eye)
 - `3fffc36` — `docs(session): record the about-portrait shoulder and neck correction`
 - `b426795` — `feat(about): replace the synthetic portrait with the real photograph`
-- `<this commit>` — `docs(session): the portrait is now the real photograph`
+- `4bf3dc1` — `docs(session): the portrait is now the real photograph`
+- `baa2323` — `perf(about): serve the portrait at render size as WebP, 1.9 MB -> 32 KB`
+- `<this commit>` — `docs(session): close the oversized-portrait flag`
 
 ## Uncommitted work left behind
 None.
@@ -99,16 +109,26 @@ None.
 - Discarded as unreliable: a neck-width/head-width ratio measurement. The beard breaks
   contiguous skin runs, so its head widths were plainly wrong; conclusions were not drawn
   from it. Recorded here because a discarded measurement is a verification result.
-- Prettier pre-commit hook — ran on commit; no staged `.html`/`.css`/`.js`, so no-op.
+- Third phase — format/size comparison at 522 px and 600 px across PNG / WebP / JPEG, and a
+  side-by-side of the 1.9 MB PNG against the 32 KB WebP at real 2× render size inside the
+  circular crop: pass, visually indistinguishable.
+- Third phase — reference sweep for `evan-about` across `.html/.css/.js/.ts/.tsx/.json/.conf/
+  Dockerfile*` before deleting the PNG: exactly one hit (`index.html:189`), now updated.
+- Third phase — `docker compose build && up -d --force-recreate`, then: `/` and
+  `/images/evan-about.webp` 200 with `Content-Type: image/webp` and `Content-Length: 32588`;
+  `/images/evan-about.png` 404 as intended; the served homepage references
+  `images/evan-about.webp`; served WebP sha256 identical to the committed source. All pass.
+- Prettier pre-commit hook — no-op on the image-only commits (no staged `.html`/`.css`/`.js`);
+  fired and passed on `baa2323`, which staged `index.html`.
   `core.hooksPath=.githooks` and `node_modules/.bin/prettier` both confirmed present.
 
 ## Blockers
 None.
 
 ## Open flags
-- `images/evan-about.png` is 1.9 MB for an element rendered at 174 px in a circular
-  crop (`.about__photo-ring` is 180 px with 3 px padding). Roughly 30× the pixels
-  needed even at 2× DPR. Pre-existing, out of scope for this fix, not addressed.
+- RESOLVED in the third phase — the oversized asset. Was 1.9 MB of PNG for an element
+  rendered at 174 px; now a 600 px WebP at 32 KB (`baa2323`), a 61× reduction, verified
+  indistinguishable at real 2× render size inside the circular crop.
 - RESOLVED in the second phase — the flag that the portrait was synthetic and a sixth
   corrective edit would cost more than starting from the photograph. That is what happened:
   `b426795` replaces it with a photograph-derived portrait, and the compounding-drift
@@ -147,8 +167,8 @@ None. The theater's rules index governs `theater/` and this session touched only
   session out of loading the index; served as written.
 
 ## Next steps
-None required. The oversized-asset flag under Open flags is the only outstanding item and
-is Evan's call to schedule.
+None. All flags this session raised are closed except the two honest caveats recorded under
+Open flags, which are statements of fact about the asset rather than open work.
 
 ## Pointers
 - Run prompt: `docs/planning/about-portrait/2026-09-09-portrait-shoulders-prompt.md`
