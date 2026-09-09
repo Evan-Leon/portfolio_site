@@ -40,7 +40,7 @@ import { expect, test } from "@playwright/test";
 
 import { projects } from "../src/projects";
 import {
-  APP_PATH,
+  APP_URL,
   EXIT_LIST_LINK,
   LOADER,
   LOADER_REVEALED_CLASS,
@@ -51,7 +51,7 @@ import {
 test("the loading ring shows, reveals, and leaves", async ({ page }) => {
   /* Not `openPage` — that helper's whole job is to wait until the gate is gone,
    * which is the last of the three states this test is here to watch. */
-  await page.goto(APP_PATH);
+  await page.goto(APP_URL);
 
   const loader = page.locator(LOADER);
   await expect(loader).toBeVisible();
@@ -63,7 +63,7 @@ test("the loading ring shows, reveals, and leaves", async ({ page }) => {
 test("the lot holds one screen per project, in drive order", async ({
   page,
 }) => {
-  await page.goto(APP_PATH);
+  await page.goto(APP_URL);
   await waitForReveal(page);
 
   const screens = page.locator(SCREEN);

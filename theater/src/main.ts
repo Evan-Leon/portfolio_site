@@ -27,6 +27,7 @@ import { createLoadingRing, loaderMinVisibleMs } from "./loader/loading-ring";
 import { SCREEN_CLASS, SCREEN_INDEX_ATTRIBUTE } from "./lot/build-lot";
 import { screenProgress } from "./lot/geometry";
 import { createPageChrome } from "./page/chrome";
+import { installPeriod } from "./page/period";
 import { projects } from "./projects";
 import { scenes } from "./scenes/registry";
 
@@ -61,6 +62,20 @@ if (!mount) {
     'Expected an element with id "app" in index.html to mount into',
   );
 }
+
+/*
+ * The sky is decided before anything is built.
+ *
+ * `data-period` is what the token blocks branch on, and the loading ring is
+ * painted out of those same tokens — so installing this after `createEngine`
+ * would let the gate come up in one time of day and the page behind it lift on
+ * another, a flash nobody can reproduce on a fast machine. The return value is
+ * dropped on purpose: the standalone page never uninstalls, and the listener
+ * lives exactly as long as the document does (`SDS-009` decides *which*
+ * element — `document.documentElement` here, an embedded host's own element in
+ * a shadow root).
+ */
+installPeriod(document.documentElement, { search: location.search });
 
 /*
  * `minVisibleMs` is passed from here rather than left to the ring's default, and

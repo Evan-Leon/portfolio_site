@@ -41,6 +41,11 @@ import {
   SCREEN_VIDEO_CLASS,
 } from "../../src/lot/build-lot";
 import { screenProgress } from "../../src/lot/geometry";
+import {
+  PERIOD_ATTRIBUTE,
+  PERIOD_PARAM,
+  type Period,
+} from "../../src/page/period";
 import { projects } from "../../src/projects";
 
 /**
@@ -52,6 +57,26 @@ import { projects } from "../../src/projects";
  * would test whichever of those the current server happens to do.
  */
 export const APP_PATH = "/theater/";
+
+/**
+ * The time of day every spec but `period.spec.ts` runs in.
+ *
+ * The page's sky follows the visitor's clock, so an unpinned suite asserts
+ * about whatever hour the runner happens to start at — green all afternoon and
+ * red on a nightly CI run, against code nobody changed. `night` rather than any
+ * other period because it is the composition the lot was designed and approved
+ * against.
+ */
+export const PINNED_PERIOD: Period = "night";
+
+/**
+ * Where specs actually navigate: the app, pinned to {@link PINNED_PERIOD}.
+ *
+ * `APP_PATH` stays exported and unpinned beside it — `nginx-parity.sh` asks the
+ * real server for the bare path, and `period.spec.ts` navigates unpinned on
+ * purpose to exercise the clock.
+ */
+export const APP_URL = `${APP_PATH}?${PERIOD_PARAM}=${PINNED_PERIOD}`;
 
 /** The loading gate's root, from `LOADING_RING_CLASS` in src/loader/loading-ring.ts. */
 export const LOADER = ".sds-loader";
@@ -127,7 +152,7 @@ const SETTLE_STABLE_FRAMES = 3;
  * moment at which the page is unambiguously the visitor's.
  */
 export async function openPage(page: Page): Promise<void> {
-  await page.goto(APP_PATH);
+  await page.goto(APP_URL);
   await waitForReveal(page);
 }
 
@@ -136,6 +161,20 @@ export async function waitForReveal(page: Page): Promise<void> {
   await expect(page.locator(LOADER)).toHaveCount(0, {
     timeout: REVEAL_TIMEOUT_MS,
   });
+}
+
+/**
+ * The time of day the page currently believes it is, read off the root.
+ *
+ * `null` is a real answer and not an error: it is what a build with the period
+ * engine removed returns, and a helper that threw there would fail the specs
+ * with a stack trace instead of the value they are asserting about.
+ */
+export async function periodAttribute(page: Page): Promise<string | null> {
+  return page.evaluate(
+    (attribute) => document.documentElement.getAttribute(attribute),
+    PERIOD_ATTRIBUTE,
+  );
 }
 
 /** A scene's scroll span, in document pixels. */
