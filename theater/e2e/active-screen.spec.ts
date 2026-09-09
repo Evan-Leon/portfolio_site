@@ -31,10 +31,19 @@
  * ---------------------------------------------------------------------
  * A screen whose clip 404s has its `<video>` *removed*, not paused — the poster
  * is then the honest state (`EVO-UNI-053`). Every screen DT9 and the showcase
- * runs have not reached yet is in that condition, so "the neighbour's video is
- * paused" is a question about an element that does not exist. What is asserted
+ * runs had not reached yet was in that condition, so "the neighbour's video is
+ * paused" was a question about an element that did not exist. What is asserted
  * instead is the set of screens actually playing, which is the claim either
- * spelling was reaching for and stays true as the remaining clips land.
+ * spelling was reaching for and stayed true as the remaining clips landed.
+ *
+ * THE MISSING CLIP IS MANUFACTURED TOO
+ * ------------------------------------
+ * Since 2026-09-09 every screen has a clip on disk, so the poster fallback can
+ * no longer be observed by driving to a screen that lacks one. The fallback
+ * test therefore answers that one screen's clip request with a 404 through
+ * `page.route` — the same `error` event a missing file raises, on the real
+ * element, with nothing on disk touched. Which screen plays the part does not
+ * matter; `WITHOUT_CLIP` names one so the test reads.
  */
 // @ts-expect-error -- dependency policy excludes @types/node from this browser project.
 import { execFileSync } from "node:child_process";
@@ -69,7 +78,7 @@ import {
  */
 test.describe.configure({ mode: "serial" });
 
-/** The project the synthetic clip is rendered for, and one with no clip at all. */
+/** The project the synthetic clip is rendered for, and the one whose clip the fallback test 404s. */
 const WITH_CLIP = projects.findIndex((project) => project.slug === "nom-noms");
 const WITHOUT_CLIP = projects.findIndex(
   (project) => project.slug === "spead-read",
@@ -224,6 +233,9 @@ test("the active screen's clip plays, stops, and plays again on the way back", a
 });
 
 test("a screen with no clip falls back to its poster", async ({ page }) => {
+  await page.route(`**${projects[WITHOUT_CLIP]!.clip}`, (route) =>
+    route.fulfill({ status: 404 }),
+  );
   await openPage(page);
 
   /* The clip is only fetched when the screen is activated (`preload="none"`),
