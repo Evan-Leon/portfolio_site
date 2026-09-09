@@ -78,6 +78,37 @@ if (!mount) {
 installPeriod(document.documentElement, { search: location.search });
 
 /*
+ * Every load starts at the top of the drive.
+ *
+ * The drive *is* the scroll position, so the browser's default
+ * `scrollRestoration` — put them back where they were — hands a returning
+ * visitor the middle of a camera move, with the approach they were meant to
+ * arrive through already behind them. Nothing downstream can correct for it:
+ * the engine is doing the right thing when it seeks to whatever the scroll
+ * says (`SDS-005`), and this is the only place that knows a page *load*
+ * happened at all.
+ *
+ * `manual` covers the back button as well as a refresh, deliberately — both
+ * drop a visitor mid-drive, and it is the same disorientation either way.
+ *
+ * A fragment is the one thing that overrides it. `#exit` is where the skip
+ * link goes, and a page that scrolled itself back to the top there would have
+ * broken the accessibility affordance it went to the trouble of having.
+ *
+ * Before `createEngine` rather than after, so the gate's first update pass
+ * mounts the scenes for the position the visitor is about to see instead of
+ * one that is already being thrown away.
+ *
+ * Standalone only: SD11's Wix entry is a component inside someone else's
+ * document, and resetting *their* scroll on load is not its business — the
+ * same line `SDS-009` draws for styles.
+ */
+if (!location.hash) {
+  history.scrollRestoration = "manual";
+  scrollTo(0, 0);
+}
+
+/*
  * `minVisibleMs` is passed from here rather than left to the ring's default, and
  * SD11's Wix entry does the same. The token is still the source of truth — this
  * reads it — but the read happens at the host's call site, where a failure is
