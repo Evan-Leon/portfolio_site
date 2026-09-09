@@ -1,5 +1,25 @@
 # portfolio_site — agent instructions
 
+## The theater's rules index
+
+`theater/skills/rules-index/` is this project's law for the vendored scroll
+engine: ten `SDS-*` invariants and the deliberate departures from the
+conventions the engine was built under. Each one exists because breaking it
+produces a failure that is silent, or that surfaces far from its cause.
+
+- **Load it before touching anything under `theater/`** — not only when
+  something looks engine-shaped. The rules it states are exactly the ones you
+  would not think to ask about.
+- **Cite by ID** (`SDS-004`) in commit messages, comments and review notes when
+  a rule is load-bearing. Never restate rule text; the ID is the link.
+- Its own frontmatter says "load first at every session start". Read that as
+  *before theater work*: the index governs the engine, and a session that only
+  touches `index.html`, `projects/`, `docs/` or the Docker files is not bound
+  by it. A session that has no idea which it is should load it.
+- The `EVO-*` citations scattered through the theater's comments belong to the
+  system the engine was built in and do not resolve here. The comment beside
+  each one always states the mistake in full — read the comment, not the ID.
+
 ## Session logs
 
 Every session ends by writing a session log to `docs/session-logs/` — no
