@@ -16,7 +16,7 @@
  * pinned container, so they are already in the tab order — but focus alone
  * moves nothing, and the browser cannot scroll a pinned element into view
  * because it never leaves the viewport. Without `main.ts`'s `focusin`
- * handler, tabbing walks an invisible list of eight links somewhere down the
+ * handler, tabbing walks an invisible list of links somewhere down the
  * lane: focus is in the right place, the accessible name is announced, and the
  * visitor sees a static picture of a car park. Nothing errors. So each Tab is
  * asserted three ways — the right link has focus, the page actually moved, and
@@ -76,6 +76,22 @@ test("the skip link is the first focusable element and moves focus past the driv
 test("tabbing past the header drives to each screen in turn", async ({
   page,
 }) => {
+  /*
+   * The longest test in the suite, and legitimately so: one Tab press per
+   * project — twenty of them — each handing Lenis a smooth scroll that has to
+   * finish before the next assertion can read where the page landed. It has
+   * always run at about 23s against
+   * Playwright's 30s default, which left it no room — and DT13's ground plane,
+   * which now reaches the horizon instead of stopping a third of the way down
+   * the lot, costs about 4s more here (measured: 53ms/frame against 29ms, in a
+   * headless SOFTWARE rasteriser, whose cost is the SCREEN pixels a frame
+   * touches — and the ground now reaches the horizon instead of stopping a
+   * third of the way down the lot, which is the feature). `test.slow` rather
+   * than a bare `setTimeout` because it is the marker Playwright's own
+   * reporting reads.
+   */
+  test.slow();
+
   await openPage(page);
 
   await page.keyboard.press("Tab");

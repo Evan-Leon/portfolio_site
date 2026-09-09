@@ -19,9 +19,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { projects } from "../projects";
 import { createFakeImages, type FakeImages } from "../test-helpers/fake-image";
 import {
+  GROUND_DEPTH_PROPERTY,
+  GROUND_LEAD_PROPERTY,
   GROUND_LINE_PROPERTY,
   LOT_CLASS,
   LOT_GROUND_CLASS,
+  GROUND_SQUASH_PROPERTY,
+  LOT_ORB_CLASS,
   LOT_WORLD_CLASS,
   POSTER_STATE_ATTRIBUTE,
   SCREEN_CLASS,
@@ -33,7 +37,7 @@ import {
   SCREEN_YAW_PROPERTY,
   SCREEN_Z_PROPERTY,
 } from "./build-lot";
-import { SPACING } from "./geometry";
+import { GROUND_SQUASH, groundDepth, SPACING } from "./geometry";
 import { lotScene, type LotAdapter } from "./lot-scene";
 
 /** A landscape screenshot, comfortably past `MIN_POSTER_PX`. */
@@ -184,6 +188,51 @@ describe("buildLot — the DOM the lot is made of", () => {
 
     expect(stage?.style.getPropertyValue(GROUND_LINE_PROPERTY)).toBe("58%");
     expect(container.querySelector(`.${LOT_GROUND_CLASS}`)).not.toBe(null);
+  });
+
+  it("hands the stylesheet a ground that spans the whole drive", async () => {
+    await mountLot();
+
+    const stage = container.querySelector<HTMLElement>(`.${LOT_CLASS}`);
+
+    /*
+     * The two numbers the ground plane is built from. `--sds-ground-depth` is
+     * asserted against `groundDepth(projects.length)` rather than the literal
+     * `11200px` on purpose: the literal belongs in `geometry.test.ts`, which
+     * pins the arithmetic, and this case is about the *handover* — that what
+     * the stylesheet receives is what the geometry computed, for however many
+     * projects the module holds (`EVO-UNI-130`).
+     */
+    expect(stage?.style.getPropertyValue(GROUND_LEAD_PROPERTY)).toBe("800px");
+    expect(stage?.style.getPropertyValue(GROUND_DEPTH_PROPERTY)).toBe(
+      `${groundDepth(projects.length)}px`,
+    );
+
+    /* Unitless, and it has to be: the stylesheet both DIVIDES lengths by it and
+     * feeds it to `scaleY()`, and neither works with a `px` suffix. */
+    expect(stage?.style.getPropertyValue(GROUND_SQUASH_PROPERTY)).toBe(
+      String(GROUND_SQUASH),
+    );
+    expect(container.querySelectorAll(`.${LOT_GROUND_CLASS}`)).toHaveLength(1);
+  });
+
+  it("hangs one orb on the stage, outside the world the drive moves", async () => {
+    await mountLot();
+
+    const orbs = [
+      ...container.querySelectorAll<HTMLElement>(`.${LOT_ORB_CLASS}`),
+    ];
+
+    /*
+     * Exactly one, and not inside `.sds-lot__world`. The orb is the sun or the
+     * moon: it is meant to be infinitely far away, and the world is the one
+     * element the drive translates — an orb inside it would slide across the
+     * sky as the visitor scrolls, which is the one thing a sun must not do.
+     */
+    expect(orbs).toHaveLength(1);
+    expect(orbs[0]?.closest(`.${LOT_WORLD_CLASS}`)).toBe(null);
+    expect(orbs[0]?.parentElement?.className).toBe(LOT_CLASS);
+    expect(orbs[0]?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("exposes the links to assistive technology", async () => {

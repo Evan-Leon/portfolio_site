@@ -34,10 +34,13 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 import {
+  LOT_CLASS,
+  LOT_GROUND_CLASS,
   LOT_WORLD_CLASS,
   SCREEN_CLASS,
   SCREEN_INDEX_ATTRIBUTE,
   SCREEN_LIT_PROPERTY,
+  SCREEN_SURFACE_CLASS,
   SCREEN_VIDEO_CLASS,
 } from "../../src/lot/build-lot";
 import { screenProgress } from "../../src/lot/geometry";
@@ -112,8 +115,17 @@ export const EXIT_LIST_LINK = ".sds-exit-list a";
 export const LOT_SCENE = "lot";
 export const LOT_SPACER = `[data-scene="${LOT_SCENE}"]`;
 
+/** The perspective stage: the sky, the star layer and the orb hang on it. */
+export const LOT = `.${LOT_CLASS}`;
+
 /** The element the drive translates; everything in the world is inside it. */
 export const LOT_WORLD = `.${LOT_WORLD_CLASS}`;
+
+/** The asphalt plane. The road markings are layers of its own background. */
+export const GROUND = `.${LOT_GROUND_CLASS}`;
+
+/** A screen's picture surface — the thing the period's floor brightness lands on. */
+export const SCREEN_SURFACE = `.${SCREEN_SURFACE_CLASS}`;
 
 /**
  * One screen. Spelled with the tag as well as the class because the whole

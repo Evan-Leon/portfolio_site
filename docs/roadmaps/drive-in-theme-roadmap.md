@@ -618,6 +618,50 @@ behind the camera a third of the way down the lot.
 > deterministically. The `groundDepth` literals in the tests below (`11200`, `20800`) may
 > need to change with the design; the *depth the plane spans* must not.
 
+> ## ✅ RESOLVED IN DT13 (2026-09-09) — neither candidate; the plane is SQUASHED
+>
+> Both candidates were built and measured against a scripted scrub in headless Chromium
+> (1440x900, `?period=afternoon`, mean ms/frame over 120 scrubbed frames):
+>
+> - **Folding the road into the ground's background stack: kept.** It removes the second
+>   composited layer and cause 2 outright, exactly as predicted, and costs nothing —
+>   0.2 ms/frame. `.sds-lot__ground::after` no longer exists; the road is three layers of
+>   the asphalt's own `background`, so a road drawn *by* the asphalt cannot fight it.
+> - **Sectioning the plane: measured and REJECTED.** N abutting planes cost precisely what
+>   one plane costs, because the total rastered **area** is unchanged and the area — not
+>   the tiling — is what hurts: `groundDepth(20)` measured **137.9 ms/frame as three
+>   abutting 4000x6934 planes and 134.0 as one 4000x20800 plane**. It satisfies the letter
+>   of "no single layer over 8192px" and fixes nothing. The section machinery was written,
+>   tested, measured and deleted.
+> - **What shipped: `GROUND_SQUASH`.** The plane is laid out `groundDepth(count) / 4` px
+>   deep and `scaleY(4)`d back out, so it spans the same world Z on a quarter of the
+>   texture, and every depth-direction length it paints (the 140/320px dash period, the
+>   780/784px parking rows) is divided by the same constant so it cancels. 134 → 51
+>   ms/frame; the twenty projects `projects.ts` holds rasterise at **4000x5200** — one
+>   untiled layer, and 20.8 Mpx against the 19.2 Mpx of the 4800px plane it replaces, so
+>   two and a half times the depth for roughly the same texture. (The frame cost rises by
+>   more than that ratio because the ground now reaches the horizon and covers about twice
+>   as many *screen* pixels, which is the feature.) At squash 4 the cap is crossed at 35
+>   projects, and `geometry.test.ts` asserts the invariant against `projects.length` so the
+>   thirty-fifth project fails the suite rather than shipping a tiled plane.
+>   **4 is the largest squash the markings survive** — the thinnest painted feature is the
+>   4px parking-row hairline, which is one texel at 4, two-thirds of one at 6 and half of
+>   one at 8; 6 and 8 measurably wash the rows and the near dash's edges out.
+>
+> `groundDepth(8) = 11200` and `groundDepth(20) = 20800` are unchanged and still asserted:
+> the depth the plane *spans* did not move, only how many texels are spent on it.
+>
+> **Still owed: Evan's eyes on real GPU hardware.** Everything above is software
+> rasterisation, which cannot see the blinking at all — it can only see area. The lever is
+> one constant, `GROUND_SQUASH` in `theater/src/lot/geometry.ts`.
+>
+> **And read `window.devicePixelRatio` while you are there.** The cap above is in CSS
+> pixels; `MAX_TEXTURE_SIZE` is in device texels, and they are the same unit only at DPR 1.
+> At DPR 2 the shipped 4000x5200 plane is nominally 10400 texels tall — back over 8192 and
+> back in this bug. Squash 8 would hold to DPR 2, but only by halving the 4px parking-row
+> hairline below one texel, so it is a real trade and not a free tightening. This gap is
+> DT11's too: its `20800 against 8192` is the same unit mismatch.
+
 <context>
 ## What's already built
 
@@ -1296,3 +1340,4 @@ density and the control, the natural-wheel numbers own every absolute `≥ 50`.
 | 2026-09-08 | — | `4882883` → `a572b5e` | Roadmap written (Part 2); two cold Opus evaluators — code truth 3 CRITICAL / 5 MAJOR / 9 MINOR, structure 1 CRITICAL / 8 MAJOR / 11 MINOR — 28 findings, 27 accepted / 1 rescoped / 0 rejected. Headline: the click-under-the-car test was pinned where no screen overlaps the car (now a bounded scan); `git checkout --` reverts on new/uncommitted files (now backup by copy); `pnpm … -- <filter>` does not filter under pnpm 11 (now `pnpm exec`); the car never opted out of hit-testing; DT15 split into DT15/DT16. Part 3 prompt prepared for Codex (`gpt-5.6-sol` high, Evan-driven): `docs/roadmaps/drive-in-theme-part3-prompt.md`. |
 | 2026-09-08 | — | `a572b5e` → `7579eed` | Part 3 (Codex `gpt-5.6-sol` high, in-session on Evan's approval) **hit the usage limit at 285k tokens with no findings list**; folded from its probe outputs (receipt `docs/roadmaps/drive-in-theme-part3-codex-review.md`, severities by the writing session): 2 MAJOR / 3 MINOR, all accepted — vacuous verbose-suite checks through `pnpm exec` (→ binaries directly), a lost mask invisible to `data-mask` + visibility (→ computed `mask-image` asserted), fragile `-A12` guards (→ awk rule blocks), DT16's Done stated to its one-screen Chromium proof, 16 real clips recorded in DT11. Its probes verified the Part 2 triage's own edits (scan-based click test, typed-stub falsification and copy restore, four requests for four declared art files). Not final — a full Part 3 re-run was owed and was run the same day (next row). |
 | 2026-09-08 | — | `7579eed` → _this commit_ | **Part 3B: the owed Part 3 re-run, completed** (Codex `gpt-5.6-sol` high, in-session on Evan's "can we finish the adversarial?", exit 0 at 301k tokens / 33 commands; prompt `drive-in-theme-part3b-prompt.md`, receipt `drive-in-theme-part3b-codex-review.md`). Narrowed to the five lenses the partial run never reached plus the five unreviewed `7579eed` edits, and required findings to be written to disk as they formed — the process fix for the earlier quota death. **0 CRITICAL, 11 MAJOR, 4 MINOR; 14 accepted, 1 rejected.** Headline: DT11's `lot20` omitted the twenty decoded posters production keeps resident, so GO could be measured on a lighter workload; a tree-paint failure skipped the car-only interaction gate and could ship a known-broken car (procedure reordered — car first, six steps); the `NO-GO-TREES` branch was internally unexecutable in both DT15 and DT16 (now a full override table per section); DT14 could accept a correct-but-floating car (bbox height/bottom/centre thresholds added); the checker's and the probe's self-tests proved only that they ran (now per-predicate fixture tables that fail closed); the glyph pipelines returned `head`'s exit status; the tree-mask assertion covered one of 88 trees; the car-click proof was not cascade-aware (now two viewports, computed `pointer-events`). Evan ruled **Chromium-only** on the browser gate, amended into the spec. **Rejected — finding 14** (DT11 needs a format step before its commit): measured false, `.prettierignore`'s `docs/` entry is honoured for explicitly-passed paths, so the hook cannot block those files. Cleared by Codex and left alone: the procedure's decidability, `destroy()`/re-mount, the conformance kit, the whole SVG fallback path, and the 83 % loading-ring plateau — diagnosed as the probe's own 1500 ms route delay plus the reveal fade, with SVG `decode()` at 0 ms. |
+| 2026-09-09 | DT13 | `baa6b6f` → _this commit_ | Six `[data-period]` palettes, the sun/moon orb, road markings and a geometry-sized ground shipped. **The ground plane took a third option, not either of the two the phase's MEASURED block proposed** (see the ✅ RESOLVED block in DT13). Folding the road into the asphalt's own `background` stack was kept — it deletes DT11's coplanar layer for 0.2 ms/frame. **Sectioning was built, measured and rejected**: N abutting planes cost precisely what one plane costs (`groundDepth(20)`: 137.9 ms/frame as three abutting planes, 134.0 as one), because the rastered *area* is the cost and not the tiling — it satisfies "no single layer over 8192px" and fixes nothing. What shipped is `GROUND_SQUASH = 4`: the plane is laid out `groundDepth(count) / 4` deep and `scaleY(4)`d back out, so it spans the same world Z on a quarter of the texture (134 → 51 ms/frame; 4000x5200 for the twenty projects that ship, 20.8 Mpx against the replaced plane's 19.2 Mpx — two and a half times the depth for about the same texture), with every depth-direction length it paints divided by the same constant so it cancels. 4 is the largest squash the 4px parking-row hairline survives at one texel; the cap is crossed at 35 projects and `geometry.test.ts` binds the invariant to `projects.length`. Also: `--sds-road-surface` added so `global.css` never spells `black` (`EVO-UNI-001`); `test.slow()` on the two long e2e sweeps, which were already at 23s and 28s against a 30s default before this phase. Night proven byte-identical to `baa6b6f` (sky gradient, asphalt, `brightness(0.35)`, marquee). **Codex adversarial run on the implementation** (`gpt-5.6-sol` high, exit 0 at 547k tokens; prompt `drive-in-theme-dt13-prompt.md`, receipt `drive-in-theme-dt13-codex-review.md`): **0 CRITICAL, 6 MAJOR, 2 MINOR, all 8 accepted — 6 fixed, 2 recorded.** Headline: `projects.ts` holds **twenty** projects and the texture guard was bound to literals (now to `projects.length`; the cap is crossed at 35); the sky check was a `toContain` that passed against an *inverted* gradient; the brightness checks sampled only unlit screens, so collapsing the filter left every screen dim with the whole suite green; nothing asserted the road rendered at all; and the one-texel parking row that *decides* `GROUND_SQUASH = 4` was unguarded. Accepted and **not** fixed: **screens 1–19 are unclickable at 390px** (pre-existing — the narrow rule stacks the screens single-file so each occludes the next; `click-through.spec.ts` only runs at desktop width), and the texture cap compares **CSS pixels** against a texel limit, which holds only at DPR 1. **Owed: Evan's eyes on real GPU hardware, plus `window.devicePixelRatio` there** — headless Chromium is SwiftShader and cannot see the blinking, only the area. |

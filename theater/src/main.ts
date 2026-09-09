@@ -116,7 +116,7 @@ engine.start();
  * The screens are real links in the pinned container, so they are already in
  * the tab order — but focus alone moves nothing, and the browser cannot scroll
  * a pinned element into view because it never leaves the viewport. Without
- * this, tabbing walks an invisible list of eight links somewhere down the lane.
+ * this, tabbing walks an invisible list of links somewhere down the lane.
  *
  * It lives here rather than in the lot adapter on purpose: driving the *page*
  * is the page's business, and an adapter that owned a reference to the engine

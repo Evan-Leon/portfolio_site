@@ -49,8 +49,6 @@
   --sds-warn-500: #e0a03a;
 
   --sds-marquee: #d4a862;
-  --sds-asphalt: #14102b;
-  --sds-asphalt-far: #0a0520;
   --sds-gradient-accent: linear-gradient(135deg, #7c3aed, #3b82f6);
 
   /* The drive-in lot, transcribed from docs/wireframes/theater.html. Raw
@@ -67,6 +65,20 @@
   --sds-lot-marquee-ink: #2b1d05;
   --sds-lot-marquee-edge: #3b2f12;
   --sds-lot-marquee-edge-lit: #8a6a35;
+  --sds-lot-asphalt: #14102b;
+
+  /* The night half of docs/wireframes/theater-drive-in-theme.html. The five
+   * daylight palettes do NOT come through here — see the departure note above
+   * the `[data-period]` blocks at the bottom of this file. */
+  --sds-lot-orb: #e9e7f7;
+  --sds-lot-orb-halo: rgba(233, 231, 247, 0.35);
+  --sds-lot-tree: #05030f;
+  --sds-lot-beam: rgba(255, 236, 190, 0.42);
+
+  /* Road markings. Not period-dependent: paint is paint at every hour, and the
+   * light falling on it is the asphalt's job, not the line's. */
+  --sds-lot-road-line: #e8c547;
+  --sds-lot-road-edge: rgba(240, 240, 255, 0.35);
 
   /* ---- Semantic colour -----------------------------------------------------
    * Dark by default: this genre of page is almost always dark, and a dark
@@ -89,18 +101,78 @@
 
   --sds-focus-ring: var(--sds-signal-400);
 
-  /* Drive-in roles. The lot is a night scene by construction — it is a sky, a
-   * ground plane and lit signage — so these are not re-stated in the light
-   * theme below: what changes there is the page around it. */
+  /* ---- Drive-in roles ------------------------------------------------------
+   * These are NIGHT, and night is the base: a root with no `data-period` at all
+   * renders the lot exactly as it rendered before the six palettes existed. The
+   * `[data-period]` blocks at the bottom of this file restate them for the other
+   * five times of day.
+   *
+   * They are not re-stated in the light theme below. The lot is a lot at every
+   * hour — a sky, a ground plane and signage — and what `[data-theme="light"]`
+   * changes is the page around it.
+   *
+   * The sky is three stops rather than one gradient token because a period only
+   * ever moves the stops; keeping the gradient's SHAPE (45% mid) in one place
+   * means six palettes cannot each drift a percentage point.
+   */
+  --sds-sky-top: var(--sds-ink-950);
+  --sds-sky-mid: var(--sds-lot-sky-mid);
+  --sds-sky-low: var(--sds-lot-sky-low);
   --sds-sky: linear-gradient(
     180deg,
-    var(--sds-bg) 0%,
-    var(--sds-lot-sky-mid) 45%,
-    var(--sds-lot-sky-low) 100%
+    var(--sds-sky-top) 0%,
+    var(--sds-sky-mid) 45%,
+    var(--sds-sky-low) 100%
   );
+
   --sds-star: var(--sds-ink-050);
   --sds-star-warm: var(--sds-ink-100);
   --sds-star-cool: var(--sds-lot-star-cool);
+  /* How much of the starfield is visible. One number, because the stars are one
+   * layer (`.sds-lot::before`) rather than ten gradients in the sky's own
+   * stack — which is the only reason a daylight sky can turn them off at all. */
+  --sds-star-alpha: 1;
+
+  /* The sun or the moon: one element, moved and recoloured per period. */
+  --sds-orb: var(--sds-lot-orb);
+  --sds-orb-halo: var(--sds-lot-orb-halo);
+  --sds-orb-x: 78%;
+  --sds-orb-y: 13%;
+  --sds-orb-size: 56px;
+  --sds-orb-halo-size: 40px;
+
+  --sds-asphalt: var(--sds-lot-asphalt);
+  --sds-asphalt-far: var(--sds-ink-950);
+  /* The lane, a shade darker than the parking apron either side of it. Derived
+   * rather than restated per period: it is the same asphalt with less light on
+   * it at every hour, and `var(--sds-asphalt)` here resolves to whichever period
+   * is on the root. The mix lives in this file because `black` is a raw colour
+   * and `global.css` reads roles only (`EVO-UNI-001`). */
+  --sds-road-surface: color-mix(in srgb, var(--sds-asphalt) 78%, black);
+  /* Declared once and never restated — see the primitives above. */
+  --sds-road-line: var(--sds-lot-road-line);
+  --sds-road-edge: var(--sds-lot-road-edge);
+
+  /* ---- Lighting ------------------------------------------------------------
+   * How bright the lot's own light sources read against the sky behind them.
+   *
+   * `--sds-unlit-floor` is how bright a switched-OFF screen is: 0.35 at night,
+   * up to 0.75 at noon, because a black rectangle in a bright lot reads as a
+   * hole rather than as a screen with nothing showing. `--sds-glow` scales the
+   * halos for the same reason in reverse — a bloom that carries a night scene
+   * is grubby smudging in daylight.
+   *
+   * `--sds-tree`, `--sds-beam` and `--sds-headlight` have no consumer yet; the
+   * trees, the car and its beam are DT15. They are declared here because the
+   * six palettes are transcribed from the approved wireframe in one pass, and a
+   * palette that has to be revisited to add three values per period is a
+   * palette that will end up inconsistent.
+   */
+  --sds-unlit-floor: 0.35;
+  --sds-glow: 1;
+  --sds-tree: var(--sds-lot-tree);
+  --sds-beam: var(--sds-lot-beam);
+  --sds-headlight: 1;
 
   --sds-screen-dark: var(--sds-lot-screen-off);
   --sds-screen-bezel: var(--sds-lot-bezel);
@@ -223,6 +295,152 @@
 
   --sds-loader-track: var(--sds-ink-100);
   --sds-loader-backdrop: var(--sds-ink-000);
+}
+
+/*
+ * ---------------------------------------------------------------------------
+ * TIME OF DAY
+ * ---------------------------------------------------------------------------
+ * Six palettes, transcribed from docs/wireframes/theater-drive-in-theme.html
+ * (approved 2026-09-08). `src/page/period.ts` puts the visitor's hour band on
+ * the root as `data-period` before the loader's curtain lifts, so the lot the
+ * page reveals is already the right time of day — there is no flash of night at
+ * noon.
+ *
+ * A RECORDED STRUCTURAL DEPARTURE: THESE ARE RAW VALUES, NOT PRIMITIVES
+ * --------------------------------------------------------------------
+ * Everything else in this file routes a role through the palette block at the
+ * top (`EVO-UNI-001`). These five daylight blocks do not, and that is
+ * deliberate: routing them would mean roughly seventy new primitives with
+ * exactly one consumer each, named for a colour nothing else will ever use
+ * (`--sds-lot-sunset-sky-mid`). The primitives layer exists so a rebrand touches
+ * one block; a palette whose every entry is used once is already that block. The
+ * night values ARE routed, because night is the base the whole lot was built
+ * against and its colours are shared with the rest of the page.
+ *
+ * Each block restates ONLY what the wireframe restates. `--sds-road-line` and
+ * `--sds-road-edge` appear in none of them — paint does not change colour with
+ * the hour.
+ *
+ * `night` restates `--sds-star-alpha` alone: the base block above IS night. It
+ * is written out anyway so the attribute is never "missing" from this file, and
+ * so a reader looking for `night` finds it where they look for the other five.
+ */
+
+/* DAWN 05:00–07:59 — indigo giving way to peach; sun just up, low left; stars
+   fading; headlights still on. */
+:host([data-period="dawn"]),
+:root[data-period="dawn"] {
+  --sds-sky-top: #3a3a6e;
+  --sds-sky-mid: #d88a9a;
+  --sds-sky-low: #fbd3b8;
+  --sds-asphalt: #3a3048;
+  --sds-asphalt-far: #201a2c;
+  --sds-star-alpha: 0.35;
+  --sds-tree: #1e2438;
+  --sds-unlit-floor: 0.5;
+  --sds-glow: 0.6;
+  --sds-headlight: 0.8;
+  --sds-orb: #ffc8a0;
+  --sds-orb-halo: rgba(255, 200, 160, 0.55);
+  --sds-orb-x: 20%;
+  --sds-orb-y: 46%;
+  --sds-orb-size: 96px;
+  --sds-orb-halo-size: 90px;
+}
+
+/* MORNING 08:00–11:59 — clear blue with a golden haze at the horizon; sun
+   mid-left; no stars, no headlights. */
+:host([data-period="morning"]),
+:root[data-period="morning"] {
+  --sds-sky-top: #5b93d8;
+  --sds-sky-mid: #a6cdf0;
+  --sds-sky-low: #f6e7b8;
+  --sds-asphalt: #48485a;
+  --sds-asphalt-far: #2c2c3c;
+  --sds-star-alpha: 0;
+  --sds-tree: #2e5a34;
+  --sds-unlit-floor: 0.7;
+  --sds-glow: 0.3;
+  --sds-headlight: 0;
+  --sds-orb: #fff0a0;
+  --sds-orb-halo: rgba(255, 240, 160, 0.5);
+  --sds-orb-x: 22%;
+  --sds-orb-y: 20%;
+  --sds-orb-size: 84px;
+  --sds-orb-halo-size: 80px;
+}
+
+/* AFTERNOON 12:00–16:59 — high pale sun, washed sky, grey asphalt; screens at
+   their brightest floor. */
+:host([data-period="afternoon"]),
+:root[data-period="afternoon"] {
+  --sds-sky-top: #3b78c8;
+  --sds-sky-mid: #8ec0ea;
+  --sds-sky-low: #d8e8f4;
+  --sds-asphalt: #4a4a58;
+  --sds-asphalt-far: #2e2e3a;
+  --sds-star-alpha: 0;
+  --sds-tree: #234a2a;
+  --sds-unlit-floor: 0.75;
+  --sds-glow: 0.2;
+  --sds-headlight: 0;
+  --sds-orb: #fff8d0;
+  --sds-orb-halo: rgba(255, 248, 208, 0.45);
+  --sds-orb-x: 32%;
+  --sds-orb-y: 7%;
+  --sds-orb-size: 90px;
+  --sds-orb-halo-size: 70px;
+}
+
+/* SUNSET 17:00–19:59 — the signature drive-in sky: plum to coral to amber; big
+   low sun right; headlights half on. */
+:host([data-period="sunset"]),
+:root[data-period="sunset"] {
+  --sds-sky-top: #2a1440;
+  --sds-sky-mid: #c2502e;
+  --sds-sky-low: #f0a050;
+  --sds-asphalt: #2a1c24;
+  --sds-asphalt-far: #140c14;
+  --sds-star-alpha: 0;
+  --sds-tree: #1a0e14;
+  --sds-unlit-floor: 0.5;
+  --sds-glow: 0.6;
+  --sds-headlight: 0.5;
+  --sds-orb: #ffb060;
+  --sds-orb-halo: rgba(255, 176, 96, 0.6);
+  --sds-orb-x: 50%;
+  --sds-orb-y: 36%;
+  --sds-orb-size: 112px;
+  --sds-orb-halo-size: 120px;
+}
+
+/* EVENING 20:00–21:59 — warm indigo, an amber band at the horizon, moon low
+   right, stars coming out. */
+:host([data-period="evening"]),
+:root[data-period="evening"] {
+  --sds-sky-top: #0e1020;
+  --sds-sky-mid: #241a3a;
+  --sds-sky-low: #4a2a3a;
+  --sds-asphalt: #16122c;
+  --sds-asphalt-far: #0c0818;
+  --sds-star-alpha: 0.6;
+  --sds-tree: #0b0818;
+  --sds-unlit-floor: 0.4;
+  --sds-glow: 0.9;
+  --sds-headlight: 1;
+  --sds-orb: #f2e9c8;
+  --sds-orb-halo: rgba(242, 233, 200, 0.35);
+  --sds-orb-x: 84%;
+  --sds-orb-y: 28%;
+  --sds-orb-size: 44px;
+  --sds-orb-halo-size: 36px;
+}
+
+/* NIGHT 22:00–04:59 — the base block above, restated. See the note. */
+:host([data-period="night"]),
+:root[data-period="night"] {
+  --sds-star-alpha: 1;
 }
 
 /*

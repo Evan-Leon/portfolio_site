@@ -9,14 +9,24 @@
  * point, because the approved wireframe was drawn against exactly these
  * numbers.
  *
- * `count` is 8 throughout — the real drive — so the band boundaries here are the
- * ones the page actually has.
+ * `count` is 8 in the band arithmetic below — a worked example, NOT the registry.
+ * `projects.ts` holds twenty; eight is the size the bands were designed and
+ * approved against, and writing them as ninths keeps the boundaries readable.
+ * Nothing about `activeScreen` or `screenProgress` is size-specific, so the
+ * example proves the arithmetic. The one place the real count matters is the
+ * ground's texture budget, and that test imports `projects` rather than a
+ * literal — see "the ground the GPU actually rasterises".
  */
 import { describe, expect, it } from "vitest";
 
+import { projects } from "../projects";
 import {
   activeScreen,
+  GROUND_LEAD,
   GROUND_LINE,
+  GROUND_RASTER_MAX,
+  GROUND_SQUASH,
+  groundDepth,
   lotZ,
   OFFSET,
   screenPlacement,
@@ -26,8 +36,11 @@ import {
   YAW_DEG,
 } from "./geometry";
 
-/** The eight projects the real lot has. */
+/** The eight-screen drive the band arithmetic was designed against. */
 const COUNT = 8;
+
+/** Twenty — which is both DT11's `lot20` probe and, today, the real registry. */
+const A_BIG_LOT = 20;
 
 /*
  * The drive is nine spacings long: one per screen, plus the one past the last
@@ -50,8 +63,95 @@ describe("the lot's constants", () => {
     });
   });
 
+  it("starts the asphalt one spacing in front of the camera", () => {
+    // 800, written out: `expect(GROUND_LEAD).toBe(SPACING)` restates the
+    // implementation and passes for every value SPACING could take
+    // (`EVO-UNI-109`).
+    expect(GROUND_LEAD).toBe(800);
+  });
+
+  it("draws the ground a quarter as deep as the lot it covers", () => {
+    // Written out rather than derived. Changing this changes how the road's
+    // dashes are sized in the stylesheet as well, so it is worth a test that
+    // notices someone moving it (`EVO-UNI-109`).
+    expect(GROUND_SQUASH).toBe(4);
+    expect(GROUND_RASTER_MAX).toBe(8000);
+    // `MAX_TEXTURE_SIZE` is 8192 on the hardware this page is reviewed on, and
+    // the limit has to be under it, not at it.
+    expect(GROUND_RASTER_MAX).toBeLessThan(8192);
+  });
+
   it("give the registry the scene length DT2 reserved", () => {
     expect(100 + VH_PER_SCREEN * COUNT).toBe(1060);
+  });
+});
+
+describe("groundDepth", () => {
+  it("covers the eight-screen drive with margin at both ends", () => {
+    // 11200 = the 7200 the camera drives, plus five spacings: one of lead in
+    // front of it and four past the last screen. Written out, not recomputed
+    // (`EVO-UNI-109`).
+    expect(groundDepth(COUNT)).toBe(11200);
+  });
+
+  it("grows with the lot — a twenty-screen lot needs 20800px of asphalt", () => {
+    expect(groundDepth(A_BIG_LOT)).toBe(20800);
+  });
+
+  it("outreaches the drive by more than the lead at either end", () => {
+    // The property the number exists for: the far edge is still ahead of the
+    // camera when the drive stops, so the lot never paints sky at ground level.
+    expect(groundDepth(COUNT) - lotZ(1, COUNT)).toBeGreaterThan(GROUND_LEAD);
+  });
+});
+
+describe("the ground the GPU actually rasterises", () => {
+  /*
+   * The invariant DT11 bought with a day of measurement: no single composited
+   * layer over the texture limit. It is stated as a RELATIONSHIP between the two
+   * constants rather than as a literal pixel count, because that is what it is —
+   * pinning `2800` here would keep passing if `GROUND_SQUASH` and `groundDepth`
+   * both moved and the layer went back over the limit (`EVO-UNI-110`).
+   *
+   * IN CSS PIXELS, which is the same unit as the hardware's texel limit only at
+   * `devicePixelRatio` 1. These assertions therefore catch the lot GROWING past
+   * the cap; they do not certify a 2x display, where the raster may be twice
+   * these numbers. See the note on `GROUND_SQUASH`.
+   */
+  it("stays inside the texture limit at the eight-screen design size", () => {
+    expect(groundDepth(COUNT) / GROUND_SQUASH).toBeLessThanOrEqual(
+      GROUND_RASTER_MAX,
+    );
+  });
+
+  it("stays inside it at twenty screens, DT11's `lot20`", () => {
+    expect(groundDepth(A_BIG_LOT) / GROUND_SQUASH).toBeLessThanOrEqual(
+      GROUND_RASTER_MAX,
+    );
+  });
+
+  it("stays inside it for the lot `projects.ts` ACTUALLY holds", () => {
+    /*
+     * The one assertion here bound to the registry rather than to a literal, and
+     * the only one that can stop a tiled plane from shipping. The examples above
+     * are design sizes; this is production. At squash 4 the ground crosses
+     * `GROUND_RASTER_MAX` at 35 projects, so without this the thirty-fifth
+     * project would ship the exact defect DT11 measured, silently, with every
+     * other test green (`EVO-UNI-110`).
+     */
+    expect(groundDepth(projects.length) / GROUND_SQUASH).toBeLessThanOrEqual(
+      GROUND_RASTER_MAX,
+    );
+  });
+
+  it("names the size the ground is today, so a change to it is visible", () => {
+    // Twenty projects, 20800px of world Z, 5200px of texture. Written out: a
+    // reader comparing this against the 4800px plane the phase removed should
+    // see that the squash bought two and a half times the DEPTH for roughly the
+    // same texture, not that it made the plane smaller.
+    expect(projects.length).toBe(20);
+    expect(groundDepth(projects.length)).toBe(20800);
+    expect(groundDepth(projects.length) / GROUND_SQUASH).toBe(5200);
   });
 });
 

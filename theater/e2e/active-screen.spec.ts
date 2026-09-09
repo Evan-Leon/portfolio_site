@@ -163,6 +163,18 @@ async function playingOtherThan(
 test("exactly the approached screen is lit, in both directions", async ({
   page,
 }) => {
+  /*
+   * Forty settled scroll positions — the lot forwards and then backwards, one
+   * per project each way — each of which waits for the page to stop moving
+   * before reading every screen's lit value. The same wall-clock story as
+   * `keyboard.spec.ts`'s tab sweep: it
+   * ran at about 10s alone and near 28s under a full parallel run, against
+   * Playwright's 30s default, and DT13's deeper ground costs a headless
+   * SOFTWARE rasteriser about 24ms a frame more. What it asserts is unchanged;
+   * it just needs room to finish saying it.
+   */
+  test.slow();
+
   await openPage(page);
 
   const forward = [...projects.keys()];

@@ -190,7 +190,16 @@ a {
  *  - `--sds-ground-line` is set on the stage by `lot/build-lot.ts` from
  *    `GROUND_LINE` in `lot/geometry.ts`, rather than written as `58%` here.
  *    The screens' placement comes from the same module, and two copies of the
- *    horizon drift silently (`EVO-UNI-057`).
+ *    horizon drift silently (`EVO-UNI-057`). `--sds-ground-lead` and
+ *    `--sds-ground-depth` arrive the same way, and for a stronger reason: the
+ *    depth is a function of how many projects there are, so it cannot be a
+ *    literal here at all.
+ *  - The ground plane is drawn a quarter as deep as it is and scaled back out.
+ *    See `.sds-lot__ground`.
+ *
+ * The palette is the visitor's time of day. `styles/tokens.css` carries six
+ * `[data-period]` blocks and `page/period.ts` puts the attribute on the root;
+ * nothing below knows which period it is, it just reads the roles.
  * -------------------------------------------------------------------------- */
 
 .sds-lot {
@@ -199,6 +208,24 @@ a {
   overflow: hidden;
   perspective: 900px;
   perspective-origin: 50% calc(100% - var(--sds-ground-line));
+  background: var(--sds-sky);
+}
+
+/* THE STARFIELD IS ITS OWN LAYER SO IT CAN BE TURNED OFF.
+ *
+ * These ten gradients used to sit on top of `var(--sds-sky)` in the rule above,
+ * in one `background` stack — which is fine for a page that is always night and
+ * impossible for one that is sometimes noon. There is no way to fade part of a
+ * background stack: `opacity` is a property of an element, and the sky is the
+ * same element. Hence a pseudo-element whose whole job is to carry one number,
+ * `--sds-star-alpha` (1 at night, 0.6 at dusk, 0 in daylight).
+ *
+ * Behind the world: `z-index: 0` here against the world's `1`, so a star can
+ * never paint over a screen. */
+.sds-lot::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
   background:
     radial-gradient(1px 1px at 12% 18%, var(--sds-star) 50%, transparent 51%),
     radial-gradient(1px 1px at 28% 9%, var(--sds-star) 50%, transparent 51%),
@@ -217,12 +244,35 @@ a {
     radial-gradient(1px 1px at 88% 19%, var(--sds-star) 50%, transparent 51%),
     radial-gradient(1px 1px at 5% 31%, var(--sds-star) 50%, transparent 51%),
     radial-gradient(1px 1px at 94% 34%, var(--sds-star) 50%, transparent 51%),
-    radial-gradient(1px 1px at 49% 4%, var(--sds-star) 50%, transparent 51%),
-    var(--sds-sky);
+    radial-gradient(1px 1px at 49% 4%, var(--sds-star) 50%, transparent 51%);
+  content: "";
+  opacity: var(--sds-star-alpha);
+  pointer-events: none;
+}
+
+/* The sun or the moon. One element for both — a period moves it, resizes it and
+   recolours it, and the halo is a `box-shadow` rather than a second element.
+
+   On the stage and NOT in the world, because the world is the one thing the
+   drive translates: an orb inside it would slide across the sky as the visitor
+   scrolls. It is meant to be infinitely far away. */
+.sds-lot__orb {
+  position: absolute;
+  z-index: 0;
+  top: var(--sds-orb-y);
+  left: var(--sds-orb-x);
+  width: var(--sds-orb-size);
+  height: var(--sds-orb-size);
+  margin: calc(var(--sds-orb-size) / -2) 0 0 calc(var(--sds-orb-size) / -2);
+  border-radius: var(--sds-radius-full);
+  background: var(--sds-orb);
+  box-shadow: 0 0 var(--sds-orb-halo-size) var(--sds-orb-halo);
+  pointer-events: none;
 }
 
 .sds-lot__world {
   position: absolute;
+  z-index: 1;
   inset: 0;
   transform-style: preserve-3d;
   transform: translateZ(0);
@@ -250,40 +300,84 @@ a {
   pointer-events: none;
 }
 
+/* THE ASPHALT, AND WHY IT IS DRAWN A QUARTER AS DEEP AS IT IS.
+ *
+ * The plane spans `--sds-ground-depth` of world Z — `groundDepth(count)` from
+ * `lot/geometry.ts`, deep enough that the far edge is still ahead of the camera
+ * when the drive stops. It is LAID OUT at a quarter of that and scaled back out
+ * by `--sds-ground-squash`, which is the only reason it can be that deep at all.
+ *
+ * WHAT DT11 MEASURED, AND WHY SECTIONING WAS NOT THE ANSWER
+ * --------------------------------------------------------
+ * The plane this replaces was a fixed `4800px`, which ended BEHIND the camera
+ * about a third of the way down the lot: the viewport then painted sky at ground
+ * level, invisible at night (the sky's low stop and the far asphalt are the same
+ * colour) and glaring the moment a daylight sky landed. Simply making it deep
+ * enough put one composited layer at 4000x11200 — past `MAX_TEXTURE_SIZE`, which
+ * DT11 measured as the whole scene blinking during scroll on real hardware.
+ *
+ * Cutting it into abutting sections under the limit was the obvious fix and it
+ * is not one: measured against a scripted scrub, N planes cost exactly what one
+ * plane costs, because the rastered AREA is the same. Squashing changes the
+ * area. 134ms/frame at squash 1, 51ms at 4; the twenty projects that ship now
+ * rasterise at 4000x5200 CSS pixels instead of 4000x20800 — 20.8 Mpx against
+ * the 19.2 Mpx of the shallow plane this replaces, so two and a half times the
+ * depth for about the same texture. Whether 5200 is inside the hardware limit
+ * depends on the display; see `GROUND_SQUASH` in `lot/geometry.ts`.
+ *
+ * EVERY DEPTH-DIRECTION LENGTH BELOW IS DIVIDED BY THE SAME NUMBER
+ * ---------------------------------------------------------------
+ * The dash period and the parking rows are lengths in world Z, so they are
+ * written `calc(140px / var(--sds-ground-squash))` and cancel against the
+ * `scaleY()`. Divide one and forget the other and the road silently re-tiles at
+ * a different pitch — which is exactly what happened the first time. Widths
+ * (14px, 420px, the 4px edge lines) are ACROSS the plane and are not divided.
+ *
+ * THE ROAD IS IN THIS BACKGROUND STACK AND NOT A PSEUDO-ELEMENT
+ * ------------------------------------------------------------
+ * It was `::after`, sitting at exactly the same Z as the asphalt under it. Two
+ * coplanar composited surfaces have no depth order, so the compositor re-sorted
+ * them every frame and the lane visibly blinked (DT11 again). A road drawn *by*
+ * the asphalt cannot fight it, and there is one fewer layer. */
 .sds-lot__ground {
   position: absolute;
   top: var(--sds-ground-line);
   left: 50%;
   width: 4000px;
-  height: 4800px;
+  height: calc(var(--sds-ground-depth) / var(--sds-ground-squash));
   margin-left: -2000px;
   background:
+    /* the dashed centre line: 140px of paint every 320px of world Z */
     repeating-linear-gradient(
-      180deg,
-      transparent 0 780px,
-      color-mix(in srgb, var(--sds-star) 5%, transparent) 780px 784px
-    ),
+        180deg,
+        var(--sds-road-line) 0 calc(140px / var(--sds-ground-squash)),
+        transparent calc(140px / var(--sds-ground-squash))
+          calc(320px / var(--sds-ground-squash))
+      )
+      center top / 14px 100% no-repeat,
+    /* the two edge lines, 4px in from the lane's sides */
+    linear-gradient(
+        90deg,
+        var(--sds-road-edge) 0 4px,
+        transparent 4px calc(100% - 4px),
+        var(--sds-road-edge) calc(100% - 4px)
+      )
+      center top / 420px 100% no-repeat,
+    /* the lane itself, darker than the apron either side of it */
+    linear-gradient(var(--sds-road-surface), var(--sds-road-surface)) center
+      top / 420px 100% no-repeat,
+    /* the parking rows */
+    repeating-linear-gradient(
+        180deg,
+        transparent 0 calc(780px / var(--sds-ground-squash)),
+        color-mix(in srgb, var(--sds-star) 5%, transparent)
+          calc(780px / var(--sds-ground-squash))
+          calc(784px / var(--sds-ground-squash))
+      ),
     linear-gradient(180deg, var(--sds-asphalt) 0%, var(--sds-asphalt-far) 70%);
-  transform: rotateX(-90deg) translateZ(0);
+  transform: translateZ(var(--sds-ground-lead)) rotateX(-90deg)
+    scaleY(var(--sds-ground-squash));
   transform-origin: 50% 0;
-  transform-style: preserve-3d;
-}
-
-.sds-lot__ground::after {
-  /* the lane */
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 420px;
-  height: 100%;
-  margin-left: -210px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    color-mix(in srgb, var(--sds-accent) 6%, transparent),
-    transparent
-  );
-  content: "";
 }
 
 /* A screen is a column whose BOTTOM sits on the ground line: surface on top,
@@ -329,10 +423,26 @@ a {
     0 0 60px
       color-mix(
         in srgb,
-        var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 10%),
+        var(--sds-marquee)
+          calc(var(--sds-screen-lit, 0) * var(--sds-glow) * 10%),
+        transparent
+      ),
+    0 0 30px
+      color-mix(
+        in srgb,
+        var(--sds-accent) calc(var(--sds-screen-lit, 0) * var(--sds-glow) * 20%),
         transparent
       );
-  filter: brightness(calc(0.35 + 0.65 * var(--sds-screen-lit, 0)));
+  /* An unlit screen is not black — it is `--sds-unlit-floor` bright, which is
+     0.35 at night and 0.75 at noon, because a black rectangle in a bright lot
+     reads as a hole in the page. A lit one is always 1, whatever the floor: the
+     interval is `[floor, 1]` and `--sds-screen-lit` is where in it we are. */
+  filter: brightness(
+    calc(
+      var(--sds-unlit-floor) + (1 - var(--sds-unlit-floor)) *
+        var(--sds-screen-lit, 0)
+    )
+  );
 }
 
 /* Nothing arrived, or what arrived was too small to be the poster. The screen
@@ -404,10 +514,13 @@ a {
     var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 100%),
     var(--sds-marquee-dim)
   );
+  /* Only the HALO scales with the period. The marquee's own background and
+     border stay at `* 100%`: a lit marquee is a lit sign at noon as much as at
+     midnight, and it is the bloom around it that daylight washes out. */
   box-shadow: 0 0 14px
     color-mix(
       in srgb,
-      var(--sds-marquee) calc(var(--sds-screen-lit, 0) * 30%),
+      var(--sds-marquee) calc(var(--sds-screen-lit, 0) * var(--sds-glow) * 30%),
       transparent
     );
   color: var(--sds-marquee-ink);

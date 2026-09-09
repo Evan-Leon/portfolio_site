@@ -10,11 +10,12 @@
  *
  * THE CONSTANTS LIVE HERE AND ONLY HERE (`EVO-UNI-057`)
  * -----------------------------------------------------
- * `SPACING`, `OFFSET`, `YAW_DEG`, `GROUND_LINE` and `VH_PER_SCREEN` are the
- * composition, and four different files want them: the timeline, the CSS-facing
- * placement, the scene registry's `vh`, and the tests. A second copy of `800`
- * anywhere is correct on the day it is written and drifts the first time the lot
- * is retimed, with no type error and no failing test.
+ * `SPACING`, `OFFSET`, `YAW_DEG`, `GROUND_LINE`, `VH_PER_SCREEN`, `GROUND_LEAD`
+ * and `GROUND_SQUASH` are the composition, and four different files want
+ * them: the timeline, the CSS-facing placement, the scene registry's `vh`, and
+ * the tests. A second copy of `800` anywhere is correct on the day it is written
+ * and drifts the first time the lot is retimed, with no type error and no
+ * failing test.
  *
  * THE WIREFRAME'S NUMBERS ARE NOT THESE NUMBERS, AND THAT IS NOT A BUG
  * --------------------------------------------------------------------
@@ -147,3 +148,115 @@ export function activeScreen(progress: number, count: number): number | null {
 export function screenProgress(i: number, count: number): number {
   return (i * SPACING) / (SPACING * (count + 1));
 }
+
+/**
+ * How far in front of the camera the ground plane's near edge starts.
+ *
+ * One spacing, so the plane is already under the visitor at progress 0 rather
+ * than beginning at the camera's own depth. Consumed by the CSS as
+ * `--sds-ground-lead`, written onto the stage by `lot/build-lot.ts` — CSS
+ * cannot import a constant, so the value is pushed rather than restated
+ * (`EVO-UNI-057`).
+ */
+export const GROUND_LEAD = SPACING;
+
+/**
+ * How deep the asphalt has to be for the lot to have a horizon at every
+ * progress.
+ *
+ * The camera drives {@link lotZ}`(1, count)` forward, so a plane that only
+ * covers the lot itself slides out from under the far half of the drive: the
+ * old fixed `4800px` plane ended *behind the camera* about a third of the way
+ * down an eight-screen lot, and the viewport painted sky where the asphalt
+ * should be. Invisible at night, because the sky's low stop and the far asphalt
+ * are the same colour; glaring the moment a daylight sky lands (which is what
+ * this phase is).
+ *
+ * Five spacings of margin: one for {@link GROUND_LEAD} in front of the camera,
+ * four past the end of the drive so the far edge is still receding toward the
+ * vanishing point when the camera stops.
+ */
+export function groundDepth(count: number): number {
+  return lotZ(1, count) + 5 * SPACING;
+}
+
+/**
+ * How much shallower than the lot the ground plane is DRAWN.
+ *
+ * The plane is laid out `groundDepth(count) / GROUND_SQUASH` pixels deep and
+ * `scaleY(GROUND_SQUASH)`d back out, so it still spans the whole lot in world Z
+ * while costing a quarter of the texture. Every length the plane paints along
+ * its depth axis — the dash period, the parking rows — is divided by the same
+ * number in the stylesheet, so the world geometry is identical at any value of
+ * this constant and only the texel budget changes.
+ *
+ * WHY, AND WHAT WAS MEASURED
+ * --------------------------
+ * DT11 found the whole scene blinking during scroll once the ground got deep
+ * enough: `groundDepth(20)` is 20800px against a `MAX_TEXTURE_SIZE` of 8192, and
+ * the page reached ~145 Mpx of composited texture. Capping the depth fixed it
+ * and was not available to us — the depth is what this phase exists to fix.
+ *
+ * Sectioning the plane into pieces under the texture limit was the other
+ * candidate, and measuring it ruled it out: N abutting planes cost exactly what
+ * one plane costs, because the total rastered AREA is unchanged. Against a
+ * scripted scrub in headless Chromium (2026-09-09, 1440x900, `?period=afternoon`,
+ * mean ms/frame over 120 scrubbed frames, twenty projects), `groundDepth(20)`
+ * measured 137.9 as three abutting 4000x6934 planes and 134.0 as one 4000x20800
+ * plane — the same number. Squashing the same depth instead: 86 at squash 2, 51
+ * at 4, 34 at 8. Near-linear in area, and flat with respect to how the area is
+ * divided up.
+ *
+ * 4 IS THE LARGEST SQUASH THE ROAD MARKINGS SURVIVE, and that is what picks it
+ * rather than the shape of the curve. The thinnest thing the plane paints along
+ * its depth axis is the 4px parking-row hairline, which becomes one texel at
+ * squash 4, two-thirds of one at 6 and half of one at 8 — below a texel it
+ * starts dropping out, and squash 6 and 8 measurably wash the rows and the
+ * near dash's edges out against squash 4.
+ *
+ * What that buys, for the twenty projects `projects.ts` actually holds: 4000x5200
+ * CSS pixels instead of 4000x20800, and 20.8 Mpx against the 19.2 Mpx of the
+ * 4000x4800 plane it replaces — very slightly MORE texture, for two and a half
+ * times the depth. (The frame cost is higher than that ratio suggests, because
+ * the point of the phase is that the ground now reaches the horizon and
+ * therefore covers roughly twice as many *screen* pixels. That part is the
+ * feature.)
+ *
+ * THE CAP IS IN CSS PIXELS AND THE HARDWARE LIMIT IS IN DEVICE TEXELS
+ * ------------------------------------------------------------------
+ * {@link GROUND_RASTER_MAX} and the tests that enforce it compare CSS pixels
+ * against a `MAX_TEXTURE_SIZE` of 8192, and those are only the same unit at
+ * `devicePixelRatio` 1. If Chromium's raster scale tracks DPR, a 5200px plane is
+ * 10400 device texels on a 2x display — back over the limit, and back in DT11's
+ * bug. This is stated and NOT resolved: it could not be measured here (headless
+ * Chromium rasterises through SwiftShader, which does not reproduce the symptom
+ * at any scale), and it was DT11's framing too — its 20800-against-8192
+ * comparison is the same unit mismatch. Two things are known: at DPR 1 the
+ * shipped plane is comfortably inside the limit, and the lever is this constant.
+ * Squash 8 would hold to DPR 2, at the cost of the parking rows (below).
+ * **Do not restate "one untiled layer" without qualifying the display.**
+ *
+ * The other bound is the lot's size: at squash 4 the ground crosses
+ * {@link GROUND_RASTER_MAX} at 35 projects. `geometry.test.ts` asserts that
+ * against `projects.length` itself, so the thirty-fifth project fails the suite
+ * rather than shipping a tiled plane.
+ *
+ * Re-measure on real GPU hardware before changing it. Headless Chromium
+ * rasterises in software and cannot see the blinking at all.
+ */
+export const GROUND_SQUASH = 4;
+
+/**
+ * The largest single dimension a composited layer may have, in CSS pixels.
+ *
+ * NOT a design number — `MAX_TEXTURE_SIZE` on the hardware this page is
+ * reviewed on is 8192, and a layer past it is tiled. 8000 leaves headroom for a
+ * driver that reports the limit and then applies it to a slightly smaller
+ * allocation. {@link GROUND_SQUASH} exists to keep the ground under it; the test
+ * that ties the two together is in `geometry.test.ts`.
+ *
+ * Measured in CSS pixels, which equals device texels only at `devicePixelRatio`
+ * 1 — see the note under {@link GROUND_SQUASH}. The guard is therefore a guard
+ * against the lot growing, and not yet a guarantee about high-density displays.
+ */
+export const GROUND_RASTER_MAX = 8000;

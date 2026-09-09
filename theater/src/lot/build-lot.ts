@@ -72,7 +72,15 @@ import type {
   GsapTimelineContext,
 } from "../adapters/gsap-timeline";
 import type { TheaterProject } from "../projects";
-import { GROUND_LINE, lotZ, screenPlacement, screenProgress } from "./geometry";
+import {
+  GROUND_LEAD,
+  GROUND_LINE,
+  GROUND_SQUASH,
+  groundDepth,
+  lotZ,
+  screenPlacement,
+  screenProgress,
+} from "./geometry";
 
 /** The perspective stage. One viewport, the starfield, nothing 3D of its own. */
 export const LOT_CLASS = "sds-lot";
@@ -80,6 +88,13 @@ export const LOT_CLASS = "sds-lot";
 export const LOT_WORLD_CLASS = "sds-lot__world";
 /** The asphalt plane the screens stand on. */
 export const LOT_GROUND_CLASS = "sds-lot__ground";
+/**
+ * The sun or the moon, depending on the hour.
+ *
+ * On the *stage*, not in the world: it is meant to be infinitely far away, so
+ * the one thing it must not do is move with the drive.
+ */
+export const LOT_ORB_CLASS = "sds-lot__orb";
 
 /** One screen — an `<a>`, because the whole thing is a link to the project. */
 export const SCREEN_CLASS = "sds-screen";
@@ -140,6 +155,28 @@ export const SCREEN_VIDEO_CLASS = "sds-screen__video";
  */
 export const GROUND_LINE_PROPERTY = "--sds-ground-line";
 
+/**
+ * How far in front of the camera the asphalt starts, and how deep it runs.
+ *
+ * Pushed onto the stage for the same reason {@link GROUND_LINE_PROPERTY} is:
+ * the depth is a function of how many projects there are, so it cannot be a
+ * literal in the stylesheet, and a second copy of the arithmetic in CSS would
+ * drift the first time a project is added (`EVO-UNI-057`).
+ */
+export const GROUND_LEAD_PROPERTY = "--sds-ground-lead";
+export const GROUND_DEPTH_PROPERTY = "--sds-ground-depth";
+
+/**
+ * How much shallower than the lot the plane is drawn before being scaled back.
+ *
+ * See {@link GROUND_SQUASH}. The stylesheet divides the plane's height AND every
+ * length it paints along its depth axis by this, then `scaleY()`s by it — so the
+ * number has to reach CSS rather than be spelled there, or the two halves of a
+ * cancellation drift apart and the road's dashes silently change length
+ * (`EVO-UNI-057`).
+ */
+export const GROUND_SQUASH_PROPERTY = "--sds-ground-squash";
+
 /** How much of a band a screen takes to light up as the camera approaches. */
 const LIT_IN_BANDS = 0.15;
 /** And to go dark once the camera is past it. See the header. */
@@ -162,8 +199,8 @@ export function buildLot(
   return ({ container, gsap }: GsapTimelineContext): GsapTimeline => {
     /*
      * The GSAP adapter marks its root `aria-hidden`, which is right for a
-     * decorative animation and wrong for this one: the lot is eight links to
-     * eight project pages, and the marquee is each link's accessible name.
+     * decorative animation and wrong for this one: the lot is one link per
+     * project, and the marquee is each link's accessible name.
      * Hiding them would leave a screen reader with the exit-beat list alone —
      * which does exist, but as the no-JS fallback, not as the accessible copy
      * of a control the page is showing.
@@ -180,12 +217,28 @@ export function buildLot(
       GROUND_LINE_PROPERTY,
       `${Number((GROUND_LINE * 100).toFixed(4))}%`,
     );
+    stage.style.setProperty(GROUND_LEAD_PROPERTY, `${GROUND_LEAD}px`);
+    stage.style.setProperty(GROUND_DEPTH_PROPERTY, `${groundDepth(count)}px`);
+    stage.style.setProperty(GROUND_SQUASH_PROPERTY, String(GROUND_SQUASH));
+
     const world = element("div", LOT_WORLD_CLASS);
     world.append(element("div", LOT_GROUND_CLASS));
 
     const screens = projects.map((project, i) => buildScreen(project, i));
     world.append(...screens);
     stage.append(world);
+
+    /*
+     * After the world in the DOM and behind it in paint order — the orb carries
+     * `z-index: 0` and the world `z-index: 1`, so the sky's furniture cannot
+     * land on top of a screen. It is decorative and unlabelled, so it is hidden
+     * from assistive technology on its own (the container's `aria-hidden` was
+     * just removed above, and for good reason — the screens are links).
+     */
+    const orb = element("div", LOT_ORB_CLASS);
+    orb.setAttribute("aria-hidden", "true");
+    stage.append(orb);
+
     container.append(stage);
 
     /* One unit per band; `count + 1` bands in the drive. See the header. */
