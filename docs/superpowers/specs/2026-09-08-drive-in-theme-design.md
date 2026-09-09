@@ -349,6 +349,30 @@ Chromium: that is what DT11 measures, what DT16 asserts, and what the feature is
 documented as supporting. Firefox support, if wanted, is a later phase with its own
 measurement — not an optional line inside this one.
 
+**Viewport scope, amended 2026-09-09 (Evan's ruling, after DT16 measured it):** "leave
+every screen clickable" above holds at desktop width and is **false below 768px**.
+Measured on the served container at 390×720, driving to each screen's own band middle and
+hit-testing a 5px grid over the whole viewport: screen 0 owns 1,163 points, and **screens
+1–19 own zero** — every one of the 9,853 screen-owned pixels in the frame belongs to
+screen `i-1`. The narrow layout stacks the screens single-file down the lane
+(`@media (max-width: 767px)` restates `--sds-screen-x`), so the nearer screen covers the
+frame completely and the lit screen behind it cannot be tapped anywhere.
+
+This is a known, accepted limitation rather than a defect to fix now, because the theater
+is **desktop-only by an earlier decision**: `.hero__cta--theater` is `display: none` inside
+`@media (max-width: 767px)` in `assets/css/styles.css`, so a phone never sees the link and
+reaches the lot only by a typed URL or a shared deep link. The pre-existing note in DT13's
+Changelog ("screens 1–19 are unclickable at 390px") understated it — the screens are not
+merely hard to hit, they are entirely covered, and a tap lands on the *previous* project
+rather than on nothing.
+
+**A fix is wanted and is queued, not scheduled** (see the DT16 session log's Next steps).
+The candidate shapes are a narrow-layout horizontal offset so the screens stop occluding
+each other, or a phone entry guard that renders the exit beat's hand-written project list
+instead of mounting the lot. Either needs its own falsification and a phone click-through
+spec — `click-through.spec.ts` runs at desktop width only, which is why this went unseen
+from DT6 until DT16.
+
 Searched 2026-09-08: DTF (`docs/spikes/2026-08-25-transformed-video-probe.html`, decision
 row in `docs/roadmaps/drive-in-theater-roadmap.md`, session log
 `2026-08-25-11-20-claude-code-dtf-transformed-video-probe.md`) measured an eight-screen
