@@ -1064,10 +1064,6 @@ h4 {
     align-items: center;
   }
 
-  .hero__cta--theater {
-    display: none;
-  }
-
   .project-grid {
     grid-template-columns: 1fr;
   }
