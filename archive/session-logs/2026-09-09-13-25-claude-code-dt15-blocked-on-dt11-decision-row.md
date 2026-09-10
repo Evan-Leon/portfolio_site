@@ -161,19 +161,19 @@ decision row's footnote and repeated under Open flags.
   artefacts (committed art, a sibling phase that already ran) rather than from the
   measurement. DT15's branch named the empty row and stopped; DT14's evidently did not and
   shipped tree sprites against an unwritten row.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-215
 - **When a decision row records a ruling rather than a measurement, the measurement cells
   say `not taken` and a footnote names what was never run.** A row filled in with plausible
   numbers, or left ambiguous, is indistinguishable later from one that was actually
   measured — and every downstream phase that trusted it inherits a premise nobody can
   audit. The cost of saying so is one footnote; the cost of not saying so is discovering
   it from a performance bug.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-216
 - **A source comment must not contain the string a verification grep is asserting the
   absence of.** Prose explaining *why* a construct is banned ("not `Math.random()`") fails
   the guard that bans it, and the usual repair — loosening the grep to skip comments —
   makes it weaker than the thing it replaced. Reword the comment.
-  `promote → tooling`
+  `promote → tooling` — swept: EVO-TOOL-222
 
 ## Meta-prompt / skill / doc updates
 

@@ -105,14 +105,14 @@ None.
   depends on the timers being faked, and prefer the narrow `setFixedTime` (Date
   only, timers untouched) when it does. Measured here: `install()` before `goto`
   left the clock ticking and the reveal worked, so this is a check to run, not a
-  prohibition. `promote → tooling`
+  prohibition. `promote → tooling` — swept: EVO-TOOL-221
 - **A module that exists to be stubbed in a falsification must not duplicate the
   logic it delegates.** `getPeriod` was required to hold no bands of its own
   precisely so that stubbing `periodForHour` breaks the clock path; the ported
   original inlines the bands, and had that been copied, the `EVO-UNI-061`
   falsification would have passed unchanged and reported coverage that did not
   exist. When a phase names the falsification up front, check that the seam it
-  will cut is the only path to the behaviour. `promote → universal`
+  will cut is the only path to the behaviour. `promote → universal` — swept: EVO-UNI-212
 
 ## Meta-prompt / skill / doc updates
 

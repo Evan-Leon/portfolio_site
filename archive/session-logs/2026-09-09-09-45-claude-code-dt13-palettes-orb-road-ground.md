@@ -310,14 +310,14 @@ DT11's decision row.
   which decouples a surface's texture size from the world size it covers. Before splitting
   a too-large layer, measure whether the cost tracks area or dimension — the two
   hypotheses predict the same symptom and opposite fixes.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-210
 - **`backface-visibility: hidden` on a plane laid flat by `rotateX(-90deg)` deletes it.**
   It reads as a harmless compositing hint and was measured as a 3x frame-time win —
   because it had removed the ground entirely. The rotation puts the element's normal in
   +Y (screen down) while the camera looks at it from above, so the visible side is the
   back face. Any "free" performance win of this size is a rendering bug until a screenshot
   says otherwise.
-  `promote → react-frontend`
+  `promote → react-frontend` — swept: not promoted — CSS-3D-plane-specific; no fleet repo does CSS 3D transform planes today; re-promote if one does
 - **A `toContain` on one member of a composite computed value passes for every arrangement
   of the others.** A sky assertion read the stage's computed `background-image` and checked
   it contained the period's top colour; reversing the gradient's first and last stops
@@ -328,7 +328,7 @@ DT11's decision row.
   is checking), or parse it and assert each part *with its position*. Sibling of
   `EVO-UNI-018`; the failure mode is `EVO-UNI-061`'s, one level down — the check runs, it
   just cannot distinguish the states it exists to distinguish.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-214
 - **A fixed overlay with one control in it needs `pointer-events: none` on the container
   and `auto` on the control, and nothing but a click test will tell you it does not.** A
   `position: fixed` header spanning the viewport owns every point in its own height, so
@@ -338,14 +338,14 @@ DT11's decision row.
   asserting the topmost is not the decoration; and pin the container's own control
   separately, because a focus/tab-order test stays green when an inherited
   `pointer-events: none` has made it mouse-dead.
-  `promote → react-frontend`
+  `promote → react-frontend` — swept: EVO-FE-284
 - **A hit-test assertion must not pick its point from `getBoundingClientRect` when the
   element is 3D-transformed.** A yawed or rotated element's axis-aligned box is strictly
   larger than the shape the browser hit-tests, so points sampled from the box land outside
   the element and the test fails for a reason unrelated to what it is checking. Ask the
   browser instead — `elementsFromPoint` returns the real stack, and omits anything with
   `pointer-events: none`.
-  `promote → react-frontend`
+  `promote → react-frontend` — swept: EVO-FE-285
 - **Telling a human to "set" a read-only DOM property produces a confident false negative,
   not an error.** `window.devicePixelRatio = 2` in the console fails *silently* in
   non-strict mode: nothing throws, the value does not change, and the operator reports back
@@ -355,7 +355,7 @@ DT11's decision row.
   confirm the mechanism can change it, and have them read the value back as part of the
   step so a no-op is visible. For `devicePixelRatio` the real levers are browser zoom and OS
   display scaling.
-  `promote → universal`
+  `promote → universal` — swept: EVO-UNI-213
 - **A `pgrep`/`grep` whose pattern appears in the checking command's own command line
   matches itself.** Polling for a background job with
   `until ! pgrep -f 'codex exec'; do sleep 30; done` never terminates: the waiting shell's
@@ -365,13 +365,13 @@ DT11's decision row.
   poller, so the answer is unfalsifiable in the direction that matters. Match something the
   checking command cannot contain (the resolved binary path, a PID captured at launch, or a
   sentinel file the job writes on exit). Same family as `EVO-UNI-061`.
-  `promote → tooling`
+  `promote → tooling` — swept: not promoted — covered by EVO-TOOL-220 (the until-loop pgrep self-match) + EVO-TOOL-200
 - **A phase's own `<verification>` grep can be unsatisfiable under the repo's formatter.**
   A single-line `grep` for a CSS expression the project's Prettier config wraps at 80
   columns can never match; the honest move is a whitespace-insensitive equivalent
   (`tr -s '[:space:]' ' ' | grep -o '<full expression>'`), which is stronger than the
   original, not weaker — never reformat the file to satisfy the check.
-  `promote → tooling`
+  `promote → tooling` — swept: EVO-TOOL-222
 
 ## Meta-prompt / skill / doc updates
 

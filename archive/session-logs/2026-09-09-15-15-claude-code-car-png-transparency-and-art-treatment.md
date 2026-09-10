@@ -202,7 +202,7 @@ verdict is only as good as the tool version it was handed.
   existing rule covers it — `SDS-006` governs how assets are *declared* through the loader,
   not what state a file is in when it lands in the tree, and the file passed every check the
   repo actually runs on a commit (Prettier does not read PNGs).
-  promote → tooling
+  promote → tooling — swept: not promoted — covered by EVO-TOOL-055 (verify generated-PNG transparency via canvas pixel data, not a screenshot); commit-discipline angle belongs in the theater-local rules-index if wanted
 
 ## Meta-prompt / skill / doc updates
 

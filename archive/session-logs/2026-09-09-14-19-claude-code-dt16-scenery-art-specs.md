@@ -189,7 +189,7 @@ None.
   pass, which is the shape `EVO-UNI-061` is about. Pair it with a witness that the sweep
   happened at all (here: closest approach < 40 px), or the negative case passes on a page
   that never rendered — `EVO-UNI-118` for a precondition rather than for two greps.
-  promote → tooling
+  promote → tooling — swept: EVO-TOOL-223
 
 - **When a browser test asserts a per-element property over a collection, assert each
   element against the value *its own* attributes say it should carry, not against one
@@ -198,7 +198,7 @@ None.
   `mask-image: none`. A collection-level count and a first-element spot check are the same
   vacuous check written twice. Reading `data-tree-variant` per element and deriving the
   expected URL from it catches both a lost property and one applied to the wrong member.
-  promote → tooling
+  promote → tooling — swept: not promoted — covered by EVO-UNI-018 (no vacuous assertions) + EVO-UNI-181 (assert the denominator)
 
 - **A phase gated on a decision row must state its own stop condition; a gate that lives
   only in the *next* phase does not hold.** DT14 was gated on DT11's decision row but its
@@ -206,7 +206,7 @@ None.
   was only noticed when DT15 read its own gate and halted. Every phase that depends on an
   upstream verdict states the verdict check in its own header, even when the phase before
   it already does. Cleared the DT15 log's pending item as the reusable half of it.
-  promote → universal
+  promote → universal — swept: EVO-UNI-215
 
 - **A click-through suite that runs at one viewport proves nothing about the others, and
   the gap can hide a total interaction failure rather than a degradation.**
@@ -218,7 +218,7 @@ None.
   properties a builder writes inline), the interaction test has to visit that breakpoint
   too — a layout assertion or a screenshot at that width passes while the page is
   unusable. Sibling of the desktop/phone split measured in DT16's own car-click scan.
-  promote → tooling
+  promote → tooling — swept: EVO-TOOL-223
 
 ## Meta-prompt / skill / doc updates
 

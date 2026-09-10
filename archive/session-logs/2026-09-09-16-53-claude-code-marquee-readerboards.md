@@ -102,7 +102,7 @@ None.
   viewport. An overflow of a few pixels is invisible in a screenshot and
   invisible in a passing test suite, and it only ever shows on the one project
   whose copy is longest.
-  promote → universal
+  promote → universal — swept: EVO-UNI-217
 
 ## Meta-prompt / skill / doc updates
 

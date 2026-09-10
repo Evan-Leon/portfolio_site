@@ -157,7 +157,7 @@ None.
   declares one, and the honest fix is to widen the fixture's subject rather than
   to loosen the new predicate. Sibling of `EVO-UNI-120` (a metric must be able
   to report a bad number) and `EVO-UNI-061`.
-  promote → universal
+  promote → universal — swept: not promoted — covered in spirit by EVO-UNI-120 (a fixture must select a property that actually holds); specific to multi-predicate isolation fixtures
 - Proving a checker's predicates are live needs a mutation pass, not a fixture
   pass: run the suite once per predicate with that predicate stubbed to its
   passing value and assert that exactly the rows naming it flip. Nine such runs
@@ -165,7 +165,7 @@ None.
   fixtures are correct" from "the predicates are wired". A fixture table alone
   can be satisfied by a checker whose predicates all return `true`, which is the
   precise failure `EVO-UNI-061` names.
-  promote → universal
+  promote → universal — swept: EVO-UNI-211
 
 ## Meta-prompt / skill / doc updates
 
