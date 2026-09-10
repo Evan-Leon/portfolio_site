@@ -5,7 +5,8 @@ description: Use whenever a drive-in theater sprite in theater/public/art/ is cr
 
 Read `../../../.claude/skills/treating-art-sprites/SKILL.md` in full; it is the
 canonical source of truth, and it points at `scripts/art/README.md` for the full
-reference. Follow its five steps — scaffold with `new-run.sh`, write the prompt
-from the template, launch detached, run `check.mjs` and look at the card, then
-integrate and rebuild. Never commit a generated sprite as returned, and do not
+reference. Follow its five steps — scaffold with `new-run.sh sprite <run-name> …` (the
+first arg is the contract; the loop is asset-agnostic and the sprite tools live
+under `scripts/art/contracts/sprite/`), write the prompt from the template,
+launch detached, run `check.mjs` and look at the card, then integrate and rebuild. Never commit a generated sprite as returned, and do not
 work around the exit-3 refusals. Run the commands from the repo root.

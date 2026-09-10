@@ -29,13 +29,15 @@ pnpm -C scripts/art install --ignore-workspace   # sharp is native; deliberately
 
 ```bash
 cd scripts/art
-./new-run.sh <run-name> ../../theater/public/art/car.png <reference> [<reference> ...]
+./new-run.sh sprite <run-name> ../../theater/public/art/car.png <reference> [<reference> ...]
 ```
 
-Creates a scratch workspace **outside every repo** holding the treatment tools and their
-deps, the edit target and each reference re-encoded to plain PNG (the generator rejected a
-JPEG carrying MPO metadata on the 2026-09-09 portrait run), and `prompt.md` from
-`PROMPT-TEMPLATE.md`. It prints the workspace path and the exact launch line.
+The first argument is the **contract** — `sprite` (the loop is asset-agnostic; the contract
+under `contracts/<name>/` supplies the tools and prompt, see `scripts/art/README.md`).
+Creates a scratch workspace **outside every repo** holding the contract's treatment tools and
+their deps, the edit target and each reference re-encoded to plain PNG (the generator rejected
+a JPEG carrying MPO metadata on the 2026-09-09 portrait run), and `prompt.md` from the sprite
+contract's `PROMPT-TEMPLATE.md`. It prints the workspace path and the exact launch line.
 
 Codex never writes into the repo. The treated sprite is copied back by hand, after the
 browser check, by someone who looked at it.
@@ -100,7 +102,7 @@ retry passed.
 Codex cannot launch a browser in its sandbox, so the real checker is yours to run:
 
 ```bash
-cd scripts/art
+cd scripts/art/contracts/sprite
 node check.mjs <workspace>/out/car.png
 ```
 
@@ -111,13 +113,13 @@ passed every structural check with holes punched through its canopy.
 
 Then read the runlog and check the change actually landed, character by character for any
 text. Re-run one stage by hand if you need to (`node key.mjs`, `node fit.mjs`,
-`node measure.mjs`); `scripts/art/README.md` documents each and its knobs.
+`node measure.mjs`); `scripts/art/contracts/sprite/README.md` documents each and its knobs.
 
 ## 5. Integrate
 
 ```bash
 cp <workspace>/out/car.png theater/public/art/car.png
-node scripts/art/check.mjs theater/public/art/*.png     # all four still pass
+node scripts/art/contracts/sprite/check.mjs theater/public/art/*.png     # all four still pass
 pnpm theater:typecheck && pnpm theater:test
 docker compose build && docker compose up -d --force-recreate   # rebuild-restart skill
 ```
@@ -161,6 +163,7 @@ and look again.
 
 ## Full reference
 
-`scripts/art/README.md` — the contracts (`car*` is 1600×900, `tree*` is 800×1200, both
-chosen by output basename), every knob, and the reasoning behind each refusal. Read it
-before changing any of the scripts.
+`scripts/art/contracts/sprite/README.md` — the sub-contracts (`car*` is 1600×900, `tree*` is
+800×1200, both chosen by output basename), every knob, and the reasoning behind each refusal.
+Read it before changing any of the scripts. `scripts/art/README.md` covers the asset-agnostic
+loop and how to add another contract.

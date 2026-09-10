@@ -4,7 +4,8 @@
 import { createRequire } from "node:module";
 import path from "node:path";
 import fs from "node:fs";
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..");
+// This file lives at scripts/art/contracts/sprite/, four levels below the repo root.
+const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..", "..", "..");
 const require = createRequire(path.join(REPO, "theater/package.json"));
 const { chromium } = require("@playwright/test");
 const PAGE = "file://" + path.join(REPO, "docs/spikes/art-check.html");

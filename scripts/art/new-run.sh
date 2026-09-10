@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 #
-# Scaffold a Codex art run: a scratch workspace with the treatment tools, the edit target
-# and any style references converted to clean PNGs, and a prompt stub to fill in.
+# Scaffold a Codex generation run: a scratch workspace with a contract's treatment tools,
+# the edit target and any style references converted to clean PNGs, and a prompt stub to
+# fill in.
 #
-#   ./new-run.sh <run-name> <edit-target.png> [reference.jpg|webp|png ...]
+#   ./new-run.sh <contract> <run-name> <edit-target.png> [reference.jpg|webp|png ...]
+#
+# The loop itself is asset-agnostic. What makes a run a *sprite* run (or any other asset)
+# is the <contract> — a directory under contracts/ holding a manifest.sh (the tools to copy
+# and the prompt template), the template, the tools, and a README. `sprite` is the reference
+# contract; add another by copying its shape (see contracts/sprite/README.md and README.md).
 #
 # Prints the workspace path and the exact `codex exec` line to launch. It does NOT launch
 # anything — read the prompt you wrote before spending a run.
 #
 # Why a scratch workspace at all: Codex runs with `-C <dir> --skip-git-repo-check` outside
-# every repo, so a run can never write into the tree. The treated sprite is copied back in
-# by hand, after the browser check, by a human who looked at it.
+# every repo, so a run can never write into the tree. The treated asset is copied back in
+# by hand, after the check, by a human who looked at it.
 #
 # Why references get re-encoded: the generator rejected a JPEG carrying MPO metadata on the
 # 2026-09-09 portrait run. `sharp` re-encodes to a plain PNG and the problem goes away.
@@ -18,15 +24,47 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-if [ $# -lt 2 ]; then
-  echo "usage: $0 <run-name> <edit-target.png> [reference ...]" >&2
-  echo "  e.g. $0 plate-and-ring ../../theater/public/art/car.png ~/pics/CT-plate.jpg" >&2
+contracts_dir="$here/contracts"
+list_contracts() { find "$contracts_dir" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; | sort | paste -sd' ' -; }
+
+if [ $# -lt 3 ]; then
+  echo "usage: $0 <contract> <run-name> <edit-target.png> [reference ...]" >&2
+  echo "  contracts: $(list_contracts)" >&2
+  echo "  e.g. $0 sprite plate-and-ring ../../theater/public/art/car.png ~/pics/CT-plate.jpg" >&2
   exit 2
 fi
 
-name="$1"
-target="$2"
-shift 2
+contract="$1"
+name="$2"
+target="$3"
+shift 3
+
+cdir="$contracts_dir/$contract"
+if [ ! -d "$cdir" ] || [ ! -f "$cdir/manifest.sh" ]; then
+  echo "error: unknown contract '$contract' (no $cdir/manifest.sh)" >&2
+  echo "  available: $(list_contracts)" >&2
+  exit 2
+fi
+
+# CONTRACT_TOOLS (array) + CONTRACT_PROMPT (filename), relative to the contract dir.
+CONTRACT_TOOLS=()
+CONTRACT_PROMPT=""
+# shellcheck source=/dev/null
+source "$cdir/manifest.sh"
+if [ ${#CONTRACT_TOOLS[@]} -eq 0 ] || [ -z "$CONTRACT_PROMPT" ]; then
+  echo "error: $cdir/manifest.sh must set CONTRACT_TOOLS (non-empty) and CONTRACT_PROMPT" >&2
+  exit 1
+fi
+if [ ! -f "$cdir/$CONTRACT_PROMPT" ]; then
+  echo "error: prompt template $cdir/$CONTRACT_PROMPT not found" >&2
+  exit 1
+fi
+for t in "${CONTRACT_TOOLS[@]}"; do
+  if [ ! -f "$cdir/$t" ]; then
+    echo "error: contract tool $cdir/$t not found" >&2
+    exit 1
+  fi
+done
 
 if [ ! -d "$here/node_modules/sharp" ]; then
   echo "error: dependencies missing — run: pnpm -C scripts/art install --ignore-workspace" >&2
@@ -41,8 +79,9 @@ if [ -e "$w" ]; then
 fi
 mkdir -p "$w/ref" "$w/raw" "$w/out"
 
-# Tools and their deps, so Codex can self-check every try without a browser.
-cp "$here"/key.mjs "$here"/fit.mjs "$here"/measure.mjs "$here"/treat.mjs "$here"/package.json "$w/"
+# The contract's tools and the shared deps, so Codex can self-check every try without a browser.
+for t in "${CONTRACT_TOOLS[@]}"; do cp "$cdir/$t" "$w/"; done
+cp "$here/package.json" "$w/"
 cp -r "$here/node_modules" "$w/"
 
 # Edit target and references, re-encoded to plain PNG.
@@ -72,10 +111,11 @@ done
 
 sed -e "s|@@TARGET@@|ref/edit-target.png|" \
     -e "s|@@REFS@@|$(printf '%s ' "${refs[@]:-（none）}")|" \
-    "$here/PROMPT-TEMPLATE.md" > "$w/prompt.md"
+    "$cdir/$CONTRACT_PROMPT" > "$w/prompt.md"
 
 cat <<EOF
 
+contract: $contract  (tools: ${CONTRACT_TOOLS[*]})
 workspace: $w
   prompt.md   <- WRITE THIS FIRST; the template marks every section that matters
   ref/        edit-target.png$( [ ${#refs[@]} -gt 0 ] && printf ' + %s' "${refs[*]}" )
