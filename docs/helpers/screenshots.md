@@ -1,6 +1,6 @@
 # Screenshot Helper
 
-Guidance for capturing project screenshots before adding them to `images/{slug}/` (see `docs/meta-prompts/portfolio-project-meta-prompt.md` for the full add-a-project flow).
+Guidance for capturing project screenshots before adding them to `images/{slug}/` (see `infra/meta-prompts/portfolio-project/portfolio-project-meta-prompt.md` for the full add-a-project flow).
 
 ## How screenshots get rendered
 
