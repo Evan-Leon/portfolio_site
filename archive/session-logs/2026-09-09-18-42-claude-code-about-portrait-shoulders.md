@@ -147,19 +147,16 @@ None. The theater's rules index governs `theater/` and this session touched only
 `images/`, `docs/` and the Docker rebuild.
 
 ## Meta-prompt / skill / doc updates
-- PENDING (decided-by: human): defer — `treating-art-sprites`' run loop (scratch
-  workspace, runlog-first prompt, detached launch, monitored capped tries) generalized
-  cleanly to a non-theater asset, but its treatment stage did not: `key`/`fit`/`measure`
-  encode a transparent-background sprite contract sized by output basename, and
-  `fit.mjs` exits 3 on a source with no real alpha, which an opaque portrait always is.
-  This session stripped those four tools from the workspace and substituted a
-  portrait-specific `inspect.mjs`, and rewrote `PROMPT-TEMPLATE.md`'s sprite framing
-  wholesale. This then happened a **second** time in the same session for the real-photo
-  run, which needed its own different gate again (a `greyFrac` unpainted-margin check
-  rather than a shoulder-symmetry one), so the pattern is now twice-evidenced across two
-  unrelated non-sprite assets. Next action: decide whether to split the asset-agnostic
-  generation loop from the sprite-only treatment stage behind a per-asset contract that
-  supplies its own inspector and gate.
+- APPLIED: split the asset-agnostic generation loop from the sprite-only treatment
+  stage behind a per-asset contract that supplies its own tools/prompt/gate — the
+  twice-evidenced pattern (a non-theater portrait and a real-photo portrait each had
+  to strip `key`/`fit`/`measure` and substitute their own inspector because `fit.mjs`
+  exits 3 on an opaque source). Evan ruled "split it" on 2026-09-10; `new-run.sh` is
+  now contract-aware (`./new-run.sh <contract> …`) and the sprite tools live under
+  `scripts/art/contracts/sprite/`, with a documented recipe for adding a `portrait`
+  contract when the portrait is next regenerated. Verified with a Codex adversarial pass
+  (see Commits in 2026-09-10-16-47-claude-code-session-and-rules-sweep.md: `c430c27`,
+  `52b4d16`; receipts `docs/planning/art-loop-split/`).
 - NO-CHANGE: `rebuild-restart` — followed end to end including the `--force-recreate`
   requirement and the poll-until-200 window; served as written.
 - NO-CHANGE: `writing-session-logs` — template and fold-back triage served as written.

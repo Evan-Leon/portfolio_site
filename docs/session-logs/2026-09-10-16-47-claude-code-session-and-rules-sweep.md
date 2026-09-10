@@ -52,12 +52,31 @@ EVO-UNI-209 in `measurement.md`. Coordinated by SendMessage: it reserved UNI≤2
 FE-284+) and held all infra edits until its commit `a2ffc64` landed, then minted
 and rebased cleanly. Ran `sync-rules-to-appdash` last so both sweeps' rows landed.
 
+**Art generation-loop / sprite-contract split (`scripts/art/`) — done, Evan-directed.**
+Cleared the one open PENDING item the sweep carried forward: on Evan's ruling ("split it"),
+split the asset-agnostic generation loop from the sprite-only treatment stage behind a
+per-asset contract. `new-run.sh` is now `./new-run.sh <contract> <run-name> <target> [refs…]`
+— it sources `contracts/<contract>/manifest.sh` (`CONTRACT_TOOLS` + `CONTRACT_PROMPT`), copies
+the declared tools + shared deps into the scratch workspace, and seeds the prompt from the
+contract's own template. The sprite treatment moved under `contracts/sprite/`; the top-level
+README documents the loop + contract interface + how to add a second one (the portrait case
+is the worked example, not built). **Verified with a Codex adversarial pass** (`gpt-5.6-sol`
+high, detached + monitored, findings written to disk as they formed): 5 MAJOR / 4 MINOR, all
+confirmed by deterministic probes and all fixed — CWD-dependent `sharp` resolution, a
+half-built workspace left on failure, an unquoted launch path, silent reference-name
+collisions, URL-encoded sibling paths (`fileURLToPath`), a moved-depth example writing to the
+wrong tree, and three stale path/description references. Behaviour preservation and doc
+commands were CHECKED clean by the review. Receipts under `docs/planning/art-loop-split/`.
+
 ## Commits
 
 portfolio_site:
 - `3cddfd1` docs: session-log sweep through 2026-09-09
 - `e577f8a` docs(rules): rules sweep 2026-09-10 — 13 promoted to shared tier, 5 kept local
-- (this log)
+- `829e16c` docs(session): session-log sweep + rules sweep 2026-09-10 (first version of this log)
+- `c430c27` refactor(art): split the asset-agnostic generation loop from the sprite contract
+- `52b4d16` fix(art): fold in the Codex adversarial review of the loop/contract split
+- (this log, updated in place + the fold-back clearing edits)
 
 infra:
 - `39e70b0` docs(rules): rules sweep 2026-09-10 (portfolio_site) — 13 promoted, 0 retired
@@ -93,10 +112,19 @@ None.
 
 ## Open flags
 
-- The open `PENDING (decided-by: human)` item from the 2026-09-09 18:42 portrait
-  log (split `treating-art-sprites`' asset-agnostic generation loop from its
-  sprite-only treatment stage) is carried forward verbatim in `daily/2026-09-09.md`
-  and remains Evan's to rule on.
+- ~~The open `PENDING` item from the 2026-09-09 18:42 portrait log (split the loop
+  from the sprite-only treatment stage).~~ **Resolved this session** — Evan ruled
+  "split it"; done at `c430c27`/`52b4d16`. The originating log's bullet and the
+  `daily/2026-09-09.md` copy were edited to `APPLIED` (fold-back clearing lifecycle).
+- The **`portrait` contract is documented but not built** — `contracts/sprite/` is the
+  only contract; the portrait inspectors (`greyFrac` / shoulder-symmetry) still live as
+  one-offs under `docs/planning/about-portrait/`. The README's "adding a contract" recipe
+  is the path to re-home them when the portrait is next regenerated. Deliberate (YAGNI):
+  building a person-specific contract now was the scope Evan declined.
+- Codex's model banner was unreachable in its sandbox (read-only state dir), so the review
+  leaned entirely on deterministic local probes — which is the right kind of evidence for a
+  path/behaviour refactor, but it means no live-model reasoning was applied. Noted for
+  honesty; the findings all reproduced by hand here.
 - `SDS-011` ID collision: the marquee session drafted a measurement rule as
   "`SDS-011`" while the mobile session actually added a different `SDS-011` (the
   theater-hide rule) to the theater rules-index the same day. The measurement
@@ -124,7 +152,13 @@ index is the vendored engine's law and none of this session's work is engine-lev
   worth a mention there only if fleet-parallel sweeps become common (one receipt,
   below the bar for a rule).
 - NO-CHANGE: `writing-session-logs` — template and fold-back triage applied
-  without ambiguity.
+  without ambiguity; used its clearing lifecycle (item 9) to edit the 2026-09-09 18:42
+  log's originating PENDING bullet to `APPLIED` and cascade the edit to the daily digest.
+- APPLIED: `treating-art-sprites` skill (`.claude` + `.agents` copies) and `scripts/art/`
+  README/scripts repointed for the loop/contract split and the `sprite` contract arg (see
+  Commits: `c430c27`). Behaviour-preserving relocation; Evan authorized the split.
+- NO-CHANGE: `superpowers:brainstorming` — classified the split bounded, one scope question,
+  short in-chat design, explicit approval before code; served as written.
 
 ## Next steps
 
