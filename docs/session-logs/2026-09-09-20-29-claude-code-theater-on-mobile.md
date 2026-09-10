@@ -133,12 +133,12 @@ on its own.
   narrow layout changes that. Anyone with Reduce Motion on will not see the
   button — which is the intended behaviour, and also the second thing to check
   before believing a "the button is missing" report.
-- **`f468b08` reached `origin/main` without this session pushing.** No `git push`
-  was run here and there is no `.github/workflows`; the only hooks under
-  `.githooks/` are git-lfs. `evanleon.com` was serving the change within minutes.
-  Provenance unexplained — worth knowing, since a session that believes its work
-  is local-only while it is in fact deploying is a bad surprise in the other
-  direction.
+- **RESOLVED — `f468b08` reaching `origin/main` was Evan pushing it by hand.**
+  Flagged during the session because no `git push` ran here, there is no
+  `.github/workflows`, and the only hooks under `.githooks/` are git-lfs, yet
+  `evanleon.com` was serving the change within minutes. Evan confirmed he pushed.
+  No automation is involved and this repo still deploys by an explicit human push;
+  nothing to change.
 
 ## Rules-index candidates
 
