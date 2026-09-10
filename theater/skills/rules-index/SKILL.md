@@ -5,7 +5,7 @@ description: "Load first at every session start. This project's law — the SDS-
 
 # Portfolio Theater — Vendored Engine Rules Index
 
-> This file is the vendored engine's law in portfolio_site. It is short on purpose: ten invariants and a
+> This file is the vendored engine's law in portfolio_site. It is short on purpose: eleven invariants and a
 > handful of recorded departures. Everything here exists because breaking it
 > produces a failure that is silent, or that surfaces somewhere far from its
 > cause.
@@ -40,6 +40,7 @@ behind it is a preference, and preferences do not belong here.
 | `SDS-008` | Retired on vendoring 2026-08-25 — subject not vendored; ID never reused |
 | `SDS-009` | Token and global CSS blocks are scoped `:host, :root` — never `:root` alone. `:root` does not match a ShadowRoot, so a `:root`-only rule silently matches nothing in the Wix build and every `var(--sds-*)` resolves to invalid, with no error and no failing test    |
 | `SDS-010` | A scene is mounted for as long as any part of its pinned container is visible. Lifecycle margins are fractions of **scrub length** and say nothing about the **viewport height** that decides when a pin can be seen — always reconcile the two (`withPinVisibility`) |
+| `SDS-011` | A rule that hides the theater states a **property of the theater**, never a judgement about it, and is re-checked against that property whenever the property changes. A judgement outlives the thing it was formed about, and nothing fails when it does                                          |
 
 ## Deliberate departures
 
@@ -194,3 +195,69 @@ that has no test coverage of its own.
 
 See the header comment in `src/styles/tokens.css`, which states the same thing
 at the point of use.
+
+### `SDS-011` — A gate on the theater names a property, not a judgement
+
+The theater is reached through gates that live outside it — a CTA in the site's
+own stylesheet, a `prefers-reduced-motion` block, whatever a future host adds.
+A gate is written once, on the day someone forms a view about who should get the
+experience. The theater then keeps changing underneath it.
+
+The failure is that a gate written as a **judgement** has nothing to re-check it
+against. "Phones can't have this" is a claim about phones; nothing in the
+repository is the subject of it, so no test covers it, no grep finds it, and no
+later phase is prompted to revisit it. A gate written as a **property** —
+"hidden where the lot has no narrow layout", "hidden where motion is refused" —
+names something that exists in the tree, and the day that thing changes is the
+day the gate is wrong in a way somebody can notice.
+
+WHAT THIS COST, MEASURED
+------------------------
+
+DT7 hid the hero CTA on phones (`assets/css/styles.css`, the `max-width: 767px`
+block) before the narrow lot had ever been opened on a phone. DT5 had already
+built that lot — `styles/global.css`'s own `max-width: 767px` block: single file
+down the lane, perspective 600px, 300px screens, treeline pulled to ±360px — and
+DT13, DT14, DT15 and DT16 each kept it current, rescaling the marquee, the crest,
+the board and the wagon as the theme landed.
+
+**Four phases maintained a layout no visitor could reach.** When it was finally
+opened on a phone on 2026-09-09 it worked, on Chromium and on real iOS WebKit,
+with no engine change at all: the fix was deleting four lines of CSS
+(`f468b08`). The narrow block's e2e coverage had been passing the whole time,
+which is the point — the tests proved the layout was correct and could not
+observe that it was unreachable.
+
+WHY NO TEST CATCHES IT
+----------------------
+
+A gate hides the broken-looking case and the working case identically. There is
+no rendered difference between "correctly hidden because it would be bad" and
+"wrongly hidden because it stopped being bad", so a screenshot cannot tell them
+apart and neither can a human skimming the page. The only signal is the sentence
+next to the rule, which is why the rule is about how that sentence is written.
+
+```css
+/* ✅ names a property — the day the lot gains a narrow layout, this is wrong
+   in a way a reader can see, because the subject is in the tree */
+@media (prefers-reduced-motion: reduce) {
+  /* the theater IS the animation; there is no reduced-motion drive to offer */
+  .hero__cta--theater { display: none; }
+}
+
+/* ❌ names a judgement — nothing is its subject, so nothing ever contradicts it */
+@media (max-width: 767px) {
+  /* too heavy for phones */
+  .hero__cta--theater { display: none; }
+}
+```
+
+The tell, when reviewing: read the comment beside a `display: none` and ask what
+would have to change in the repository for it to become false. If the honest
+answer is "nothing — someone would have to change their mind", it is a judgement,
+and it will outlive whatever formed it.
+
+Note the surviving reduced-motion hide is the ✅ case and is deliberately kept:
+the theater is a scroll-driven animation, so a visitor who has refused motion has
+nothing to be sent to. That is a property of the theater and stays true until the
+theater stops being an animation.

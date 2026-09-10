@@ -142,20 +142,22 @@ on its own.
 
 ## Rules-index candidates
 
-- **Draft:** A capability gate written for a subject that later changes must be
-  re-checked against the subject, not the gate's stated reason. DT7 hid the
-  theater CTA on phones when no one had looked at the theater on a phone; DT5 had
-  already built the narrow lot, and DT13–DT16 then maintained it — four phases of
-  work on a layout that no site visitor could reach. Nothing errors, no test
-  fails (the narrow block has its own e2e coverage and passes), and the loss is
-  invisible because the gate makes the broken-looking case unreachable too. The
-  tell is a `display: none` whose comment names a *judgement* about the hidden
-  thing rather than a *property* of it.
+- **ADDED as `SDS-011`** (at Evan's direction, same session): *A rule that hides
+  the theater states a property of the theater, never a judgement about it, and
+  is re-checked against that property whenever the property changes.* The failure
+  story it records is this session's: DT7 hid the CTA on phones as a judgement
+  about phones, DT5 had already built the narrow lot, and DT13–DT16 kept that lot
+  current for four phases while no visitor could reach it. Nothing errors and the
+  narrow block's own e2e coverage passed throughout — the tests proved the layout
+  correct and could not observe that it was unreachable.
 
-  Worth weighing against the index's own bar before adding: the failure story is
-  real and cost four phases, but the rule is closer to a review habit than to an
-  engine invariant, and the index deliberately holds only ten. Recommend Evan
-  rules on it rather than a session adding it unilaterally.
+  The rule is cited at its point of use, following `SDS-009`'s pattern: the
+  surviving `prefers-reduced-motion` hide in `assets/css/styles.css` now carries
+  a comment naming `SDS-011`, stating why that one IS a property, and telling a
+  future reader not to re-add a width-based hide without opening the theater at
+  that width first.
+
+  The index header's "ten invariants" was updated to eleven.
 
 ## Meta-prompt / skill / doc updates
 

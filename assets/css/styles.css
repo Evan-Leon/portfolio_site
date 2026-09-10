@@ -1004,6 +1004,17 @@ h4 {
     transform: none;
   }
 
+  /* SDS-011. This states a property of the theater, not a judgement about an
+     audience: the theater IS a scroll-driven animation, so a visitor who has
+     refused motion has nothing to be sent to. It stays true until the theater
+     stops being an animation.
+
+     Its former twin in the `max-width: 767px` block below did not, and that is
+     the failure SDS-011 records — it claimed phones could not have this, while
+     `theater/src/styles/global.css` carried a narrow layout four phases kept
+     current. Removed 2026-09-09 after the lot was opened on a real phone. Do
+     not re-add a width-based hide here without first opening the theater at
+     that width. */
   .hero__cta--theater {
     display: none;
   }
