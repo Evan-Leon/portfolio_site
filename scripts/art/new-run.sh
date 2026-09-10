@@ -78,15 +78,19 @@ if [ -e "$w" ]; then
   exit 1
 fi
 mkdir -p "$w/ref" "$w/raw" "$w/out"
+# If anything below fails, remove the half-built workspace, so a retry with the same run name
+# is not blocked by the duplicate-run guard on a workspace that never got its prompt.md.
+trap 'rc=$?; [ "$rc" -ne 0 ] && rm -rf "$w"; exit "$rc"' EXIT
 
 # The contract's tools and the shared deps, so Codex can self-check every try without a browser.
 for t in "${CONTRACT_TOOLS[@]}"; do cp "$cdir/$t" "$w/"; done
 cp "$here/package.json" "$w/"
 cp -r "$here/node_modules" "$w/"
 
-# Edit target and references, re-encoded to plain PNG.
+# Edit target and references, re-encoded to plain PNG. NODE_PATH anchors `require("sharp")` to
+# the shared deps regardless of the caller's cwd; the file arguments still resolve against it.
 refs=()
-node -e '
+NODE_PATH="$here/node_modules" node -e '
 const sharp = require("sharp");
 const [out, target, ...refs] = process.argv.slice(1);
 (async () => {
@@ -96,8 +100,14 @@ const [out, target, ...refs] = process.argv.slice(1);
     console.error(`  ${dest.split("/").slice(-2).join("/")}  ${m.width}x${m.height}  alpha=${!!m.hasAlpha}`);
   };
   await say(target, `${out}/ref/edit-target.png`);
+  const seen = new Map();
   for (const r of refs) {
     const stem = r.split("/").pop().replace(/\.[^.]+$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    if (seen.has(stem)) {
+      console.error(`error: references "${seen.get(stem)}" and "${r}" both normalise to ref/${stem}.png — rename one`);
+      process.exit(1);
+    }
+    seen.set(stem, r);
     await say(r, `${out}/ref/${stem}.png`);
   }
 })().catch((e) => { console.error("error:", e.message); process.exit(1); });
@@ -123,12 +133,12 @@ workspace: $w
 
 Then launch it detached (runs exceed the Bash tool's 10-minute cap):
 
-  cd $w && setsid nohup env -u NODE_OPTIONS codex exec \\
+  cd "$w" && setsid nohup env -u NODE_OPTIONS codex exec \\
     -s workspace-write -c sandbox_workspace_write.network_access=true \\
     -c model=gpt-6-astra -c model_reasoning_effort=medium \\
     -C "$w" --skip-git-repo-check - < prompt.md > codex.log 2>&1 &
 
 Confirm the banner says \`model: gpt-6-astra\` and \`(network access enabled)\` — the config
 default runs reasoning effort \`none\`, which is not what you want. Then watch it with a
-Monitor on codex.log; see the treating-art-sprites skill for the filter and what follows.
+Monitor on codex.log; see $cdir/README.md for the monitor filter and what follows.
 EOF

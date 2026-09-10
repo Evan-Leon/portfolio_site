@@ -1,7 +1,8 @@
 // The whole sprite treatment in one command: key -> fit -> measure.
 //
 // Usage: node treat.mjs <raw.png> <out.png> [--keep-work] [-- <key.mjs flags>]
-//   e.g. node treat.mjs raw/car.png ../../theater/public/art/car.png
+//   e.g. node treat.mjs raw/car.png ../../../../theater/public/art/car.png
+//   (this file lives at scripts/art/contracts/sprite/, four levels below the repo root)
 //
 // The contract is chosen by the OUTPUT basename (car* / tree*), same as fit.mjs and
 // measure.mjs — so name the output for what it is, not for where it came from.
@@ -16,10 +17,13 @@
 // real checker page and its card screenshot, and then LOOK at it. (DT14: a tree passed
 // every structural check with holes punched through its canopy.)
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
 
-const here = path.dirname(new URL(import.meta.url).pathname);
+// fileURLToPath, not new URL(...).pathname — the latter keeps %20 etc., so a workspace
+// path containing a space would not resolve the sibling stage scripts.
+const here = path.dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const sep = argv.indexOf("--");
 const keyFlags = sep === -1 ? [] : argv.slice(sep + 1);
@@ -58,4 +62,8 @@ fs.mkdirSync(path.dirname(dest), { recursive: true });
 fs.copyFileSync(fitted, dest);
 cleanup();
 console.log(`\ntreat: PASS — wrote ${out} (${(fs.statSync(dest).size / 1024).toFixed(1)} KB)`);
-console.log(`Now run the real checker and LOOK at the card: node check.mjs ${out}`);
+// check.mjs needs a real browser and is deliberately not copied into the scratch workspace,
+// so name the repo-side command and an absolute path — a bare `node check.mjs` fails here.
+console.log(
+  `Now run the real checker from the repo and LOOK at the card:\n  node scripts/art/contracts/sprite/check.mjs ${dest}`,
+);

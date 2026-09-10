@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "On-demand sprite treatment for theater/public/art. NOT a pnpm workspace package — install here explicitly; see README.md.",
+  "description": "Asset-agnostic Codex generation loop plus per-asset contracts (see contracts/); shared deps live here. NOT a pnpm workspace package — install explicitly; see README.md.",
   "scripts": {
     "treat": "node contracts/sprite/treat.mjs"
   },

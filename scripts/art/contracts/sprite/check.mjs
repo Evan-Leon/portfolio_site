@@ -2,10 +2,13 @@
 // Drops the files into the page's <input id="files">, reads each card, screenshots it
 // to ./cards/<name>.card.png, prints one JSON line per file, exits 1 unless all PASS.
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 import path from "node:path";
 import fs from "node:fs";
 // This file lives at scripts/art/contracts/sprite/, four levels below the repo root.
-const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..", "..", "..", "..");
+// fileURLToPath, not new URL(...).pathname — the latter keeps %20 etc. and breaks on a
+// repo path containing a space.
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
 const require = createRequire(path.join(REPO, "theater/package.json"));
 const { chromium } = require("@playwright/test");
 const PAGE = "file://" + path.join(REPO, "docs/spikes/art-check.html");
