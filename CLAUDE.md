@@ -1,5 +1,7 @@
 # portfolio_site — agent instructions
 
+Read [`../infra/CONTRACT.md`](../infra/CONTRACT.md) first. It is the working agreement between Evan, Codex and Claude, and it takes precedence over any collaboration or process rule in this file.
+
 ## The theater's rules index
 
 `theater/skills/rules-index/` is this project's law for the vendored scroll

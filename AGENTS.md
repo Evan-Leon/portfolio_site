@@ -1,5 +1,7 @@
 # portfolio_site — agent instructions
 
+Read [`../infra/CONTRACT.md`](../infra/CONTRACT.md) first. It is the working agreement between Evan, Codex and Claude, and it takes precedence over any collaboration or process rule in this file.
+
 Static personal portfolio site (plain HTML/CSS/JS) baked into an nginx image and
 served on the `evo-net` Docker network. There is no build step for the site
 itself and no application test suite — the content *is* the source files.
