@@ -1,141 +1,233 @@
-# Showcase Demo Data — Teardown and Committed Seed Scripts
+# Showcase Demo Data — Guarded Cleanup, Seeds Later
 
 **Date:** 2026-09-14
-**Status:** Rev 1, pre-Codex review
-**Author:** Claude (brainstorming session started in jourNOW, landed here at Evan's direction)
+**Status:** Rev 2 — Codex spec review folded in. Rev 1 was `e0d0703`; the review is `2026-09-14-showcase-demo-data-codex-review.md`: 8 BLOCKER / 4 MAJOR / 1 MINOR, disposition table at the end.
+**Author:** Claude. The brainstorming session started in jourNOW and was landed here at Evan's direction.
 **Related:**
-- `infra/meta-prompts/portfolio-showcase/portfolio-showcase.md`: the teardown rule, infra `c0bee1d`.
-- Evidence folder: `/home/evan/showcase-pending/_teardown-evidence/` (mode 700, never committed).
+- `infra/meta-prompts/portfolio-showcase/portfolio-showcase.md`: teardown rule added in infra `c0bee1d`.
+- Evidence directory: `/home/evan/showcase-pending/_teardown-evidence/`, mode 700, never committed.
 
 ## Problem
 
-The 2026-09-05/06 portfolio-showcase sweep seeded demo data into apps' real local databases so it could film them. Its orchestrator ruled that the demo data "may persist". Two of those apps have already been cleaned up by hand:
-- graces-tree, 2026-09-13;
-- jourNOW, 2026-09-14: 20 fake entries sitting beside Evan's real journal.
+The 2026-09-05/06 portfolio-showcase sweep seeded demo data into apps' local databases so it could film them. Its orchestrator ruled that the demo data "may persist". For several apps the local database **is the owner's real, live data**: jourNOW's journal, graces-tree's family, LeonsBudget's finances.
 
-Seven apps still hold demo data. Almost every seed script lived in `/tmp` and is gone. So these clips can't be re-recorded, and every cleanup has to be rediscovered by hand. For several of these apps (jourNOW, graces-tree, LeonsBudget) the local database is the app's **real, live data**.
+Cleanup so far:
+- graces-tree was cleaned by hand on 2026-09-13.
+- jourNOW was cleaned on 2026-09-14. It had 20 fake entries sitting beside Evan's journal.
+- Six apps still hold demo data.
+- A seventh leftover, chud conversation 7206, turned out to be shared with later real test data (see D2).
 
 ## Goals
 
-1. Remove every leftover demo record from the seven apps, and never touch real data.
-2. Give each of the 8 apps whose showcase needed seeding a committed script with `seed | teardown | status`, plus a fictional fixture. Re-recording then becomes one command, and cleanup is tested once.
-3. Change the showcase meta-prompt so future runs use or create that script.
+1. **Remove every leftover demo record from the six apps**, with a fail-closed gate that proves no real row was deleted or changed.
+2. **Give every showcase-touched app a recorded disposition**: cleaned, retained with a reason, ephemeral-only, verified read-only, or unresolved.
+3. **Change the showcase meta-prompt** so a future re-recording seeds into a throwaway database. The app's seed script is committed at that point, and never before.
 
-**Not goals:** re-recording any clip, changing any published portfolio page, and fixing any app bug the showcase logs flagged.
+**Not goals:**
+- building seed scripts now;
+- re-recording any clip;
+- changing any published portfolio page;
+- fixing any app bug the showcase logs flagged;
+- changing any app repo's code.
 
 ## Decisions (Evan, 2026-09-14)
 
-- **Script scope.** Only the 8 apps whose showcase needed seeded data get a script: LeonsBudget, the-classic, chudios, co-host, mind-palace, co-author, graces-tree, jourNOW. Future showcase runs that seed commit one.
-- **Where demo data lives.** Seed into the app's normal local database under a demo account or id prefix, record, then tear down. No separate demo databases.
-- **Delete authority.** Approving the final plan authorizes the scoped, checked deletes listed below. It authorizes nothing else.
-- **STOP-AND-ASK RULE, which overrides the authority above.** If the executing agent is unsure **at all** about any row, file, node or relationship, it stops, reports what it found, and asks Evan. It deletes nothing until he answers. Any of the following means unsure:
-  - a count that differs from the manifest below or from the fresh export;
-  - a demo-scoped row that references, or is referenced by, anything outside the demo scope (a foreign key, a join row, a shared lookup row such as LeonsBudget's global `Institution`);
-  - a row inside the demo scope whose content doesn't look like the fictional demo content (a real name, a real email, text that reads like Evan's own writing);
-  - an `ON DELETE CASCADE` reaching a table the manifest doesn't name;
-  - a timestamp or id outside the showcase window that can't be explained;
-  - an app whose local database turns out to be something other than what this spec says;
-  - any check that fails, any command that errors, or any "probably fine".
+- **D1 — Cleanup now, seeds later.** This supersedes rev 1's "committed seed scripts for 8 apps in real dev databases". Codex showed that approach needs, in every app, seed receipts, ownership markers, CHUD-offline seeding paths and an isolated test Supabase. No clip is being re-recorded, so none of that is built now.
+- **D2 — chud conversation 7206 is retained.** It began as the showcase's 2-message chunk-norris Q&A on 2026-09-06. A 2026-09-10 session then reused it for 6 more messages and session note 4910. It is no longer demo-only. Its disposition is "retained — mixed with 2026-09-10 test data". Nothing in chud is touched.
+- **D3 — Authority.** Approving the final plan authorizes the deletes it names, and nothing more. Those are exactly the scopes in the manifest below, executed through the gate protocol.
+- **D4 — STOP-AND-ASK. This overrides D3.** If the executing agent is unsure **at all** about any row, node, relationship, file or reference, it stops, reports, and asks Evan. It deletes nothing for that app until he answers. It never guesses, never widens a selector, and never "cleans up what looks like demo data". The rule is enforced mechanically by the gate (below), and the agent's own judgment adds to it:
+  - **Mechanical triggers.** Any gate check failing, meaning:
+    - target identity;
+    - dependency closure;
+    - scope counts;
+    - inbound references;
+    - survivor hashes;
+    - negative control.
+    Also any command erroring, and any count or id differing between the frozen export and the in-transaction re-query.
+  - **Judgment triggers.** Any of these:
+    - exported text that reads like real content (a real person's name, a real email, prose that reads like Evan's own writing);
+    - a timestamp outside the showcase window that nothing explains;
+    - a table, column or reference the plan did not anticipate;
+    - anything the agent would describe as "probably fine".
+  - **Outbound references to retained shared rows are not triggers.** A demo row pointing *at* an allowlisted shared parent the delete keeps is expected; examples are LeonsBudget budget lines → a shared category, and a mind-palace step → a shared Entity. The triggers are:
+    - an **inbound** reference from outside the scope into a row being deleted;
+    - any change to the allowlisted parents themselves;
+    - an outbound reference to a parent that is not on the allowlist.
+  - **Stops are isolated.** A stop on one app halts only that app. Independent apps continue.
 
-  Guessing, widening a selector, or "cleaning up what looks like demo data" is never allowed. When the agent stops, no teardown runs for that app, and the other apps' tasks carry on only if they're fully independent.
+## Scope and dispositions
 
-## Approach
+| App | Disposition target | Action |
+|---|---|---|
+| LeonsBudget | cleaned | guarded delete |
+| the-classic | cleaned | guarded delete |
+| chudios | cleaned | guarded delete, plus files |
+| co-host | cleaned | guarded delete, plus a CHUD residue check |
+| mind-palace | cleaned | guarded delete (Neo4j) |
+| co-author | cleaned | guarded delete |
+| graces-tree | cleaned (2026-09-13) | none, record only |
+| jourNOW | cleaned (2026-09-14) | none, record only |
+| chud | retained: conversation 7206 mixed with 2026-09-10 test data (D2) | none, record only |
+| app-dash | retained: one "Description updated" row in an append-only activity log | none, record only |
+| voice-trainer | read-only-verified with one accepted mutation: queue counts restored, one real pair's `updated_at` changed by approve→revert (showcase log lines 45–48) | none, record only |
+| NomNoms | cleaned during its run (every CookSession deleted) | none, record only |
+| Prompt-heus, logson | verified read-only (their logs) | none, record only |
+| el-blackjack-pwa | ephemeral-only (browser-context `localStorage`) | none, record only |
+| chunk-norris (2026-08-25 pilot) | **unresolved**: the pilot recorded no store baseline | read-only audit of the `chunk_norris` Postgres DB and Qdrant for writes dated 2026-08-25; finding nothing → "verified read-only (audit 2026-09-14)"; anything found → stop and ask, never delete |
 
-**A committed script per app (chosen).** Each of the 8 app repos gets `scripts/showcase_demo.<ext>`, in the language and channel native to the app, with a committed fixture beside it. Rejected alternatives:
-- **One central tool in portfolio_site that knows every schema:** it rots silently, and puts app knowledge in the wrong repo.
-- **Raw dump fixtures with a generic loader:** they bypass app code, break on migrations, and can't express Neo4j nodes or volume files.
+## Cleanup mechanism
 
-## Script contract (all 8 apps)
+This is a one-time operation. It runs as direct store access against the authenticated local store, with the exact SQL and Cypher written in the implementation plan. It deliberately does not go through app code or the Supabase Admin API, because exact enumerated deletes with in-transaction assertions are the auditable path. Nothing is committed to any app repo.
 
-| Command | Behaviour |
-|---|---|
-| `status` | Prints each demo-scoped table/node/file set with its count. Exit `0` when no demo data exists, `3` when some exists, `1` on error. Read-only. |
-| `teardown` | Deletes only the demo scope, in **one transaction** where the store has transactions. Before deleting it asserts:<br>(a) the demo scope matches the fixture's expected counts exactly;<br>(b) no row outside the scope references a row inside it;<br>(c) real-data counts (every table the app touches, outside the scope) are captured.<br>After deleting, still inside the transaction, it asserts the demo scope is empty and the real-data counts are unchanged. Any failed assertion rolls back and exits non-zero with a message saying which assertion failed. Files, and non-transactional stores (volume files, Neo4j when a transaction isn't available), are listed before and after. It deletes only exact paths or ids named by the fixture, never globs. |
-| `seed` | Runs `teardown` first. That is a no-op when `status` is clean, and aborts if teardown's checks fail. Then it creates the fixture through the app's **own** code path: a signup/register route, a management command or service, or the REST API. Where the app offers no way to set a field (a backdated `created_at`), it applies a scoped `UPDATE … WHERE <demo scope>`. It ends by running `status` and comparing counts to the fixture. |
+### Target authentication (G1) — before any credential or connection is used
 
-**Local-only guard (every command):** the script resolves its database, API or volume target and refuses to run unless it's the local stack:
-- a Postgres host of `localhost` / `127.0.0.1` / the local docker container;
-- the local Supabase container;
-- `*.localhost` / `127.0.0.1` URLs.
+Every app's gate first verifies an exact target tuple and prints it. Any mismatch is a stop.
 
-A prod URL in a `.env.prod`, or any non-local host, exits non-zero before connecting.
-
-**Fixture:** fictional data only. It holds the demo identifiers (account email/username, id prefix or fixed ids) and the expected count for each table. It's committed next to the script. It never holds real rows, credentials beyond the demo password the script itself sets, or any id range that could overlap real rows.
-
-**Tests:** each script's scope and guard logic is unit-tested in the app's own test framework:
-- scope selection;
-- the local-only guard refusing a non-local target;
-- a mismatched expected count aborting teardown;
-- a row outside the scope referencing a row inside it aborting teardown.
-
-This uses the repo's existing test DB or fixture conventions. Where an app has no test harness for its channel (Neo4j, Supabase SQL), the task adds the narrowest runnable test the repo supports and says so in its log. The live round-trip below is required on top of the tests, never instead of them.
-
-## Per-app manifest (verified 2026-09-14 unless marked)
-
-The executing agent **re-verifies every line before acting**. Any difference from this manifest is a stop-and-ask trigger.
-
-| App (repo) | Local store | Demo scope still present | Fixture source | Notes |
+| App | Container (compose project → working dir) | Store / database | Schema head sentinel | Anchor row sentinel |
 |---|---|---|---|---|
-| LeonsBudget | `infra-postgres-1` / `leons_budget` (Django) | user `demo@example.com` (auth_user id 3), household 3 "Demo Household", its 1 membership, 2 bank accounts, 4 monthly budgets (+ lines), 71 transactions; **global** `accounts_institution` id 9 "Northwind Bank" | `/home/evan/showcase-pending/budget-app/seed.py` (207 lines, Django shell) | Institution 9 has no household FK. If anything outside household 3 references it, **stop and ask**. Check categories, import batches and any other FK to the household or user. |
-| the-classic | local Supabase `supabase_db_the-classic` | auth user `demo@example.com` (`921fafc9…`), course `d0000000-…-000000000001`, tournament `dddddddd-dddd-dddd-dddd-dddddddddddd`, 3 foursomes, 12 players, 36 scores, 6 accolades, 5 chirps (per the 2026-09-06 log; only the user and tournament were re-verified) | **Lost** (`seed-demo.sql` was in `/tmp`). Export the current demo rows first | The dev DB is test cruft plus real accounts. Chirps and accolades generated live during the take are in scope only if they're under the `d`-prefixed tournament. |
-| chudios | `infra-postgres-1` / `chudios` + volume `chudios-recordings` | 6 `content_items` with ids `dddddddd-%` (the log says child tables cascade) + `/data/recordings/demo-sn-ep{09,11,12}.m4a` | **Lost**. Export first | The log's teardown is `DELETE … LIKE 'dddddddd-%'` plus `rm`. Enumerate every cascade target and each file's size before relying on it. |
-| co-host | `infra-postgres-1` / `co_host` | channel `ch_b11b31a0d9ae` "The Long Fuse", 2 episodes (incl. `ep_a78a3f018922`) + their versioned child rows (bibles, beat sheets, scripts, table reads, reviews, timeline, `chud_jobs`) | **Lost** (it seeded via REST). Export first | The two real channels must be untouched. A `chud_jobs` row created by `POST /freeze` is in scope only if it references a demo episode. |
-| mind-palace | `mind-palace-neo4j-1` (Neo4j) | `Route` `60c383d5-921e-443c-9430-b2242469fbe0` "Collective Security", 4 relationships (4 steps + an elaboration note per the log) | **Lost** (it seeded via API). Export the subgraph first | Evan's real `WW1` route must be untouched. Every node reachable from the demo route that is also reachable from a non-demo node is a stop-and-ask trigger, and so is any node the route links to that the route didn't create. |
-| co-author | `infra-postgres-1` / `co_author` (Django) | auth_user id 2 `demo@example.com`, story id 7 "The Lighthouse at Kestrel Point" + its elements (5 characters, 4 settings, 6 events, 3 relationships, 4 open questions, 5 beats, 3 drafts per the Coverage note) + auth tokens | `/home/evan/showcase-pending/co-author/seed.py` (517 lines, REST) | Evan's account and his two stories must be untouched. |
-| graces-tree | `infra-postgres-1` / `graces_tree_db` (Django) | **None**, deleted 2026-09-13 | The demo subset of `_teardown-evidence/graces-tree-pre-cleanup-backup-2026-09-13.json`: persons 91–107, couples 36–42, parent-child 94–111, 11 interview questions on person 97, auth user `demo-arborist` | The backup also holds the **real family**. The fixture takes only the listed pks, and the task proves no other pk made it in. The seed must give demo rows ids above the real family's maximum at seed time, never fixed low ids. |
-| jourNOW | `infra-postgres-1` / `journow_db` (FastAPI) | **None**, deleted 2026-09-14 | `_teardown-evidence/journow-demo-entries-2026-09-14.csv` (20 rows) + `journow-demo-user-2026-09-14.csv` | Register via `POST /api/v1/auth/register`, create entries through the API, then backdate `created_at` by a scoped `UPDATE`. No audio and no R2. Evan's 32 entries must be untouched. |
-| chud (no script) | `infra-postgres-1` / `chud` | conversation 7206 + 8 messages | n/a | The intentional demo Q&A left by the showcase run. **Delete only, guarded.** First confirm its messages are the chunk-norris Q&A the log describes and that nothing else references the conversation. |
-| app-dash (no action) | `app_dash` | one "Description updated" activity-log row | n/a | The log is append-only by design. Left in place and recorded. |
+| LeonsBudget | `infra-postgres-1` (infra → `/home/evan/EVOsystem/infra`) | Postgres `leons_budget` | `django_migrations` latest non-core = `0003_seed_ignore_category` | `auth_user` id 3 email `demo@example.com`; `accounts_household` id 3 name "Demo Household" |
+| the-classic | `supabase_db_the-classic` (the-classic) | Supabase Postgres `postgres` | `supabase_migrations.schema_migrations` max = `20260725110612` | `auth.users` `921fafc9-d77f-4b55-b57e-7422f39c30f3` email `demo@example.com` |
+| chudios | `infra-postgres-1` + `chudios-backend-1` (chudios → `/home/evan/EVOsystem/chudios`) | Postgres `chudios`; volume `chudios_chudios-recordings`, mount resolved with `docker inspect`, never a literal name | `schema_migrations` latest = `0010_qc_script_diff.sql` | 6 `content_items` with ids beginning `dddddddd-` |
+| co-host | `infra-postgres-1`; CHUD residue on `chud` | Postgres `co_host` (plus a read-only look at `chud`) | `schema_migrations` latest = `0007_handoff_reason_code.sql` | `channels` id `ch_b11b31a0d9ae` name "The Long Fuse" |
+| mind-palace | `mind-palace-neo4j-1` (mind-palace → `/home/evan/EVOsystem/mind-palace`) | Neo4j 5.26.27 community | `Route` count = 2, `Entity` count = 228 | `Route` id `60c383d5-921e-443c-9430-b2242469fbe0` |
+| co-author | `infra-postgres-1` | Postgres `co_author` | `django_migrations` latest non-core = `0013_alter_blacklistedtoken_options_and_more` | `auth_user` id 2 email `demo@example.com`; `stories_story` id 7 "The Lighthouse at Kestrel Point" |
 
-## Per-app task flow
+- Each store is reached only through `docker exec <container>`, never through a host port or DSN. No `supabase` CLI command runs; the-classic's CLI is linked to production. No `.env*` file is read for connection settings.
+- **Known oddity:** LeonsBudget's `redis` and `frontend` containers run from the frozen `/mnt/d` copy while its backend runs from ext4. This is irrelevant to the DB target (`infra-postgres-1`), and is recorded, not fixed.
 
-Each app is one task. Repos and stores are independent, so a stop on one app doesn't block the others.
+### Gate protocol (per Postgres app) — fail-closed, in order
 
-1. **Pre-flight.**
-   - The repo's `git status` is clean.
-   - The store is reachable.
-   - Re-verify the manifest line.
-   - Record baseline counts of every table/label the app owns, split into demo scope and everything else.
-2. **Export** the current demo scope (rows, nodes, files) to `_teardown-evidence/<app>-demo-export-2026-09-14.*`. Skip this for graces-tree and jourNOW.
-3. **Build the fixture** from the surviving seed or the export.
-   - Strip anything that isn't demo content.
-   - Look at the fixture's text. Anything that reads as real is a stop-and-ask trigger.
-4. **Write** `scripts/showcase_demo.<ext>`, the fixture, and tests, following the repo's rules index and conventions.
-5. **Teardown the leftovers** with the script, where step 2 exported something. `status` must then exit 0, and real-data counts must equal the baseline.
-6. **Round-trip:** `seed` → `status` exits 3 with counts equal to the fixture → `teardown` → `status` exits 0 → real counts equal the baseline.
-7. **Verify:** the full app test suite and lint (the repo's own commands). Pre-existing failures are recorded, not fixed.
-8. **Commit** in the app repo (`feat(showcase): committed demo seed/teardown script`), plus a session log in that repo per its `writing-session-logs` skill.
+1. **G1 Target.** Check the tuple above.
+2. **G2 Dependency closure.**
+   - Introspect every foreign key in the database that references any table in the app's scope set (`pg_constraint`, all schemas, `auth` and `storage` included for the-classic).
+   - Compare them to the plan's committed **dependency allowlist**: every referencing table and column, its delete rule, and whether the plan deletes through it or expects zero rows. Any FK not on the allowlist is a stop.
+   - Run each **non-FK reference check** the plan lists and require its expected count, for example chud `artifacts`, `cohost_documents` and `cohost_mirror_gaps` for co-host ids.
+3. **G3 Scope freeze.**
+   - Resolve the scope from its anchors through the allowlisted closure only: demo user id, household id, tournament and course ids, channel id, content item ids, story id.
+   - Require each table's count to equal the manifest.
+   - Export every scope row (`row_to_json`) and the per-table id sets to `_teardown-evidence/<app>-scope-2026-09-14.json`. The id sets freeze here.
+4. **G4 Inbound.** For every allowlisted FK, count rows **outside** the scope that reference a row **inside** it. Every count must be 0.
+5. **G5 Outbound allowlist.**
+   - List the distinct retained parents referenced from the scope (LeonsBudget: `categorization_category` ids).
+   - They must be exactly the kind the plan names.
+   - They go into the survivor snapshot.
+6. **G6 Survivor snapshot.**
+   - For every table in the dependency allowlist, every table in the scope set, and every allowlisted parent table: record count and `md5(string_agg(row_to_json(t)::text, '' ORDER BY <pk>))` over rows **not** in the frozen id sets.
+   - Store the snapshot in the evidence directory.
+7. **G7 Content inspection.** The agent reads the exported scope text fields. Anything that reads as real triggers D4.
+8. **G8 Negative control.**
+   - Run the deletion transaction with one expected count deliberately off by one.
+   - It must abort with that assertion's message and roll back.
+   - Re-run G3 counts and G6 hashes, which must be unchanged.
+   - A gate that has never failed is not tested.
+9. **Execute (one transaction).**
+   - `BEGIN`.
+   - Re-query the scope id sets and require them identical to the frozen sets.
+   - Recompute the G6 hashes and require them identical.
+   - Delete child → parent by frozen ids (`WHERE id = ANY(ARRAY[…])`). Never use `LIKE`, ranges or anchors alone.
+   - Assert every scope table has 0 rows for the frozen ids.
+   - Recompute the G6 hashes and require them identical to the snapshot.
+   - `COMMIT`.
+   - Any failed assertion raises, and the transaction rolls back.
+10. **Post-check.** Outside the transaction, rerun G3 (all zero) and G6 (identical). Record both outputs.
 
-**chud** runs steps 1, 2 and a guarded delete. It needs the same in-transaction count assertions (conversation exists with exactly 8 messages, no other referencing rows), then a baseline re-check. It gets no script, no commit, and no session log in chud; the portfolio_site session log records it.
+### Per-store specifics
 
-## Meta-prompt change (infra)
+- **the-classic (Supabase).**
+  - `auth.users` and its auth rows (identities, sessions, refresh tokens) plus `public.profiles` are deleted **inside the same Postgres transaction** as the public tables, in explicit order.
+  - The Admin API is never used, and `storage.objects` owned by the demo user must be 0.
+  - No test suite runs, because no app code changes, so Codex MAJOR 11 does not arise.
+  - `chirp_templates` row `d22792ea…` (created 2026-06-14) is **real app data** that merely starts with `d`. It is the documented reason prefix selectors are banned.
+- **chudios (database plus volume files): two-phase file protocol.**
+  1. Resolve the recordings mount from `docker inspect chudios-backend-1`.
+  2. Record each demo file's size and sha256.
+  3. `mv` the 3 exact files into `/data/recordings/.showcase-quarantine/` on the same volume.
+  4. Run the database transaction.
+  5. On commit, delete the quarantined files and remove the directory.
+  6. On rollback, move them back and verify their sha256.
+  7. The post-check requires the files absent and no quarantine directory.
+  8. If the backend container isn't running, stop.
+- **co-host.**
+  - FKs are `NO ACTION`, so the delete order is explicit: children → episodes → channel.
+  - Before any delete, `chud.artifacts`, `chud.cohost_documents` and `chud.cohost_mirror_gaps` must have 0 rows mentioning the demo channel, episode or job ids (verified 0 on 2026-09-14).
+  - The failed CHUD job `job_fba52731d285` was never mirrored.
+  - Nothing is deleted in chud.
+- **mind-palace (Neo4j).**
+  - Export the Route node's properties and its 4 `HAS_STEP` relationship properties (`elaboration_note`, `last_reviewed_at`, `position`) to the evidence directory.
+  - Snapshot the Entity count (228), `HAS_STEP` count (5), `Route` count (2), and the degree of each linked Entity: United Nations 2, World War II 14, League of Nations 3, World War I 9.
+  - Delete with a **single atomic conditional statement**: match the exact route id, require exactly 4 outbound `HAS_STEP` relationships to the four named Entities and 0 inbound relationships, and only then `DETACH DELETE` the Route node. That removes only the route and its own 4 relationships; Entity nodes are never deleted. If the condition fails, it deletes nothing and returns 0 rows, which is a stop.
+  - The post-check requires Entity 228, `HAS_STEP` 1, Route 1, and each of those four degrees reduced by exactly 1.
+- **co-author.**
+  - SimpleJWT's `OutstandingToken.user` FK is `SET NULL` in Django. The 16 outstanding tokens (0 blacklisted) are deleted explicitly by frozen id before the user, and no null-user token may exist afterwards.
+  - The M2M through tables are deleted explicitly, before their parents.
+- **LeonsBudget.**
+  - All FKs are `NO ACTION`, so the delete order is explicit.
+  - `accounts_institution` id 9 "Northwind Bank" is **in scope** (created by the showcase, and no account outside household 3 references it).
+  - `categorization_category` rows are **retained allowlisted parents**.
 
-`portfolio-showcase.md` changes as follows:
-- **STEP 1:** the seed script lives in the app repo as `scripts/showcase_demo.<ext>` with the contract above. A run uses the existing script, or creates and commits one (commit in the app repo, the one allowed app-repo write besides `docker compose up -d`). This replaces "lives in the scratch dir, never in the app repo".
-- **STEP 3 teardown gate:** `showcase_demo teardown` then `status` exits 0, plus the real-data baseline.
-- **The stop-and-ask rule is copied into STEP 1's data check verbatim.**
-- **Coverage:** the leftover-data list is struck, and each of the 8 rows notes its script path.
-- **Changelog:** a receipt row.
+## Per-app manifest (live-verified 2026-09-14)
+
+The executing agent re-verifies every number at G3. Any difference is a stop.
+
+| App | Scope (exact counts) |
+|---|---|
+| LeonsBudget | `auth_user` 1 (id 3) · `accounts_householdmember` 1 · `accounts_household` 1 (id 3) · `accounts_bankaccount` 2 · `accounts_institution` 1 (id 9) · `budgets_monthlybudget` 4 · `budgets_budgetline` 44 · `transactions_transaction` 71 · `transactions_importbatch` 0 · `categorization_categoryrule` 0 · `categorization_categoryoverride` 0 · `auth_user_groups` / `auth_user_user_permissions` / `django_admin_log` for user 3: 0. Retained parents: `categorization_category`, 11 distinct ids referenced by lines and 11 by transactions. |
+| the-classic | `auth.users` 1 · `auth.identities` 1 · `auth.sessions` 4 · `auth.refresh_tokens` 4 · `auth.mfa_factors` 0 · `auth.one_time_tokens` 0 · `public.profiles` 1 · `courses` 1 (`d0000000-…-000000000001`, created by the demo user) · `course_holes` 18 · `tournaments` 1 (`dddddddd-dddd-dddd-dddd-dddddddddddd`) · `foursomes` 3 · `tournament_players` 12 · `scores` 37 · `player_scores` 0 · `accolades` 6 · `chat_messages` 6 · `chat_reads` 0 · `tournament_chirp_settings` 0 · `storage.objects` 0. Out-of-scope checks, each 0: demo user in other tournaments, scores entered elsewhere, messages sent elsewhere, other tournaments on the demo course. Scores 37 vs the log's 36, and messages 6 vs 5 chirps: both extras are under the exact demo tournament, consistent with the live final beat in the log. G7 must confirm this, or stop. |
+| chudios | `content_items` 6 (`dddddddd-`) · `attempts` 6 · `stage_runs` 8 · `transcripts` 2 · `qc_reports` 1 · `clips` 9 · `marketing_assets` 7 · `published_status` 4 · files: `demo-sn-ep09.m4a` 230111 B, `demo-sn-ep11.m4a` 246791 B, `demo-sn-ep12.m4a` 286386 B. Survivors: 8 other content items. |
+| co-host | `channels` 1 · `episodes` 2 (`ep_a78a3f018922`, `ep_df1c614c159e`) · `premises` 2 · `show_bibles` 1 · `show_bible_versions` 1 · `character_bibles` 0 · `character_bible_versions` 0 · `bible_amendments` 0 (including non-FK `source_episode_id`) · `chud_jobs` 1 (`job_fba52731d285`, failed) · `beat_sheet_versions` 2 · `script_versions` 2 · `table_reads` 1 · `reviews` 0 · `timeline_events` 7 · chud residue 0 across 3 tables. Survivors: 6 other channels. |
+| mind-palace | `Route` 1 · `HAS_STEP` 4 (to United Nations, World War II, League of Nations, World War I) · inbound 0. Retained: all 228 `Entity` nodes, the other Route and its 1 `HAS_STEP`. |
+| co-author | `auth_user` 1 (id 2) · `stories_story` 1 (id 7; user 2 owns no other) · `characters_character` 5 · `settings_places_setting` 4 · `events_event` 6 · `relationships_relationship` 3 · `open_questions_openquestion` 4 · `beats_beat` 5 · `beat_drafts_beatdraft` 3 · `beats_beat_characters` 14 · `beats_beat_events` 6 · `events_event_characters` 15 · `open_questions_openquestion_linked_characters` 7 · `…_linked_events` 4 · `…_linked_relationships` 0 · `…_linked_settings` 0 · `token_blacklist_outstandingtoken` 16 · `token_blacklist_blacklistedtoken` 0 · request tables (element generation/proposal, beat proposal, research, timeline ordering, draft request) 0 · `timeline_timelinedivider` 0. |
+
+## Meta-prompt change (infra `portfolio-showcase.md`)
+
+1. **Re-recording seeds into a throwaway database.**
+   - STEP 1's fourth and fifth outcomes change: seeded demo data goes into a database created **from the app's own migrations** (never a copy of real data), for example `<db>_showcase` on the same server or a throwaway local Supabase or Neo4j instance.
+   - The app is pointed at it only for the capture, through a compose override or environment variable the run does not commit.
+   - Teardown means dropping that database or volume and restoring the app's normal configuration, with a check that the app is back on its real database.
+   - The seed script is committed in the app repo **at that point**, as `scripts/showcase_demo.*`.
+   - Seeding into the real database remains only as a fallback with Evan's explicit approval, and it must follow this spec's gate protocol.
+2. **Qualify every read-only statement consistently.** App product code stays read-only, and so does no rebuild or redeploy, and no app bug fixes. The only app-repo writes allowed are the committed `scripts/showcase_demo.*`, its fixture, its tests, and the session log.
+   - The edit covers every occurrence: the STEP 0 header, the image-staleness paragraph, the recon paragraph, the "walk trips an app bug" trap, and STEP 1's scratch-only seed sentence.
+   - Verification greps `read-only`, `never in the app repo`, `left by design` and `no cleanup owed`, and every remaining hit is judged.
+3. **Copy D4 (stop-and-ask) verbatim** into STEP 1's data check.
+4. **Coverage.**
+   - Replace the "demo data still in dev databases" list with a per-row disposition taken from this spec's table.
+   - Keep historical notes intact; append each disposition.
+   - Add a changelog receipt row.
+
+## Execution shape
+
+- **Session.** A clean Claude session in `portfolio_site` runs the plan with subagent-driven development, one task per app plus an audit task, a meta-prompt task and a record task.
+- **Model.** Sub-agents run on a non-Fable model; Opus for the delete tasks.
+- **Stops.** A task that hits D4 returns `STOPPED — <question>` to the orchestrator, which asks Evan and continues other independent tasks.
+- **Commits.**
+  - portfolio_site: the plan's Changelog/results and the session log.
+  - infra: the meta-prompt change.
+  - No app repo commits.
 
 ## Verification (whole effort)
 
-- For each of the 8 apps: `status` exits 0, the round-trip evidence is in the app's session log, and tests and lint pass (or pre-existing failures are recorded).
-- chud: conversation 7206 is gone and baseline counts are unchanged.
-- The showcase meta-prompt has no remaining "left in the dev DB by design" / "never in the app repo" instruction.
-- The portfolio_site session log lists every app's outcome: `done` / `stopped — asked Evan: <question>`.
+- **Deleted apps.** Each of the six has step-10 post-check evidence (all scope counts 0, survivor hashes identical) in the evidence directory. The negative-control abort is recorded.
+- **mind-palace.** Entity and degree post-checks pass.
+- **chudios.** The files are absent, and there is no quarantine directory.
+- **chunk-norris.** The audit is recorded.
+- **Meta-prompt.** Its greps are judged, and its Coverage dispositions are complete.
+- **Results record.** The portfolio_site session log and the plan's results table list each app as `done` or `stopped — asked Evan: <question> — <answer>`.
 
-## Risks
+## Codex review disposition (rev 1 → rev 2)
 
-- **A wrong teardown deletes real data.** Mitigations:
-  - the scope is by exact ids or prefixes from the fixture;
-  - in-transaction assertions;
-  - an export before any delete;
-  - the stop-and-ask rule;
-  - no deletes outside the manifest.
-- **An export or fixture captures real data.** Mitigations: fixtures are built only from demo-scoped rows, the text is inspected, and graces-tree's is limited to listed pks.
-- **A script pointed at prod.** Mitigation: the local-only guard, tested.
-- **Non-transactional stores** (Neo4j, volume files). Mitigation: exact ids and paths, with listings before and after. If atomicity can't be established, stop and ask.
-
-## Open questions
-
-None blocking. Anything the executing agent discovers that this spec didn't anticipate falls under the stop-and-ask rule.
+| # | Sev | Disposition |
+|---|---|---|
+| 1 | BLOCKER | **Accepted.** D4 now distinguishes outbound refs to allowlisted retained parents from inbound refs. mind-palace deletes only the Route and its own rels, via a conditional atomic statement. |
+| 2 | BLOCKER | **Accepted.** G2 adds FK introspection against a committed allowlist plus listed non-FK checks. G6 adds survivor hashes, not just counts. G8 adds a negative control. Re-checks run inside the transaction before mutation. |
+| 3 | BLOCKER | **Moot under D1.** No seed scripts or fixtures are built now. Re-recording uses throwaway databases. |
+| 4 | BLOCKER | **Accepted.** The full the-classic closure (auth, profiles, holes, player_scores, chat_reads, storage) was live-verified. Auth rows are deleted in the same Postgres transaction, and there is no Admin API. |
+| 5 | BLOCKER | **Accepted.** Exact chudios child counts. Volume resolved with `docker inspect` (real name `chudios_chudios-recordings`). Two-phase quarantine file protocol. No app-native import (D1). |
+| 6 | BLOCKER | **Accepted.** CHUD residue checked across 3 tables, live 0. Explicit NO ACTION delete order. No CHUD deletion. |
+| 7 | BLOCKER | **Moot under D1.** graces-tree is already clean and gets no seed. Re-recording must use a throwaway database, which matches its own cleanup log's advice. |
+| 8 | BLOCKER | **Accepted.** G1 checks an exact tuple (container, compose project, database, migration head, anchor sentinel), access only through `docker exec`, and bans the linked Supabase CLI. |
+| 9 | MAJOR | **Accepted.** Outstanding tokens are deleted explicitly before the user. The M2M through tables are enumerated with live counts. |
+| 10 | MAJOR | **Superseded by D2.** Conversation 7206 is retained; live inspection found it mixed with 2026-09-10 data (note 4910, 6 later messages). |
+| 11 | MAJOR | **Moot.** No app code changes, so no app test suites run against the live Supabase. |
+| 12 | MAJOR | **Accepted.** Every read-only statement is qualified consistently, and the grep list is widened. |
+| 13 | MINOR | **Accepted.** Coverage gets per-row dispositions (no wholesale strike), the voice-trainer timestamp mutation is recorded, and a chunk-norris read-only audit is added. |
