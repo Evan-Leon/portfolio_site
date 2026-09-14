@@ -13,7 +13,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 | chudios (db + files) | POST-VERIFIED |
 | mind-palace | POST-VERIFIED |
 | leonsbudget | POST-VERIFIED |
-| the-classic | NOT-STARTED |
+| the-classic | POST-VERIFIED |
 | chunk-norris audit | NOT-STARTED |
 
 ## Open questions for Evan
@@ -140,3 +140,23 @@ No G6 failure occurred, so there was no refreeze.
 | post | 0 | `leonsbudget/post.log` (GATE POST SCOPE OK, GATE POST OK) |
 
 Deleted: transactions 71, budget lines 44, monthly budgets 4, bank accounts 2, institution 1 (Northwind Bank), household member 1, household 1, user 1; categories retained.
+
+## Task 7 — the-classic
+
+### the-classic (`supabase_db_the-classic`)
+State: **POST-VERIFIED** (2026-09-14 23:13:02 UTC)
+
+No G6 failure occurred, so there was no refreeze.
+
+| Phase | exit | Evidence |
+|---|---|---|
+| `sha256sum -c SHA256SUMS` | 0 | all OK |
+| preflight | 0 | `the-classic/preflight.log` |
+| freeze | 0 | `the-classic/scope.json`, rows digest `c386ba09f17c` |
+| G7 inspection | fictional | `the-classic/g7-inspection.txt` (732 lines, read in full): per-table counts match the expected scope exactly (every listed table, the zero ones included). User and identity `demo@example.com` (full_name "Sam"), profile "Sam" (organizer); course "Cypress Ridge Golf Club"; tournament "The Classic 2026" (scramble, invite `CLASSIC-2026-DEMO`); foursomes Birdie Bandits, Eagle Chasers, The Sand Trappers; 12 first-name-only players (Sam, Dave, Mike, Tara, Lisa, Chris, Pat, Jordan, Kevin, Megan, Ryan, Ashley; all but Sam and Tara are the app's own committed `supabase/seed.sql` fixture names); 6 accolades (closest pin / longest drive) and 6 chats are golf awards and chirps about them. 36 scores share the seed instant 18:53:26.650 UTC; the 37th (`0d89f636…`, Birdie Bandits, 18:53:32.79) and the 6th chat (The Classic Bot, "Birdie Bandits just carded a 7 on a par 4…", 18:53:33.03, `score_id` = that score) are the take's live hole-13 score and auto-chirp, as the capture session log records. The 5 audit rows are `user_signedup` (18:49:30.020) plus 4 `login` (18:49:30.028, 18:49:30.099, 18:51:29.890, 18:53:27.890) for `demo@example.com` on 2026-09-06 UTC. Five seeded chats are back-dated to 17:21–18:44 UTC on 2026-09-06, inside the showcase window, sharing the seed batch's microsecond fraction. `chirp_templates` is absent. No real person, email or private content. |
+| rehearse | 0 | `the-classic/rehearse.log` (GATE ROLLED BACK; survivors OK after rollback) |
+| negative | 0 | `the-classic/negative.log` (GATE FAIL G3 count, as designed) |
+| execute | 0 | `the-classic/execute.log` (GATE COMMITTED; state COMMITTED) |
+| post | 0 | `the-classic/post.log` (GATE POST SCOPE OK, GATE POST OK) |
+
+Deleted: audit rows 5, auth amr claims 4, refresh tokens 4, sessions 4, identity 1, chat messages 6, accolades 6, scores 37, tournament players 12, foursomes 3, tournament 1, course holes 18, course 1, profile 1, auth user 1; `chirp_templates` `d22792ea…` retained (never in scope).
