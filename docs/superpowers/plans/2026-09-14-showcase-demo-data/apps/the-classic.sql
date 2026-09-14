@@ -84,6 +84,19 @@ INSERT INTO gate_fk_allow (conrelid, col, confrelid) VALUES
   ('public.tournaments', 'course_id', 'public.courses'),
   ('public.tournaments', 'organizer_id', 'public.profiles');
 
+-- Reviewed 2026-09-14 with pg_get_functiondef. On this delete's path only chat_messages_deny_delete fires, and it
+-- raises only for current_role = 'authenticated'; the gate runs as postgres, so it returns OLD. The UPDATE triggers
+-- cannot fire: every ON DELETE SET NULL into scores / tournament_players / chat_messages targets rows this gate
+-- deletes earlier (del_order), and no statement here updates. The rehearsal proves both.
+INSERT INTO gate_trigger_allow (tbl, tgname) VALUES
+  ('public.chat_messages', 'chat_messages_deny_delete_trigger'),
+  ('public.foursomes', 'auto_complete_tournament_trigger'),
+  ('public.player_scores', 'compute_team_score_trigger'),   -- AFTER INSERT/UPDATE only; the demo scope has 0 player_scores
+  ('public.profiles', 'enforce_no_self_role_change'),
+  ('public.scores', 'validate_score_trigger'),
+  ('public.tournament_players', 'trg_enforce_foursome_capacity_update'),
+  ('public.tournaments', 'trg_validate_status_transition');
+
 INSERT INTO gate_extra VALUES
   ('demo course id starts d0000000-', (SELECT count(*) FROM public.courses
      WHERE created_by = '921fafc9-d77f-4b55-b57e-7422f39c30f3' AND id::text LIKE 'd0000000-%'), 1),

@@ -5,7 +5,7 @@
 **Goal:** Remove the portfolio-showcase demo data still sitting in six apps' local stores, proving with a fail-closed gate that no real row, node or file was deleted or changed. Then record every showcase-touched app's disposition and change the showcase meta-prompt so demo data goes into throwaway stores from now on.
 
 **Architecture:** All deletion runs through committed, already-validated tooling in `docs/superpowers/plans/2026-09-14-showcase-demo-data/`.
-- **Postgres gate** (`gate.sql` + `gate-run.sh` + one declaration per app): session-temporary functions check the target, the dependency closure, exact scope counts, inbound references, outbound references and survivor hashes. It then runs a rehearsal that rolls back and a negative control, and only then commits one guarded delete.
+- **Postgres gate** (`gate.sql` + `gate-run.sh` + one declaration per app): session-temporary functions check the target, the dependency closure (foreign keys, plus reviewed-and-allowlisted DELETE/UPDATE triggers; any rewrite rule stops), exact scope counts, inbound references, outbound references and survivor hashes. It then runs a rehearsal that rolls back and a negative control, and only then commits one guarded delete.
 - **Neo4j** (`neo4j/mind-palace-gate.sh`): the same phase shape, ending in one atomic conditional delete.
 - **Volume files** (`files/chudios-files.sh`): a two-phase quarantine protocol.
 

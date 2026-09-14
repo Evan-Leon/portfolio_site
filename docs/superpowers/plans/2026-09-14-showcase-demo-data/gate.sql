@@ -2,7 +2,7 @@
 --
 -- Creates ONLY session-temporary objects (TEMP tables, pg_temp functions); it never creates,
 -- alters or writes a persistent object. An app declaration file (apps/<app>.sql) is concatenated
--- after this file and fills the four temp tables. The runner (gate-run.sh) wraps both in a
+-- after this file and fills the five temp tables. The runner (gate-run.sh) wraps both in a
 -- transaction that ends in ROLLBACK for every phase except `execute`.
 --
 -- Every failure raises an exception whose message starts with "GATE FAIL <check>" so callers can
@@ -19,6 +19,7 @@ CREATE TEMP TABLE gate_parent (tbl regclass PRIMARY KEY);              -- retain
 CREATE TEMP TABLE gate_fk_allow (conrelid regclass, col text, confrelid regclass,
                                  PRIMARY KEY (conrelid, col, confrelid)); -- every FK that references a scope table
 CREATE TEMP TABLE gate_extra (label text PRIMARY KEY, n bigint NOT NULL, expected bigint NOT NULL); -- non-FK checks
+CREATE TEMP TABLE gate_trigger_allow (tbl regclass, tgname text, PRIMARY KEY (tbl, tgname));      -- reviewed DELETE/UPDATE triggers
 
 -- All foreign keys in the database, first key column only; nkeys > 1 flags composite keys.
 CREATE FUNCTION pg_temp.gate_fk_list()
@@ -79,6 +80,39 @@ BEGIN
            WHERE NOT EXISTS (SELECT 1 FROM pg_temp.gate_fk_list() f
                              WHERE f.conrelid = a.conrelid AND f.col = a.col AND f.confrelid = a.confrelid) LOOP
     RAISE EXCEPTION 'GATE FAIL G2 allowlisted FK not in schema: %.% -> %', r.conrelid, r.col, r.confrelid;
+  END LOOP;
+
+  -- G2 triggers/rules: a DELETE- or UPDATE-firing trigger (or any rewrite rule) on a scope table, a table that
+  --     references one, or a retained parent could change rows the survivor hash does not cover. Each trigger must
+  --     be reviewed and allowlisted by name (the rehearsal then proves its effect); any rule is a stop.
+  FOR r IN
+    SELECT t.tgrelid::regclass AS tbl, t.tgname::text AS tgname
+    FROM pg_trigger t
+    WHERE NOT t.tgisinternal
+      AND (t.tgtype & 24) <> 0   -- TRIGGER_TYPE_DELETE (8) | TRIGGER_TYPE_UPDATE (16)
+      AND t.tgrelid IN (
+        SELECT tbl FROM gate_scope
+        UNION SELECT f.conrelid FROM pg_temp.gate_fk_list() f WHERE f.confrelid IN (SELECT tbl FROM gate_scope)
+        UNION SELECT tbl FROM gate_parent)
+  LOOP
+    IF NOT EXISTS (SELECT 1 FROM gate_trigger_allow a WHERE a.tbl = r.tbl AND a.tgname = r.tgname) THEN
+      RAISE EXCEPTION 'GATE FAIL G2 unlisted trigger: % on %', r.tgname, r.tbl;
+    END IF;
+  END LOOP;
+  FOR r IN
+    SELECT c.oid::regclass AS tbl, rw.rulename::text AS rulename
+    FROM pg_rewrite rw JOIN pg_class c ON c.oid = rw.ev_class
+    WHERE rw.rulename <> '_RETURN'
+      AND c.oid IN (
+        SELECT tbl FROM gate_scope
+        UNION SELECT f.conrelid FROM pg_temp.gate_fk_list() f WHERE f.confrelid IN (SELECT tbl FROM gate_scope)
+        UNION SELECT tbl FROM gate_parent)
+  LOOP
+    RAISE EXCEPTION 'GATE FAIL G2 rewrite rule: % on %', r.rulename, r.tbl;
+  END LOOP;
+  FOR r IN SELECT a.* FROM gate_trigger_allow a
+           WHERE NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = a.tbl AND t.tgname = a.tgname AND NOT t.tgisinternal) LOOP
+    RAISE EXCEPTION 'GATE FAIL G2 allowlisted trigger not in schema: % on %', r.tgname, r.tbl;
   END LOOP;
 
   -- G4: no row OUTSIDE the scope references a row INSIDE it.

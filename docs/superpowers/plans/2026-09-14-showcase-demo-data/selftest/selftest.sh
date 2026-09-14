@@ -50,6 +50,10 @@ fresh c08; sql "UPDATE item SET note = 'real' WHERE id = 21" >/dev/null
            check "G3 extra check"                            stop "GATE FAIL G3 extra check" "$GATE" selftest preflight
 fresh c09; sql "INSERT INTO item VALUES (22, 2, 1, 'demo')" >/dev/null
            check "G3 count differs from manifest"            stop "GATE FAIL G3 count" "$GATE" selftest preflight
+fresh c15; sql "CREATE FUNCTION touch_parent() RETURNS trigger LANGUAGE plpgsql AS \$\$ BEGIN UPDATE shared_parent SET label = label || '!'; RETURN OLD; END \$\$; CREATE TRIGGER child_touch BEFORE DELETE ON child FOR EACH ROW EXECUTE FUNCTION touch_parent()" >/dev/null
+           check "G2 unlisted DELETE trigger"               stop "GATE FAIL G2 unlisted trigger" "$GATE" selftest preflight
+fresh c16; sql "CREATE RULE item_noop AS ON DELETE TO item DO ALSO NOTHING" >/dev/null
+           check "G2 rewrite rule on a scope table"         stop "GATE FAIL G2 rewrite rule" "$GATE" selftest preflight
 fresh c10; check "freeze"                                     pass "" "$GATE" selftest freeze
            check "freeze refuses to overwrite"               stop "refuses to overwrite" "$GATE" selftest freeze
            check "execute refuses without rehearse/negative" stop "requires rehearse.ok" "$GATE" selftest execute
