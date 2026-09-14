@@ -10,7 +10,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 | co-host | POST-VERIFIED |
 | co-host-chud | POST-VERIFIED |
 | co-author | POST-VERIFIED |
-| chudios (db + files) | STOPPED at G7 inspection — question: are `demo-signal-noise.m4a` (named by 3 in-scope demo attempts) and the 2026-09-02..04 back-dated timestamps expected seed artifacts, so chudios may continue from rehearse? |
+| chudios (db + files) | POST-VERIFIED |
 | mind-palace | POST-VERIFIED |
 | leonsbudget | NOT-STARTED |
 | the-classic | NOT-STARTED |
@@ -18,7 +18,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 
 ## Open questions for Evan
 
-1. **chudios (Task 4, stopped at G7).** The plan expects the in-scope recording paths to name only `demo-sn-ep09/11/12.m4a`. Three of the 6 in-scope demo attempts (Ep. 10, 13 and 14; ids `dddddddd-0001-…-000000000010/13/14`) instead name `recording_path = demo-signal-noise.m4a`, which the plan and spec never mention. Read-only facts: that file is **not** in the `chudios_chudios-recordings` volume, and no surviving (non-`dddddddd-`) attempt names it. Separately, rows in clips, attempts, stage_runs, transcripts and content_items carry `created_at` 2026-09-02..04, outside the 2026-09-05/06 window. They share identical microsecond fractions at whole-day offsets from a 2026-09-06 ~19:16 UTC base, which looks like seed back-dating, but nothing in the plan says so. Are both expected artifacts of the showcase seed, so Task 4 may continue from `rehearse` on the current freeze (rows digest `94c9fa17f3a1`)? Nothing was written: no rehearse, quarantine or execute ran, and the three files are untouched in `/data/recordings`.
+1. **chudios (Task 4, stopped at G7).** The plan expects the in-scope recording paths to name only `demo-sn-ep09/11/12.m4a`. Three of the 6 in-scope demo attempts (Ep. 10, 13 and 14; ids `dddddddd-0001-…-000000000010/13/14`) instead name `recording_path = demo-signal-noise.m4a`, which the plan and spec never mention. Read-only facts: that file is **not** in the `chudios_chudios-recordings` volume, and no surviving (non-`dddddddd-`) attempt names it. Separately, rows in clips, attempts, stage_runs, transcripts and content_items carry `created_at` 2026-09-02..04, outside the 2026-09-05/06 window. They share identical microsecond fractions at whole-day offsets from a 2026-09-06 ~19:16 UTC base, which looks like seed back-dating, but nothing in the plan says so. Are both expected artifacts of the showcase seed, so Task 4 may continue from `rehearse` on the current freeze (rows digest `94c9fa17f3a1`)? Nothing was written: no rehearse, quarantine or execute ran, and the three files are untouched in `/data/recordings`. — **Answer (Evan, 2026-09-14):** "yes, continue chudios from rehearse"
 
 ## Task 1 — tooling and preflight
 
@@ -80,7 +80,9 @@ Deleted: outstanding tokens 16, beat drafts 3, beat↔character 14, beat↔event
 ## Task 4 — chudios
 
 ### chudios (chudios + volume `chudios_chudios-recordings`)
-State: **STOPPED at G7 inspection — question: are `demo-signal-noise.m4a` (named by 3 in-scope demo attempts) and the 2026-09-02..04 back-dated timestamps expected seed artifacts, so chudios may continue from rehearse?** (see Open questions 1)
+State: **POST-VERIFIED** (2026-09-14 22:57:31 UTC)
+
+The first run stopped at G7 inspection (Open questions 1). Evan answered "yes, continue chudios from rehearse" (2026-09-14), and the resumed run continued from rehearse on the same freeze (rows digest `94c9fa17f3a1`). No G6 failure occurred, so there was no refreeze.
 
 | Phase | exit | Evidence |
 |---|---|---|
@@ -89,14 +91,16 @@ State: **STOPPED at G7 inspection — question: are `demo-signal-noise.m4a` (nam
 | files check | 0 | `chudios/files-check.log` |
 | freeze | 0 | `chudios/scope.json`, rows digest `94c9fa17f3a1` |
 | G7 inspection | STOP (D4 judgment) | `chudios/g7-inspection.txt` (542 lines): per-table counts match the expected scope exactly (clips 9, attempts 6, qc_reports 1, stage_runs 8, transcripts 2, content_items 6, marketing_assets 7, published_status 4). The content is the fictional "Signal & Noise" podcast (Ep. 09–14, e.g. "Interfaces Are Promises", "Your Queue Is Lying"), every attempt is `source = synthetic`, and the QC diff hashes are placeholders (`d3m0…`, `5eeded…`). No real person or email appears. **Triggers:** (1) attempts for Ep. 10/13/14 name `recording_path = demo-signal-noise.m4a`, where the brief expects only `demo-sn-ep09/11/12.m4a`; (2) `created_at` 2026-09-02..04 on rows in five tables, outside the showcase window, which nothing in the plan explains. |
-| rehearse | not run | — |
-| negative | not run | — |
-| files quarantine | not run | — |
-| execute | not run | no `state.txt` |
-| files purge / restore | not run | — |
-| post / files post | not run | — |
+| `sha256sum -c SHA256SUMS` (resume) | 0 | all OK |
+| rehearse | 0 | `chudios/rehearse.log` (GATE ROLLED BACK; survivors OK after rollback) |
+| negative | 0 | `chudios/negative.log` (GATE FAIL G3 count, as designed) |
+| files quarantine | 0 | `chudios/files-quarantine.log` (3 files moved to `.showcase-quarantine`, size and sha256 verified) |
+| execute | 0 | `chudios/execute.log` (GATE COMMITTED; state COMMITTED) |
+| files purge | 0 | `chudios/files-purge.log` (3 quarantined files purged, quarantine dir removed) |
+| db post | 0 | `chudios/post.log` (GATE POST SCOPE OK, GATE POST OK) |
+| files post | 0 | `chudios/files-post.log` |
 
-Deleted: nothing. Files: `demo-sn-ep09.m4a` (230111 B), `demo-sn-ep11.m4a` (246791 B) and `demo-sn-ep12.m4a` (286386 B) are untouched in `/data/recordings`, and there is no `.showcase-quarantine` directory (read-only `ls`, 2026-09-14). A read-only check found `demo-signal-noise.m4a` absent from the volume, and no surviving attempt names it.
+Deleted: qc_reports 1, transcripts 2, stage_runs 8, clips 9, marketing_assets 7, published_status 4, attempts 6, content_items 6, and files demo-sn-ep09/11/12.m4a. The 8 other content items survive. `demo-signal-noise.m4a` was never in the volume, so there was no file to remove.
 
 ## Task 5 — mind-palace
 
