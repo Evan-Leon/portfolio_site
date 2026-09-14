@@ -42,11 +42,12 @@ A one-time cleanup.
 - **Implementer reports.** An implementer that hits D4 records the target's state and question in the results file, commits, and returns `BLOCKED` with the exact `GATE FAIL` line (or its judgment) and the question. It then stops: no retry, and no alternative path. Record the stop in the ledger as `Task <N>: STOPPED — <target> — <reason> — question: <question>`, then move to the next task.
 - **Task 8** always ends `BLOCKED` with the chunk-norris question. That is expected.
 - **Reviewers** get the task brief, the implementer's report, the review package (the results-file diff) and the target's evidence directory. They follow the plan's "Reviewer checklist". For cleanup tasks that means:
-  - re-run the read-only `classify` and `post` phases;
-  - check the phase order from the log mtimes;
-  - confirm `g7-inspection.txt` exists and that its judgment is recorded.
+  1. snapshot the original evidence mtimes first;
+  2. read the whole G7 file (`g7-inspection.txt`, or mind-palace's `fingerprint.txt`) and judge it independently;
+  3. re-verify with `GATE_REVIEW=1` `classify` and `post`, which write only under `review/`;
+  4. confirm the originals didn't change.
 
-  Reviewers never run a write phase.
+  Reviewers never run a phase without `GATE_REVIEW=1`, and never run a write phase.
 - **Commits.**
   - In the portfolio_site worktree: the results file and the session log.
   - In the infra worktree branch: Task 9's two files.

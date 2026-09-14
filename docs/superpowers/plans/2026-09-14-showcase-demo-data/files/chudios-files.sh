@@ -38,13 +38,13 @@ echo "target: container=$C root=$ROOT" > "$LOG"
 fail() { echo "GATE FAIL $*" | tee -a "$LOG" >&2; echo "STOP chudios files $phase — see $LOG" >&2; exit 1; }
 inc()  { timeout --foreground -k 5 120 docker exec "$C" sh -c "$1" 2>>"$LOG"; }
 
-got="$(timeout 30 docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
+got="$(timeout --foreground -k 10 30 docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
 [ "$got" = "true $PROJ" ] || fail "G1 target: container $C reports '$got', expected 'true $PROJ'"
 if [ -n "${GATE_FILES_ROOT:-}" ]; then
   case "$ROOT" in /tmp/gate-files-selftest.*) ;; *) fail "G1 selftest root must be /tmp/gate-files-selftest.*, got $ROOT" ;; esac
 else
   [ -z "$CRASH_AFTER" ] && [ -z "${GATE_FILES_MANIFEST:-}" ] || fail "G1 selftest overrides are refused against the real volume"
-  mount="$(timeout 30 docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data/recordings"}}{{.Name}}{{end}}{{end}}' "$C")"
+  mount="$(timeout --foreground -k 10 30 docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data/recordings"}}{{.Name}}{{end}}{{end}}' "$C")"
   [ "$mount" = "$VOLUME" ] || fail "G1 mount: /data/recordings is '$mount', expected volume $VOLUME"
 fi
 
@@ -75,7 +75,7 @@ no_strays() {  # the quarantine dir, if present, holds only manifest names
   listed="$(inc "ls -A '$Q'")"
   while read -r name; do
     [ -z "$name" ] && continue
-    grep -q "^$name " <<< "$MANIFEST" || fail "stray file in quarantine: $name"
+    cut -d' ' -f1 <<< "$MANIFEST" | grep -qxF -- "$name" || fail "stray file in quarantine: $name"
   done <<< "$listed"
 }
 

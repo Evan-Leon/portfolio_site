@@ -12,7 +12,9 @@ INSERT INTO gate_scope (tbl, pkcol, ids, expected, del_order) VALUES
 INSERT INTO gate_parent VALUES ('shared_parent');
 INSERT INTO gate_fk_allow VALUES
   ('child', 'item_id', 'item', 'c'), ('item', 'owner_id', 'owner_t', 'a'), ('watcher', 'item_id', 'item', 'n');
-INSERT INTO gate_trigger_allow VALUES ('child', 'child_noop', '5c90ecbd1e54323c7792af3f46c27ff49eadbee21ae91c50c45a0c116dd69173');
+INSERT INTO gate_trigger_allow (tbl, tgname, tgtype, tgenabled, digest) VALUES
+  ('child', 'child_noop', 11, 'O', '5c90ecbd1e54323c7792af3f46c27ff49eadbee21ae91c50c45a0c116dd69173');
 INSERT INTO gate_extra VALUES
   ('demo owner has no non-demo items', (SELECT count(*) FROM item WHERE owner_id = 2 AND note <> 'demo'), 0, 0),
-  ('items total (1 real + 2 demo)', (SELECT count(*) FROM item), 3, 1);
+  ('items total (1 real + 2 demo)', (SELECT count(*) FROM item), 3, 1),
+  ('audit notes naming the demo owner (non-FK)', (SELECT count(*) FROM audit_note WHERE note LIKE '%demo@example.com%'), 0, 0);

@@ -94,14 +94,16 @@ INSERT INTO gate_fk_allow (conrelid, col, confrelid, deltype) VALUES
 -- postgres, so it returns OLD. The UPDATE triggers cannot fire: every ON DELETE SET NULL into scores /
 -- tournament_players / chat_messages targets rows this gate deletes earlier, and no statement here updates.
 -- compute_team_score_trigger is AFTER INSERT/UPDATE on player_scores, and the demo scope has 0 player_scores.
-INSERT INTO gate_trigger_allow (tbl, tgname, digest) VALUES
-  ('public.chat_messages', 'chat_messages_deny_delete_trigger', 'c439466c9d16842d4259a3c8b9e2e07dae653954267f35531bca5ca424e010f6'),
-  ('public.foursomes', 'auto_complete_tournament_trigger', '2947ba7c012857adea4af067435c4e4d89e34209c28d3723b7da977184a6ec74'),
-  ('public.player_scores', 'compute_team_score_trigger', '4995fe3277f3f681fbc21edcfe9cddea38dc9321eb43cba40569a9ef73e5a996'),
-  ('public.profiles', 'enforce_no_self_role_change', '5cd82bffe0b121c2da704a01f6f2a63524fe978e56df94daf023c5a58135df10'),
-  ('public.scores', 'validate_score_trigger', '71d075f313a8dcd127572c338c5d04544ac249fc9b61400b70fa121f36d92ba9'),
-  ('public.tournament_players', 'trg_enforce_foursome_capacity_update', '73c32368cdc8309994a584d4810d0696ac44c1dbc4411365a07a9762848ae8d1'),
-  ('public.tournaments', 'trg_validate_status_transition', '0735f76fb486aeadaf43489f146b316d8ddcbd32c5aaef1d851d36151fd6b297');
+-- tgtype and tgenabled pinned from pg_trigger (11 = ROW BEFORE DELETE, 17 = ROW AFTER UPDATE, 19 = ROW BEFORE UPDATE,
+-- 21 = ROW AFTER INSERT|UPDATE, 23 = ROW BEFORE INSERT|UPDATE; 'O' = enabled in origin mode).
+INSERT INTO gate_trigger_allow (tbl, tgname, tgtype, tgenabled, digest) VALUES
+  ('public.chat_messages', 'chat_messages_deny_delete_trigger', 11, 'O', 'c439466c9d16842d4259a3c8b9e2e07dae653954267f35531bca5ca424e010f6'),
+  ('public.foursomes', 'auto_complete_tournament_trigger', 17, 'O', '2947ba7c012857adea4af067435c4e4d89e34209c28d3723b7da977184a6ec74'),
+  ('public.player_scores', 'compute_team_score_trigger', 21, 'O', '4995fe3277f3f681fbc21edcfe9cddea38dc9321eb43cba40569a9ef73e5a996'),
+  ('public.profiles', 'enforce_no_self_role_change', 19, 'O', '5cd82bffe0b121c2da704a01f6f2a63524fe978e56df94daf023c5a58135df10'),
+  ('public.scores', 'validate_score_trigger', 23, 'O', '71d075f313a8dcd127572c338c5d04544ac249fc9b61400b70fa121f36d92ba9'),
+  ('public.tournament_players', 'trg_enforce_foursome_capacity_update', 19, 'O', '73c32368cdc8309994a584d4810d0696ac44c1dbc4411365a07a9762848ae8d1'),
+  ('public.tournaments', 'trg_validate_status_transition', 19, 'O', '0735f76fb486aeadaf43489f146b316d8ddcbd32c5aaef1d851d36151fd6b297');
 
 INSERT INTO gate_extra (label, n, expected, post_expected) VALUES
   ('demo course id starts d0000000-', (SELECT count(*) FROM public.courses

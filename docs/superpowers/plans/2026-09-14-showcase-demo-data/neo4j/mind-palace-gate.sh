@@ -25,11 +25,19 @@ ROUTE=60c383d5-921e-443c-9430-b2242469fbe0
 ROUTE_NAME='Collective Security'
 phase="${1:?usage: mind-palace-gate.sh <phase>}"
 
-got="$(timeout 30 docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
+got="$(timeout --foreground -k 10 30 docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
 [ "$got" = "true $PROJ" ] || { echo "GATE FAIL G1 target: container $C reports '$got', expected 'true $PROJ'" >&2; exit 2; }
 
 mkdir -p "$OUT" && chmod 700 "$EVID" "$OUT"
-LOG="$OUT/$phase.log"
+if [ "${GATE_REVIEW:-0}" = 1 ]; then
+  # Reviewer mode: read-only phases only; logs and classified state go to review/, never over the originals.
+  case "$phase" in preflight|dry|classify|post) ;; *) echo "GATE FAIL review mode allows only preflight, dry, classify, post" >&2; exit 2 ;; esac
+  STAMP="$(date -u +%Y%m%dT%H%M%S%NZ)"
+  mkdir -p "$OUT/review" && chmod 700 "$OUT/review"
+  LOG="$OUT/review/$phase-$STAMP.log"; STATE="$OUT/review/state-$STAMP.txt"
+else
+  LOG="$OUT/$phase.log"; STATE="$OUT/state.txt"
+fi
 echo "target: container=$C project=$PROJ route=$ROUTE" > "$LOG"
 
 cy_read()  { timeout --foreground -k 10 "$TIMEOUT" docker exec -i "$C" cypher-shell -u neo4j -p "$NEO_PASS" --format plain --access-mode read; }
@@ -63,21 +71,28 @@ survivor_hash() {
 
 # The route's canonical property fingerprint: every route property and every outbound relationship's type,
 # target name and properties, keys sorted. Its printed value is a Cypher string literal (verified round-trip).
-FP_BODY="CALL (r) { UNWIND keys(r) AS k WITH k ORDER BY k RETURN reduce(s = '', p IN collect(k + '=' + toString(r[k])) | s + p + ';') AS rf }
+# Every key, value type and value is length-prefixed (valueType() distinguishes 1 from "1"), so no two different
+# property sets can print the same fingerprint. This one string is both what G7 inspects and what the delete
+# compares ($frozen_fp), so the reviewed content and the compared content cannot diverge.
+FP_BODY="CALL (r) { UNWIND keys(r) AS k WITH k ORDER BY k RETURN reduce(s = '', p IN collect(toString(size(k)) + ':' + k + '|' + valueType(r[k]) + '|' + toString(size(toString(r[k]))) + ':' + toString(r[k]) + ';') | s + p) AS rf }
 CALL (r) { MATCH (r)-[x]->(e) WITH x, e ORDER BY e.name, type(x)
-  CALL (x) { UNWIND keys(x) AS k WITH k ORDER BY k RETURN reduce(s = '', p IN collect(k + '=' + toString(x[k])) | s + p + ';') AS xf }
-  RETURN reduce(s = '', p IN collect(type(x) + '>' + coalesce(e.name, '?') + '{' + xf + '}') | s + p + '|') AS relf }"
+  CALL (x) { UNWIND keys(x) AS k WITH k ORDER BY k RETURN reduce(s = '', p IN collect(toString(size(k)) + ':' + k + '|' + valueType(x[k]) + '|' + toString(size(toString(x[k]))) + ':' + toString(x[k]) + ';') | s + p) AS xf }
+  RETURN reduce(s = '', p IN collect('REL ' + toString(size(type(x))) + ':' + type(x) + ' TO ' + toString(size(coalesce(e.name, ''))) + ':' + coalesce(e.name, '') + ' {' + toString(size(xf)) + ':' + xf + '}') | s + p + ' ') AS relf }"
+FP_EXPR="'ROUTE {' + toString(size(rf)) + ':' + rf + '} ' + relf"
 FP_MATCH="MATCH (r:Route {id: '$ROUTE'})
 $FP_BODY"
 
 fingerprint() {
   printf '%s\n' "$FP_MATCH
-RETURN rf + '#' + relf AS fp;" | cy_read 2>>"$LOG" | tail -n +2
+RETURN $FP_EXPR AS fp;" | cy_read 2>>"$LOG" | tail -n +2
 }
 
 delete_stmt() {  # $1 = the fourth entity name ("World War I" for real, anything else for the negative control)
   # Built with printf, never a heredoc: the frozen literal may contain characters a shell would expand.
+  # The frozen fingerprint is bound as a Cypher parameter; cypher-shell printed it as a Cypher string literal at
+  # freeze (round-trip verified), and :param evaluates that literal client-side.
   printf '%s\n' \
+    ":param frozen_fp => $(cat "$OUT/fingerprint.txt")" \
     "MATCH (r:Route {id: '$ROUTE'})" \
     "WHERE r.name = '$ROUTE_NAME'" \
     "  AND count{ (r)<--() } = 0" \
@@ -86,8 +101,8 @@ delete_stmt() {  # $1 = the fourth entity name ("World War I" for real, anything
     "  AND all(n IN ['United Nations', 'World War II', 'League of Nations', '$1'] WHERE exists{ (r)-[:HAS_STEP]->(:Entity {name: n}) })" \
     "WITH r" \
     "$FP_BODY" \
-    "WITH r, rf + '#' + relf AS fp" \
-    "WHERE fp = $(cat "$OUT/fingerprint.txt")" \
+    "WITH r, $FP_EXPR AS fp" \
+    "WHERE fp = \$frozen_fp" \
     "WITH r, count{ (r)-->() } AS steps" \
     "DETACH DELETE r" \
     "RETURN steps AS deleted_steps;"
@@ -123,13 +138,13 @@ unchanged() {  # $1 = label
 
 classify() {
   local n
-  n="$(value "MATCH (r:Route {id: '$ROUTE'}) RETURN count(r);")" || { echo UNKNOWN > "$OUT/state.txt"; return 1; }
+  n="$(value "MATCH (r:Route {id: '$ROUTE'}) RETURN count(r);")" || { echo UNKNOWN > "$STATE"; return 1; }
   case "$n" in
-    1) echo PRE-STATE > "$OUT/state.txt" ;;
-    0) echo COMMITTED > "$OUT/state.txt" ;;
-    *) echo UNKNOWN > "$OUT/state.txt"; return 1 ;;
+    1) echo PRE-STATE > "$STATE" ;;
+    0) echo COMMITTED > "$STATE" ;;
+    *) echo UNKNOWN > "$STATE"; return 1 ;;
   esac
-  echo "state: $(cat "$OUT/state.txt")" | tee -a "$LOG"
+  echo "state: $(cat "$STATE")" | tee -a "$LOG"
 }
 
 case "$phase" in
@@ -173,7 +188,7 @@ case "$phase" in
     out="$(delete_stmt 'World War I' | cy_write 2>>"$LOG")"; s=$?
     echo "$out (exit $s)" >> "$LOG"
     classify || fail "execute: commit state could not be classified"
-    state="$(cat "$OUT/state.txt")"
+    state="$(cat "$STATE")"
     if [ "$s" -ne 0 ] || [ "$out" != $'deleted_steps\n4' ] || [ "$state" != COMMITTED ]; then
       fail "G9 execute outcome: exit $s, output '$out', state $state (PRE-STATE means nothing was deleted)"
     fi ;;

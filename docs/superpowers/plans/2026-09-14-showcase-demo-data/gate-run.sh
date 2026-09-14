@@ -40,7 +40,7 @@ esac
 [ -f "$DECL" ] || { echo "GATE FAIL G1 missing declaration: $DECL" >&2; exit 2; }
 
 # G1 (container half): the exact container must be running under the expected compose project.
-got="$(timeout 30 docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
+got="$(timeout --foreground -k 10 30 docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
 if [ "$got" != "true $PROJ" ]; then
   echo "GATE FAIL G1 target: container $C reports '$got', expected 'true $PROJ'" >&2
   exit 2
@@ -48,7 +48,16 @@ fi
 
 OUT="$EVID/$app"
 mkdir -p "$OUT" && chmod 700 "$EVID" "$OUT"
-LOG="$OUT/$phase.log"
+if [ "${GATE_REVIEW:-0}" = 1 ]; then
+  # Reviewer mode: read-only phases only. Logs and the classified state go to a separate review/ directory,
+  # so the implementer's original logs, mtimes and state.txt are never overwritten.
+  case "$phase" in preflight|classify|post) ;; *) echo "GATE FAIL review mode allows only preflight, classify, post" >&2; exit 2 ;; esac
+  STAMP="$(date -u +%Y%m%dT%H%M%S%NZ)"
+  mkdir -p "$OUT/review" && chmod 700 "$OUT/review"
+  LOG="$OUT/review/$phase-$STAMP.log"; STATE="$OUT/review/state-$STAMP.txt"
+else
+  LOG="$OUT/$phase.log"; STATE="$OUT/state.txt"
+fi
 echo "target: container=$C project=$PROJ database=$DB declaration=$DECL" > "$LOG"
 FROZEN=(scope.json scope-ids.json snapshot.txt digest.txt rows-digest.txt)
 
@@ -80,12 +89,12 @@ classify() {  # writes state.txt; prints the state; returns psql's status
   s=$?
   echo "classify: $line (psql exit $s)" >> "$LOG"
   case "$line" in
-    "GATE STATE PRE-STATE") echo PRE-STATE > "$OUT/state.txt" ;;
-    "GATE STATE COMMITTED") echo COMMITTED > "$OUT/state.txt" ;;
-    "GATE STATE MIXED")     echo MIXED > "$OUT/state.txt" ;;
-    *)                      echo UNKNOWN > "$OUT/state.txt"; [ "$s" -eq 0 ] && s=1 ;;
+    "GATE STATE PRE-STATE") echo PRE-STATE > "$STATE" ;;
+    "GATE STATE COMMITTED") echo COMMITTED > "$STATE" ;;
+    "GATE STATE MIXED")     echo MIXED > "$STATE" ;;
+    *)                      echo UNKNOWN > "$STATE"; [ "$s" -eq 0 ] && s=1 ;;
   esac
-  echo "state: $(cat "$OUT/state.txt")" | tee -a "$LOG"
+  echo "state: $(cat "$STATE")" | tee -a "$LOG"
   return "$s"
 }
 
@@ -117,6 +126,14 @@ do_freeze() {
   return 0
 }
 
+commit_marker() {  # selftest-only hook: GATE_TEST_DROP_MARKER=1 simulates losing the post-COMMIT marker
+  if [ "${GATE_TEST_DROP_MARKER:-0}" = 1 ] && [ "${app#selftest}" != "$app" ]; then
+    echo "SELECT 'GATE MARKER DROPPED (selftest hook)';"
+  else
+    echo "SELECT 'GATE COMMITTED';"
+  fi
+}
+
 txn_body() {  # $1 = commit flag (0|1), $2 = negative-control increment (0|1)
   echo 'BEGIN ISOLATION LEVEL REPEATABLE READ;'
   body pre
@@ -132,7 +149,7 @@ SELECT pg_temp.gate_delete();
 SELECT pg_temp.gate_assert_snapshot(:'snap', 'after delete');
 \if $1
 COMMIT;
-SELECT 'GATE COMMITTED';
+$(commit_marker)
 \else
 ROLLBACK;
 SELECT 'GATE ROLLED BACK';
@@ -190,7 +207,7 @@ case "$phase" in
     if [ "$phase" = execute ]; then
       marker=0; grep -q '^GATE COMMITTED$' "$LOG" && marker=1
       classify; cs=$?
-      state="$(cat "$OUT/state.txt")"
+      state="$(cat "$STATE")"
       if [ "$st" -eq 0 ] && [ "$marker" -eq 1 ] && [ "$cs" -eq 0 ] && [ "$state" = COMMITTED ]; then
         st=0
       else

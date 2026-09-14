@@ -94,11 +94,15 @@ EVID=/home/evan/showcase-pending/_teardown-evidence
 
 Every phase prints `PASS <target> <phase>` and exits 0, or prints `STOP …` plus the first `GATE FAIL` line and exits non-zero. Capture the exit directly: `"$T/gate-run.sh" co-host preflight; echo "exit=$?"`. Never pipe a phase through `tail`, `head` or `tee`.
 
-**Reviewer checklist for every cleanup task (Tasks 2–7).** The reviewer gets the task brief, the implementer's report, the review package (the results-file diff) and the target's evidence directory path. It may read the evidence, but must never edit it. It runs, read-only:
-- `"$T/gate-run.sh" <target> classify`, or `"$T/neo4j/mind-palace-gate.sh" classify`, and confirms `state: COMMITTED`;
-- `post`, and confirms `PASS`.
+**Reviewer checklist for every cleanup task (Tasks 2–7).** The reviewer gets the task brief, the implementer's report, the review package (the results-file diff) and the target's evidence directory path. It may read the evidence but must never edit it, and it must never run a phase without `GATE_REVIEW=1`. In order:
+1. **Snapshot the originals first.** Run `ls -l --time-style=full-iso /home/evan/showcase-pending/_teardown-evidence/<target>`. Confirm from those mtimes that the phases ran in the fixed order, and that the results entry's numbers match the logs.
+2. **Judge G7 independently.** Read the **whole** `g7-inspection.txt` (mind-palace: `fingerprint.txt`) and record your own verdict on whether anything reads as real data. Do not rely on the implementer's sentence.
+3. **Re-verify in reviewer mode**, which writes only under `<target>/review/` and never touches the original logs or `state.txt`:
+   - `GATE_REVIEW=1 "$T/gate-run.sh" <target> classify` (must print `state: COMMITTED`), then `GATE_REVIEW=1 "$T/gate-run.sh" <target> post` (must `PASS`);
+   - for mind-palace, the same phases through `neo4j/mind-palace-gate.sh`.
+4. **Confirm nothing moved.** Re-run step 1's `ls`: every original file keeps its size and mtime, and only `review/` is new.
 
-It then confirms, from the log files' mtimes (`ls -l --time-style=full-iso "$EVID/<target>"`), that the phases ran in the fixed order, that `g7-inspection.txt` exists and was read, and that the results entry's numbers match the logs. For a stopped task, it confirms instead that `state.txt` and the question are recorded, and that no write-phase ran after the stop.
+For a stopped task, the reviewer confirms instead that `state.txt` and the question are recorded, and that no write phase ran after the stop.
 
 ---
 
@@ -124,8 +128,8 @@ Expected: every line `OK`, and `exit=0`. Anything else → D4 stop.
 ```bash
 EVID=/home/evan/showcase-pending/_teardown-evidence
 stat -c '%a %U' "$EVID"; ls -la "$EVID"
-docker exec infra-postgres-1 psql -U postgres -At -c "SELECT count(*) FROM pg_database WHERE datname IN ('showcase_gate_selftest','showcase_gate_digestcalc')"
-docker exec chudios-backend-1 sh -c 'ls -d /tmp/gate-files-selftest.* /data/recordings/.showcase-quarantine 2>/dev/null | wc -l'
+timeout --foreground -k 10 60 docker exec infra-postgres-1 psql -U postgres -At -c "SELECT count(*) FROM pg_database WHERE datname IN ('showcase_gate_selftest','showcase_gate_digestcalc')"
+timeout --foreground -k 10 60 docker exec chudios-backend-1 sh -c 'ls -d /tmp/gate-files-selftest.* /data/recordings/.showcase-quarantine 2>/dev/null | wc -l'
 ```
 Expected:
 - `700 evan`;
@@ -149,7 +153,7 @@ Expected: `exit=0`, no `FAIL` line, and last line `selftest: 0 failure(s)`.
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 "$T/files/selftest-files.sh" > /tmp/showcase-files-selftest.log 2>&1; echo "exit=$?"
 grep '^FAIL\|selftest-files:' /tmp/showcase-files-selftest.log
-docker exec chudios-backend-1 sh -c 'ls -d /tmp/gate-files-selftest.* 2>/dev/null | wc -l'
+timeout --foreground -k 10 60 docker exec chudios-backend-1 sh -c 'ls -d /tmp/gate-files-selftest.* 2>/dev/null | wc -l'
 ```
 Expected: `exit=0`, no `FAIL`, `selftest-files: 0 failure(s)`, then `0` (its temporary directory is gone).
 
@@ -541,9 +545,8 @@ Expected: two `PASS` lines, both exits 0.
 
 - [ ] **Step 3: G7 content inspection**
 
-```bash
-cat /home/evan/showcase-pending/_teardown-evidence/mind-palace/scope.txt /home/evan/showcase-pending/_teardown-evidence/mind-palace/fingerprint.txt
-```
+Read `/home/evan/showcase-pending/_teardown-evidence/mind-palace/fingerprint.txt` with the Read tool. This is the exact value the conditional delete will compare. Every route and step property is written as `length:key|type|length:value`, so what you inspect is exactly what gets deleted. `scope.txt` is a readable copy of the same content.
+
 Expected: one route "Collective Security" with 4 `HAS_STEP` rows, each with `elaboration_note`, `last_reviewed_at` and `position`, pointing at the four entities. The notes are short demo lines about collective security between the wars; one reads "The referee they built — but with no standing army and no United States, it had no whistle." A note that reads like Evan's own study notes → D4 stop.
 
 - [ ] **Step 4: Dry run, rehearse, negative control**
@@ -735,40 +738,54 @@ Facts measured 2026-09-14:
 
 ```bash
 W="'2026-08-25 00:00 America/New_York' AND %s < '2026-08-26 00:00 America/New_York'"
-docker exec infra-postgres-1 psql -U postgres -d chunk_norris -X -At -v ON_ERROR_STOP=1 -c "
+timeout --foreground -k 10 120 docker exec infra-postgres-1 psql -U postgres -d chunk_norris -X -At -v ON_ERROR_STOP=1 -c "
 SELECT 'app_registry', count(*) FROM app_registry WHERE (created_at >= $(printf "$W" created_at)) OR (updated_at >= $(printf "$W" updated_at)) OR (last_checked_at >= $(printf "$W" last_checked_at))
 UNION ALL SELECT 'ingest_jobs', count(*) FROM ingest_jobs WHERE (started_at >= $(printf "$W" started_at)) OR (completed_at >= $(printf "$W" completed_at))
 UNION ALL SELECT 'quality_job_results', count(*) FROM quality_job_results WHERE (started_at >= $(printf "$W" started_at)) OR (completed_at >= $(printf "$W" completed_at))
 UNION ALL SELECT 'sources', count(*) FROM sources WHERE (created_at >= $(printf "$W" created_at)) OR (updated_at >= $(printf "$W" updated_at)) OR (last_indexed_at >= $(printf "$W" last_indexed_at))
 UNION ALL SELECT 'staleness_flags', count(*) FROM staleness_flags WHERE (raised_at >= $(printf "$W" raised_at)) OR (reviewed_at >= $(printf "$W" reviewed_at));"; echo "exit=$?"
-docker exec infra-postgres-1 psql -U postgres -d chunk_norris -X -At -c "SELECT id, source_id, status, started_at FROM ingest_jobs WHERE started_at >= '2026-08-25 00:00 America/New_York' AND started_at < '2026-08-26 00:00 America/New_York' ORDER BY started_at;"
+timeout --foreground -k 10 120 docker exec infra-postgres-1 psql -U postgres -d chunk_norris -X -At -c "SELECT id, source_id, status, started_at FROM ingest_jobs WHERE started_at >= '2026-08-25 00:00 America/New_York' AND started_at < '2026-08-26 00:00 America/New_York' ORDER BY started_at;"
 ```
 Expected: `app_registry|0`, `ingest_jobs|4`, `quality_job_results|0`, `sources|0`, `staleness_flags|0`, `exit=0`, then the four jobs above. Different numbers are new facts: record them exactly.
 
 - [ ] **Step 2: Scroll Qdrant for pilot-day points (read-only)**
 
 ```bash
-docker exec -i chunk-norris-backend-1 python - <<'PY'; echo "exit=$?"
+timeout --foreground -k 10 600 docker exec -i chunk-norris-backend-1 python - <<'PY'; echo "exit=$?"
 import json, urllib.request as u
+from datetime import datetime, timezone
+START = datetime(2026, 8, 25, 4, 0, tzinfo=timezone.utc)   # 2026-08-25 00:00 America/New_York (EDT)
+END = datetime(2026, 8, 26, 4, 0, tzinfo=timezone.utc)     # 2026-08-26 00:00 America/New_York — half-open [START, END)
 def post(path, body):
     r = u.Request('http://qdrant:6333' + path, data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})
     return json.load(u.urlopen(r, timeout=30))
 cols = sorted(c['name'] for c in json.load(u.urlopen('http://qdrant:6333/collections', timeout=10))['result']['collections'])
+bad_total = hit_total = 0
 for c in cols:
-    n, hits, off = 0, 0, None
+    n = bad = 0; hits = []; off = None
     while True:
-        body = {'limit': 256, 'with_payload': ['indexed_at'], 'with_vector': False}
-        if off: body['offset'] = off
+        body = {'limit': 256, 'with_payload': ['indexed_at', 'source_id'], 'with_vector': False}
+        if off is not None: body['offset'] = off
         res = post(f'/collections/{c}/points/scroll', body)['result']
         for p in res['points']:
             n += 1
-            if str(p['payload'].get('indexed_at', ''))[:10] in ('2026-08-25', '2026-08-26'): hits += 1
+            raw = p.get('payload', {}).get('indexed_at')
+            try:
+                ts = datetime.fromisoformat(str(raw))
+                if ts.tzinfo is None: raise ValueError('naive')
+            except (TypeError, ValueError):
+                bad += 1; print('   UNPARSEABLE', c, p['id'], repr(raw)); continue
+            if START <= ts < END:
+                hits.append((p['id'], p['payload'].get('source_id'), str(raw)))
         off = res.get('next_page_offset')
-        if not off: break
-    print(c, 'points', n, 'pilot-day points', hits)
+        if off is None: break
+    bad_total += bad; hit_total += len(hits)
+    print(f"{c} points={n} unparseable_indexed_at={bad} pilot_window_hits={len(hits)}")
+    for h in hits: print('   HIT', h)
+print(f"TOTAL unparseable={bad_total} hits={hit_total}")
 PY
 ```
-Expected: one line per collection (18 lines), every one showing `pilot-day points 0`, and `exit=0`.
+Expected: 18 collection lines, each with `unparseable_indexed_at=0 pilot_window_hits=0`, then `TOTAL unparseable=0 hits=0`, and `exit=0` (measured 2026-09-14). Any `UNPARSEABLE` or `HIT` line is a new fact: record every such line in the results entry, and add it to the Evan question. It changes the disposition, and nothing is deleted.
 
 - [ ] **Step 3: Record the audit and raise the question**
 
@@ -778,7 +795,7 @@ Set the `States` row to `STOPPED at audit — question pending (read-only; nothi
 ## Task 8 — chunk-norris audit (read-only)
 
 - Postgres, 2026-08-25 ET (half-open window): <the five count lines>. ingest_jobs: 3 nightly at 06:00 UTC; 1 at 15:02:26 UTC for source 5d7fdb85… (also nightly-ingested).
-- Qdrant: <N> collections scrolled; pilot-day points: 0 in every collection.
+- Qdrant: <N> collections scrolled with `indexed_at` + `source_id`: <TOTAL line>; <every UNPARSEABLE/HIT line, or "none">.
 - The pilot walk had no ingest step.
 ```
 
@@ -1148,4 +1165,5 @@ git commit --only -m "docs(session-log): showcase demo data cleanup" -- docs/sup
 |---|---|
 | 2026-09-14 | Plan rev 1 (`c263cff`) and rev 1.1 (`5c0259b`: trigger allowlist added) written. |
 | 2026-09-14 | **Codex plan review of rev 1.1: 6 BLOCKER / 9 MAJOR / 1 MINOR, all accepted.** Receipt: `2026-09-14-showcase-demo-data-plan-codex-review.md`; dispositions in the spec's "Codex plan review disposition". Two blockers were confirmed live and became Evan's decisions D5 (CHUD artifact) and D6 (5 auth audit rows). |
-| 2026-09-14 | Plan rev 2 + tooling rev 2 written and validated before commit: SQL self-test 0 failures across every planted case; file self-test 0 failures (incl. crash-and-resume); read-only preflight + freeze + classify PASS/PRE-STATE on all six Postgres targets; mind-palace preflight + freeze + `dry` PASS (`dry` caught and fixed a statement-assembly bug before any write). Pending: Codex scoped re-review of rev 2. |
+| 2026-09-14 | Plan rev 2 + tooling rev 2 written and validated before commit: SQL self-test 0 failures across every planted case; file self-test 0 failures (incl. crash-and-resume); read-only preflight + freeze + classify PASS/PRE-STATE on all six Postgres targets; mind-palace preflight + freeze + `dry` PASS (`dry` caught and fixed a statement-assembly bug before any write). Committed as `e4298e3`. |
+| 2026-09-14 | **Codex scoped re-review of rev 2: 1 BLOCKER / 5 MAJOR / 2 MINOR; prior findings 9 addressed, 7 partial, 0 not addressed. All 8 new findings accepted.** Receipt: `2026-09-14-showcase-demo-data-plan2-codex-review.md`; dispositions in the spec's "Codex plan re-review disposition". Fixes: the mind-palace G7 now inspects the exact typed, length-prefixed fingerprint the delete compares, bound as a Cypher parameter; a reviewer mode that never overwrites evidence; trigger event masks and enabled states pinned; hard-kill timeouts on every docker call; a strict Qdrant audit (parseable timestamps, `source_id`, hits reported); self-test cases for a post-only extra check, a lost commit marker, a disabled or re-pointed trigger, reviewer mode, and a regex-lookalike stray; exact-name stray matching; a length-prefixed id digest. |

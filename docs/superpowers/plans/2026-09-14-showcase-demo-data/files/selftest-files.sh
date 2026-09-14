@@ -53,7 +53,9 @@ setup
 check "quarantine (stray case)"                     pass "" quarantine
 docker exec "$C" sh -c "printf s > '$T/.showcase-quarantine/stray.m4a'"
 check "stray file in quarantine stops purge"        stop "stray file in quarantine" purge
-docker exec "$C" sh -c "rm -f -- '$T/.showcase-quarantine/stray.m4a'"
+docker exec "$C" sh -c "rm -f -- '$T/.showcase-quarantine/stray.m4a' && printf s > '$T/.showcase-quarantine/f..m4a'"
+check "regex-lookalike stray (f..m4a) stops purge"  stop "stray file in quarantine" purge
+docker exec "$C" sh -c "rm -f -- '$T/.showcase-quarantine/f..m4a'"
 docker exec "$C" sh -c "cp '$T/.showcase-quarantine/f1.m4a' '$T/f1.m4a'"
 check "a file in both places stops purge"           stop "refusing to purge" purge
 setup

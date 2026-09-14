@@ -30,6 +30,8 @@ CREATE TEMP TABLE gate_extra (                               -- non-FK checks
   post_expected bigint NOT NULL);                            -- value required after it (post mode)
 CREATE TEMP TABLE gate_trigger_allow (                       -- reviewed DELETE/UPDATE triggers
   tbl regclass, tgname text,
+  tgtype int NOT NULL,                                       -- pinned pg_trigger.tgtype (timing/level/event bits)
+  tgenabled "char" NOT NULL,                                 -- pinned pg_trigger.tgenabled (O, D, R, A)
   digest text NOT NULL,                                      -- sha256(pg_get_triggerdef || '\n' || pg_get_functiondef)
   PRIMARY KEY (tbl, tgname));
 
@@ -80,7 +82,7 @@ $$;
 
 -- G2: FK closure with pinned delete rules; DELETE/UPDATE triggers pinned by definition digest; no rewrite rules.
 CREATE FUNCTION pg_temp.gate_closure() RETURNS void LANGUAGE plpgsql AS $$
-DECLARE r record; p record; a record; dg text;
+DECLARE r record; p record; a record; tg record;
 BEGIN
   FOR r IN SELECT f.* FROM pg_temp.gate_fk_list() f WHERE f.confrelid IN (SELECT tbl FROM gate_scope) LOOP
     SELECT * INTO p FROM gate_scope WHERE tbl = r.confrelid;
@@ -104,20 +106,33 @@ BEGIN
     RAISE EXCEPTION 'GATE FAIL G2 allowlisted FK not in schema: %.% -> %', r.conrelid, r.col, r.confrelid;
   END LOOP;
 
+  -- Every DELETE/UPDATE trigger on a watched table must be allowlisted...
   FOR r IN
-    SELECT t.tgrelid::regclass AS tbl, t.tgname::text AS tgname,
-           pg_temp.gate_sha(pg_get_triggerdef(t.oid) || E'\n' || pg_get_functiondef(t.tgfoid)) AS digest
+    SELECT t.tgrelid::regclass AS tbl, t.tgname::text AS tgname
     FROM pg_trigger t
     WHERE NOT t.tgisinternal
       AND (t.tgtype & 24) <> 0   -- TRIGGER_TYPE_DELETE (8) | TRIGGER_TYPE_UPDATE (16)
       AND t.tgrelid IN (SELECT pg_temp.gate_watched())
   LOOP
-    SELECT x.digest INTO dg FROM gate_trigger_allow x WHERE x.tbl = r.tbl AND x.tgname = r.tgname;
-    IF NOT FOUND THEN
+    IF NOT EXISTS (SELECT 1 FROM gate_trigger_allow x WHERE x.tbl = r.tbl AND x.tgname = r.tgname) THEN
       RAISE EXCEPTION 'GATE FAIL G2 unlisted trigger: % on %', r.tgname, r.tbl;
     END IF;
-    IF dg <> r.digest THEN
-      RAISE EXCEPTION 'GATE FAIL G2 trigger definition changed: % on % (now %)', r.tgname, r.tbl, r.digest;
+  END LOOP;
+  -- ...and every allowlisted trigger must still exist with its pinned event mask, enabled state and definition,
+  -- whatever events it fires on now (a trigger re-pointed at another event, or disabled, is a stop).
+  FOR a IN SELECT * FROM gate_trigger_allow ORDER BY tbl::text, tgname LOOP
+    SELECT t.* INTO tg FROM pg_trigger t WHERE t.tgrelid = a.tbl AND t.tgname = a.tgname AND NOT t.tgisinternal;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'GATE FAIL G2 allowlisted trigger not in schema: % on %', a.tgname, a.tbl;
+    END IF;
+    IF tg.tgtype <> a.tgtype THEN
+      RAISE EXCEPTION 'GATE FAIL G2 trigger event mask changed: % on % is %, pinned %', a.tgname, a.tbl, tg.tgtype, a.tgtype;
+    END IF;
+    IF tg.tgenabled <> a.tgenabled THEN
+      RAISE EXCEPTION 'GATE FAIL G2 trigger state changed: % on % is %, pinned %', a.tgname, a.tbl, tg.tgenabled, a.tgenabled;
+    END IF;
+    IF pg_temp.gate_sha(pg_get_triggerdef(tg.oid) || E'\n' || pg_get_functiondef(tg.tgfoid)) <> a.digest THEN
+      RAISE EXCEPTION 'GATE FAIL G2 trigger definition changed: % on %', a.tgname, a.tbl;
     END IF;
   END LOOP;
   FOR r IN
@@ -126,10 +141,6 @@ BEGIN
     WHERE rw.rulename <> '_RETURN' AND c.oid IN (SELECT pg_temp.gate_watched())
   LOOP
     RAISE EXCEPTION 'GATE FAIL G2 rewrite rule: % on %', r.rulename, r.tbl;
-  END LOOP;
-  FOR r IN SELECT x.* FROM gate_trigger_allow x
-           WHERE NOT EXISTS (SELECT 1 FROM pg_trigger t WHERE t.tgrelid = x.tbl AND t.tgname = x.tgname AND NOT t.tgisinternal) LOOP
-    RAISE EXCEPTION 'GATE FAIL G2 allowlisted trigger not in schema: % on %', r.tgname, r.tbl;
   END LOOP;
 END $$;
 
@@ -266,10 +277,12 @@ BEGIN
   RETURN out;
 END $$;
 
--- Order-independent digest of the exact scope id sets.
+-- Order-independent digest of the exact scope id sets; every table name and id is length-prefixed.
 CREATE FUNCTION pg_temp.gate_scope_digest() RETURNS text LANGUAGE sql STABLE AS $$
-  SELECT pg_temp.gate_sha(string_agg(tbl::text || ':' || array_to_string(ARRAY(SELECT unnest(ids) ORDER BY 1), ','),
-                                     E'\n' ORDER BY tbl::text))
+  SELECT pg_temp.gate_sha(string_agg(
+           length(tbl::text)::text || ':' || tbl::text || '#' || cardinality(ids)::text || '#'
+           || (SELECT coalesce(string_agg(length(i)::text || ':' || i, '' ORDER BY i), '') FROM unnest(ids) i),
+           '' ORDER BY tbl::text))
   FROM gate_scope
 $$;
 

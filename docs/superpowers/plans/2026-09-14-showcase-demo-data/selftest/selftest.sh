@@ -16,6 +16,7 @@ NOOP_FN="CREATE FUNCTION noop_trg() RETURNS trigger LANGUAGE plpgsql AS \$\$ BEG
 reset_db() {
   pg -d "$DBN" < "$HERE/schema.sql" > /dev/null
   sql "$NOOP_FN; CREATE TRIGGER child_noop BEFORE DELETE ON child FOR EACH ROW EXECUTE FUNCTION noop_trg()" > /dev/null
+  sql "CREATE TABLE audit_note (id int PRIMARY KEY, note text NOT NULL)" > /dev/null   # non-FK table read only by gate_extra
 }
 
 if [ "$(pg -d postgres -c "SELECT count(*) FROM pg_database WHERE datname = '$DBN'")" != 0 ]; then
@@ -109,6 +110,40 @@ fresh c20; check "freeze (post residue case)"                       pass "" self
            check "execute (post residue case)"                     pass "" selftest execute
            sql "INSERT INTO child VALUES (300, 10, 'demo')" >/dev/null
            check "G10 post re-resolves the scope and finds new demo" stop "GATE FAIL G10 scope not empty" selftest post
+
+fresh c24; sql "ALTER TABLE child DISABLE TRIGGER child_noop" >/dev/null
+           check "G2 allowlisted trigger disabled"                 stop "GATE FAIL G2 trigger state changed" selftest preflight
+fresh c25; sql "DROP TRIGGER child_noop ON child; CREATE TRIGGER child_noop BEFORE UPDATE ON child FOR EACH ROW EXECUTE FUNCTION noop_trg()" >/dev/null
+           check "G2 allowlisted trigger re-pointed at another event" stop "GATE FAIL G2 trigger event mask changed" selftest preflight
+fresh c26; check "freeze (post-only extra case)"                    pass "" selftest freeze
+           check "rehearse (post-only extra case)"                 pass "" selftest rehearse
+           check "negative (post-only extra case)"                 pass "" selftest negative
+           check "execute (post-only extra case)"                  pass "" selftest execute
+           sql "INSERT INTO audit_note VALUES (1, 'left over from demo@example.com')" >/dev/null
+           check "G10 post catches a non-FK residue via its extra check" stop "GATE FAIL G10 extra check" selftest post
+fresh c27; check "freeze (lost commit marker case)"                 pass "" selftest freeze
+           check "rehearse (lost commit marker case)"              pass "" selftest rehearse
+           check "negative (lost commit marker case)"              pass "" selftest negative
+           export GATE_TEST_DROP_MARKER=1
+           check "execute with a lost COMMIT marker is not a pass" stop "commit marker 0, state COMMITTED" selftest execute
+           unset GATE_TEST_DROP_MARKER
+           [ "$(state)" = COMMITTED ] && echo "ok   lost-marker execute still classified COMMITTED" \
+             || { echo "FAIL lost-marker state was '$(state)'"; fails=$((fails + 1)); }
+           check "post verifies the committed delete after a lost marker" pass "GATE POST OK" selftest post
+fresh c28; check "freeze (review mode case)"                        pass "" selftest freeze
+           # Top-level evidence FILES (name|size|mtime); the review/ directory is not a file, so it cannot affect this.
+           listing() { find "$GATE_EVIDENCE_DIR/selftest" -maxdepth 1 -type f -printf '%f|%s|%T@\n' | sort; }
+           before="$(listing)"
+           GATE_REVIEW=1 "$GATE" selftest classify > /dev/null 2>&1; rc1=$?
+           GATE_REVIEW=1 "$GATE" selftest rehearse > /dev/null 2>&1; rc2=$?
+           after="$(listing)"
+           if [ $rc1 -eq 0 ] && [ $rc2 -ne 0 ] && [ "$before" = "$after" ] \
+              && [ ! -e "$GATE_EVIDENCE_DIR/selftest/state.txt" ] && ls "$GATE_EVIDENCE_DIR"/selftest/review/state-*.txt >/dev/null 2>&1; then
+             echo "ok   review mode writes only under review/ and refuses write phases"
+           else
+             echo "FAIL review mode (classify rc $rc1, rehearse rc $rc2)"; fails=$((fails + 1))
+             diff <(printf '%s\n' "$before") <(printf '%s\n' "$after") | sed 's/^/     /'
+           fi
 
 echo "selftest: $fails failure(s)"
 [ "$fails" -eq 0 ]

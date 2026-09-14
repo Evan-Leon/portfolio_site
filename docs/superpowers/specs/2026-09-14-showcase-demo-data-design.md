@@ -306,3 +306,18 @@ Qdrant points carry `indexed_at`. A read-only scroll of all 18 collections on 20
 | 14 | MAJOR | **Accepted.** The listed planted cases were added, and matching is per-invocation. |
 | 15 | MAJOR | **Accepted.** Task 9 edits in an infra worktree and never runs `git checkout --` on a shared checkout. |
 | 16 | MINOR | **Accepted.** SHA-256 over length-prefixed canonical JSON everywhere. |
+
+## Codex plan re-review disposition (rev 2 → rev 3)
+
+Receipt: `../plans/2026-09-14-showcase-demo-data-plan2-codex-review.md` (reviewed `e4298e3`): 1 BLOCKER / 5 MAJOR / 2 MINOR. Prior findings: 9 addressed, 7 partial, 0 not addressed.
+
+| # | Sev | Disposition |
+|---|---|---|
+| 1 | BLOCKER | **Accepted.** mind-palace G7 now inspects `fingerprint.txt`, the exact value the delete compares, so the reviewed and compared content cannot diverge. The fingerprint length-prefixes every key, `valueType()` and value, and is bound as a Cypher `:param`. It was verified live: equal for the real route, and unequal after a one-character change. |
+| 2 | MAJOR | **Accepted.** Reviewer mode (`GATE_REVIEW=1`) allows only read-only phases and writes logs and state under `review/`. The reviewer snapshots the original mtimes first and judges the full G7 file independently. A self-test proves the originals are untouched. |
+| 3 | MAJOR | **Accepted.** Each allowlisted trigger also pins `tgtype` and `tgenabled`, and is checked row by row whatever events it fires on now. Self-tests cover a disabled trigger and one re-pointed at another event. |
+| 4 | MAJOR | **Accepted.** `timeout --foreground -k` on every docker call, in the tooling and in the plan's Task 1/8 commands. |
+| 5 | MAJOR | **Accepted.** The Qdrant audit reads `indexed_at` and `source_id`, requires a parseable tz-aware timestamp on every point, and reports every unparseable point and hit. Measured 2026-09-14: 18 collections, 0 unparseable, 0 hits. |
+| 6 | MAJOR | **Accepted.** New self-test cases: a non-FK `audit_note` residue caught only by a post-only extra check (`GATE FAIL G10 extra check`), and a lost COMMIT marker (execute fails, state `COMMITTED`, post verifies). |
+| 7 | MINOR | **Accepted.** Exact-name stray matching (`grep -xF`); a self-test case covers a regex-lookalike `f..m4a`. |
+| 8 | MINOR | **Accepted.** The scope-id digest length-prefixes every table name and id. |
