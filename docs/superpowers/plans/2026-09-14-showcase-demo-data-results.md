@@ -9,7 +9,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 |---|---|
 | co-host | POST-VERIFIED |
 | co-host-chud | POST-VERIFIED |
-| co-author | NOT-STARTED |
+| co-author | POST-VERIFIED |
 | chudios (db + files) | NOT-STARTED |
 | mind-palace | NOT-STARTED |
 | leonsbudget | NOT-STARTED |
@@ -59,3 +59,20 @@ State: **POST-VERIFIED** (2026-09-14 22:26:50 UTC)
 | execute | 0 | `co-host-chud/execute.log` (GATE COMMITTED; state COMMITTED) |
 | post | 0 | `co-host-chud/post.log` (GATE POST SCOPE OK, GATE POST OK) |
 Deleted: artifacts 1 (`e6135781-…`). Conversation 7206: 8 messages before and after.
+
+## Task 3 — co-author
+
+### co-author (co_author)
+State: **POST-VERIFIED** (2026-09-14 22:34:22 UTC)
+
+| Phase | exit | Evidence |
+|---|---|---|
+| preflight | 0 | `co-author/preflight.log` |
+| freeze | 0 | `co-author/scope.json`, rows digest `25753243f41c` |
+| G7 inspection | fictional | `co-author/g7-inspection.txt` — all 462 lines are the fictional radio drama "The Lighthouse at Kestrel Point" (story 7, podcast_episode): 5 characters, 4 settings, 6 events, 3 relationships, 4 open questions, 5 beats, 3 edited beat drafts; `auth_user` is `demo@example.com` ("Demo Writer"); 16 outstanding tokens show only masked `jti`/`token`; every timestamp 2026-09-06 19:40–19:56 UTC; per-table counts match the expected scope exactly; no real person, email or content from Evan's own stories or account. |
+| rehearse | 0 | `co-author/rehearse.log` (GATE ROLLED BACK) |
+| negative | 0 | `co-author/negative.log` (GATE FAIL G3 count, as designed) |
+| execute | 0 | `co-author/execute.log` (GATE COMMITTED; state COMMITTED) |
+| post | 0 | `co-author/post.log` (GATE POST SCOPE OK, GATE POST OK) |
+
+Deleted: outstanding tokens 16, beat drafts 3, beat↔character 14, beat↔event 6, event↔character 15, open-question↔character 7, open-question↔event 4, beats 5, open questions 4, relationships 3, events 6, characters 5, settings 4, story 1, user 1.
