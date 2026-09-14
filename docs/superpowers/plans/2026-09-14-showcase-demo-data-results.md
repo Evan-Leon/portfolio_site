@@ -14,7 +14,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 | mind-palace | POST-VERIFIED |
 | leonsbudget | POST-VERIFIED |
 | the-classic | POST-VERIFIED |
-| chunk-norris audit | NOT-STARTED |
+| chunk-norris audit | DONE — verified read-only (11:02 ET re-index not part of the pilot: Evan, 2026-09-14, spec D7) |
 
 ## Open questions for Evan
 
@@ -160,3 +160,10 @@ No G6 failure occurred, so there was no refreeze.
 | post | 0 | `the-classic/post.log` (GATE POST SCOPE OK, GATE POST OK) |
 
 Deleted: audit rows 5, auth amr claims 4, refresh tokens 4, sessions 4, identity 1, chat messages 6, accolades 6, scores 37, tournament players 12, foursomes 3, tournament 1, course holes 18, course 1, profile 1, auth user 1; `chirp_templates` `d22792ea…` retained (never in scope).
+
+## Task 8 — chunk-norris audit (read-only)
+
+- Postgres, 2026-08-25 ET (half-open window): `app_registry|0`, `ingest_jobs|4`, `quality_job_results|0`, `sources|0`, `staleness_flags|0` (exit=0). ingest_jobs: 3 nightly at 06:00 UTC; 1 at 15:02:26 UTC for source 5d7fdb85… (also nightly-ingested).
+- Qdrant: 18 collections scrolled with `indexed_at` + `source_id`: `TOTAL unparseable=0 hits=0` (exit=0); none.
+- The pilot walk had no ingest step.
+- 11:02 ET re-index: not part of the pilot (Evan, 2026-09-14, spec D7).
