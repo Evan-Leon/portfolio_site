@@ -18,7 +18,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 
 ## Open questions for Evan
 
-1. **chudios (Task 4, stopped at G7).** The plan expects the in-scope recording paths to name only `demo-sn-ep09/11/12.m4a`. Three of the 6 in-scope demo attempts (Ep. 10, 13 and 14; ids `dddddddd-0001-…-000000000010/13/14`) instead name `recording_path = demo-signal-noise.m4a`, which the plan and spec never mention. Read-only facts: that file is **not** in the `chudios_chudios-recordings` volume, and no surviving (non-`dddddddd-`) attempt names it. Separately, rows in clips, attempts, stage_runs, transcripts and content_items carry `created_at` 2026-09-02..04, outside the 2026-09-05/06 window. They share identical microsecond fractions at whole-day offsets from a 2026-09-06 ~19:16 UTC base, which looks like seed back-dating, but nothing in the plan says so. Are both expected artifacts of the showcase seed, so Task 4 may continue from `rehearse` on the current freeze (rows digest `94c9fa17f3a1`)? Nothing was written: no rehearse, quarantine or execute ran, and the three files are untouched in `/data/recordings`. — **Answer (Evan, 2026-09-14):** "yes, continue chudios from rehearse"
+1. **chudios (Task 4, stopped at G7).** The plan expects the in-scope recording paths to name only `demo-sn-ep09/11/12.m4a`. Three of the 6 in-scope demo attempts (Ep. 10, 13 and 14; ids `dddddddd-0001-…-000000000010/13/14`) instead name `recording_path = demo-signal-noise.m4a`, which the plan and spec never mention. Read-only facts: that file is **not** in the `chudios_chudios-recordings` volume, and no surviving (non-`dddddddd-`) attempt names it. Separately, rows in clips, attempts, stage_runs, transcripts and content_items carry `created_at` 2026-09-02..04, outside the 2026-09-05/06 window. They share identical microsecond fractions at whole-day offsets from a 2026-09-06 ~19:16 UTC base, which looks like seed back-dating, but nothing in the plan says so. Are both expected artifacts of the showcase seed, so Task 4 may continue from `rehearse` on the current freeze (rows digest `94c9fa17f3a1`)? Nothing was written: no rehearse, quarantine or execute ran, and the three files are untouched in `/data/recordings` (at the time of asking). — **Answer (Evan, 2026-09-14):** "yes, continue chudios from rehearse"
 
 ## Task 1 — tooling and preflight
 
@@ -36,6 +36,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 
 ### co-host (co_host)
 State: **POST-VERIFIED** (2026-09-14 22:24:31 UTC)
+
 | Phase | exit | Evidence |
 |---|---|---|
 | preflight | 0 | `co-host/preflight.log` |
@@ -45,10 +46,12 @@ State: **POST-VERIFIED** (2026-09-14 22:24:31 UTC)
 | negative | 0 | `co-host/negative.log` (GATE FAIL G3 count, as designed) |
 | execute | 0 | `co-host/execute.log` (GATE COMMITTED; state COMMITTED) |
 | post | 0 | `co-host/post.log` (GATE POST SCOPE OK, GATE POST OK) |
+
 Deleted: timeline_events 7, table_reads 1, script_versions 2, beat_sheet_versions 2, chud_jobs 1, episodes 2, premises 2, show_bible_versions 1, show_bibles 1, channels 1.
 
 ### co-host-chud (chud)
 State: **POST-VERIFIED** (2026-09-14 22:26:50 UTC)
+
 | Phase | exit | Evidence |
 |---|---|---|
 | preflight | 0 | `co-host-chud/preflight.log` |
@@ -58,12 +61,13 @@ State: **POST-VERIFIED** (2026-09-14 22:26:50 UTC)
 | negative | 0 | `co-host-chud/negative.log` (GATE FAIL G3 count, as designed) |
 | execute | 0 | `co-host-chud/execute.log` (GATE COMMITTED; state COMMITTED) |
 | post | 0 | `co-host-chud/post.log` (GATE POST SCOPE OK, GATE POST OK) |
+
 Deleted: artifacts 1 (`e6135781-…`). Conversation 7206: 8 messages before and after.
 
 ## Task 3 — co-author
 
 ### co-author (co_author)
-State: **POST-VERIFIED** (2026-09-14 22:34:22 UTC)
+State: **POST-VERIFIED** (2026-09-14 22:33:42 UTC)
 
 | Phase | exit | Evidence |
 |---|---|---|
@@ -80,7 +84,7 @@ Deleted: outstanding tokens 16, beat drafts 3, beat↔character 14, beat↔event
 ## Task 4 — chudios
 
 ### chudios (chudios + volume `chudios_chudios-recordings`)
-State: **POST-VERIFIED** (2026-09-14 22:57:31 UTC)
+State: **POST-VERIFIED** (2026-09-14 22:57:16 UTC)
 
 The first run stopped at G7 inspection (Open questions 1). Evan answered "yes, continue chudios from rehearse" (2026-09-14), and the resumed run continued from rehearse on the same freeze (rows digest `94c9fa17f3a1`). No G6 failure occurred, so there was no refreeze.
 
@@ -105,7 +109,7 @@ Deleted: qc_reports 1, transcripts 2, stage_runs 8, clips 9, marketing_assets 7,
 ## Task 5 — mind-palace
 
 ### mind-palace (Neo4j `mind-palace-neo4j-1`)
-State: **POST-VERIFIED** (2026-09-14 22:51:23 UTC)
+State: **POST-VERIFIED** (2026-09-14 22:50:49 UTC)
 
 | Phase | exit | Evidence |
 |---|---|---|
@@ -124,7 +128,7 @@ Deleted: Route 1 (`60c383d5-921e-443c-9430-b2242469fbe0`) and its HAS_STEP relat
 ## Task 6 — LeonsBudget
 
 ### leonsbudget (leons_budget)
-State: **POST-VERIFIED** (2026-09-14 23:05:50 UTC)
+State: **POST-VERIFIED** (2026-09-14 23:05:07 UTC)
 
 No G6 failure occurred, so there was no refreeze.
 
@@ -144,7 +148,7 @@ Deleted: transactions 71, budget lines 44, monthly budgets 4, bank accounts 2, i
 ## Task 7 — the-classic
 
 ### the-classic (`supabase_db_the-classic`)
-State: **POST-VERIFIED** (2026-09-14 23:13:02 UTC)
+State: **POST-VERIFIED** (2026-09-14 23:12:53 UTC)
 
 No G6 failure occurred, so there was no refreeze.
 
@@ -159,7 +163,7 @@ No G6 failure occurred, so there was no refreeze.
 | execute | 0 | `the-classic/execute.log` (GATE COMMITTED; state COMMITTED) |
 | post | 0 | `the-classic/post.log` (GATE POST SCOPE OK, GATE POST OK) |
 
-Deleted: audit rows 5, auth amr claims 4, refresh tokens 4, sessions 4, identity 1, chat messages 6, accolades 6, scores 37, tournament players 12, foursomes 3, tournament 1, course holes 18, course 1, profile 1, auth user 1; `chirp_templates` `d22792ea…` retained (never in scope).
+Deleted: audit rows 5, auth amr claims 4, refresh tokens 4, sessions 4, identity 1, chat messages 6, accolades 6, scores 37, tournament players 12, foursomes 3, tournament 1, course holes 18, course 1, profile 1, auth user 1; `chirp_templates` `d22792ea…` not in scope (untouched).
 
 ## Task 8 — chunk-norris audit (read-only)
 
@@ -201,7 +205,7 @@ Step 1 re-ran `post` (read-only) against every committed target; each rewrote it
 | chunk-norris audit | DONE — verified read-only |
 | infra meta-prompt | branch `showcase-demo-data-meta-prompt` `da7a629` (unmerged) |
 
-Questions asked and Evan's answers (verbatim):
+Questions asked and Evan's answers (answer verbatim; question abridged from Open question 1):
 
 1. **chudios (Task 4, stopped at G7).** Are `demo-signal-noise.m4a` (recording_path on 3 in-scope attempts, not in the plan/spec/tooling and not in the volume) and the 2026-09-02..04 `created_at` back-dating (outside the 09-05/06 window) both expected artifacts of the showcase seed, so Task 4 may continue from `rehearse` on the current freeze (rows digest `94c9fa17f3a1`)? — **Answer (Evan, 2026-09-14):** "yes, continue chudios from rehearse"
 

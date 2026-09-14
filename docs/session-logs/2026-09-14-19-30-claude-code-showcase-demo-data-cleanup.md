@@ -9,9 +9,21 @@ repos: [portfolio_site, infra]
 
 ## Accomplished
 
-Task 10 close-out of the showcase demo-data cleanup: final read-only
-re-verification of every committed target, plus the results file's Summary
-section. Final state (from the results file):
+The whole showcase demo-data cleanup ran to completion across Tasks 1–10.
+Task 1 verified the frozen tooling and ran its self-tests clean, then
+preflighted every target. Tasks 2–7 deleted 7 targets through the
+fail-closed gate and POST-VERIFIED them: co-host, co-host-chud, co-author,
+chudios (db + 3 recording files), mind-palace, LeonsBudget and the-classic.
+chudios (Task 4) stopped once at G7 on a D4 judgment call — two unexplained
+artifacts, `demo-signal-noise.m4a` recording paths and rows in five tables
+back-dated to 2026-09-02..04 — Evan answered "yes, continue chudios from
+rehearse", and the resumed run continued from `rehearse` on the same freeze
+and POST-VERIFIED. Task 8's chunk-norris read-only pilot audit is DONE,
+verified read-only per spec D7. Task 9 committed the infra showcase
+meta-prompt edits (E1–E10 + changelog receipt) on infra branch
+`showcase-demo-data-meta-prompt` at `da7a629`. Task 10 (this session) ran
+the final read-only re-verification of every committed target and wrote the
+results file's Summary section. Final state (from the results file):
 
 | Target | Final state |
 |---|---|
@@ -25,9 +37,10 @@ section. Final state (from the results file):
 | chunk-norris audit | DONE — verified read-only |
 | infra meta-prompt | branch `showcase-demo-data-meta-prompt` `da7a629` (unmerged) |
 
-No store was written this session; Step 1's `post` re-run is read-only
-against every target (it rewrites each target's `post.log` in the evidence
-directory only, per the controller's ruling — see Rulings below).
+No store was written during this session's own work (Task 10 Step 1): its
+`post` re-run is read-only against every target (it rewrites each target's
+`post.log` in the evidence directory only, per the controller's ruling — see
+Rulings below).
 
 ## Commits
 
@@ -54,6 +67,15 @@ None. `git status` clean before this session's own commit; only the
 results-file Summary edit and this log are staged for it.
 
 ## Verification
+
+Task 1 (tooling and preflight), from the committed results file:
+- `sha256sum -c SHA256SUMS`: exit=0, all OK (16/16 files)
+- gate self-test: exit=0, 0 failures
+- file self-test: exit=0, 0 failures, temp dir removed
+- preflight co-host / co-host-chud / co-author / chudios / leonsbudget /
+  the-classic / mind-palace, and chudios files check: 8/8 exit=0 (PASS)
+- Per-task `sha256sum -c SHA256SUMS` check before each of Tasks 2–7: exit=0
+  each time (frozen tooling unchanged throughout the run)
 
 Step 1 (Task 10), read-only `post` re-run against every committed target,
 all exit=0:
@@ -98,9 +120,10 @@ file and progress ledger).
   implementer and its reviewer independently judged her a filler name in a
   seed-derived roster (Sam+Tara replacing Sarah+Tom), origin unprovable
   (capture's own seed-demo.sql is gone). Disclosed to Evan, not a stop.
-- **the-classic**, 2 demo chats predate the demo signup: back-dated inside
-  the capture seed (shared microsecond fraction, whole-minute offsets),
-  inside the showcase window. Disclosed to Evan, not a stop.
+- **the-classic**, all 5 seeded chats (17:21–18:44 UTC on 2026-09-06) predate
+  the 18:49:30 UTC demo signup, 2 of them sent by Sam: back-dated inside the
+  capture seed (shared microsecond fraction, whole-minute offsets), inside
+  the showcase window. Disclosed to Evan, not a stop.
 - **chudios**, `demo-signal-noise.m4a` placeholder recording path (3
   in-scope attempts, fileless, never in the volume) and rows in 5 tables
   back-dated to 2026-09-02..04: both judged expected showcase-seed artifacts;
@@ -116,10 +139,31 @@ rules-index.)
 
 - APPLIED: Task 9 meta-prompt edits E1–E10 + changelog receipt → infra
   meta-prompt (see Commits: da7a629)
+- NO-CHANGE: `docs/superpowers/plans/2026-09-14-showcase-demo-data.md` —
+  executed task-by-task as written across Tasks 1–10; the one D7 amendment
+  (chunk-norris disposition) was already on main at `68115cf` before
+  execution began.
+- NO-CHANGE: `docs/superpowers/specs/2026-09-14-showcase-demo-data-design.md`
+  (Rev 3 + D7) — every binding decision (D1–D7) held throughout; D7 was
+  already on main at `68115cf` before execution began.
+- NO-CHANGE:
+  `docs/superpowers/plans/2026-09-14-showcase-demo-data-execution-prompt.md`
+  — followed as written across all ten tasks; the one D7 update was already
+  on main at `68115cf` before execution began.
 - NO-CHANGE: `.superpowers/sdd/2026-09-14-showcase-demo-data/task-10-brief.md`
   — followed as written; served the task.
 - NO-CHANGE: `/home/evan/EVOsystem/infra/skills/writing-session-logs/SKILL.md`
   — followed as written; served the task.
+- PENDING (decided-by: human): defer — derive G7 content-inspection
+  expectations from the app's own capture session log when one exists, so a
+  declaration doesn't miss an artifact the capture already documents: plan
+  Task 4's chudios declaration missed the `demo-signal-noise.m4a` placeholder
+  recording path even though
+  `chudios/docs/session-logs/2026-09-06-15-35-claude-code-portfolio-showcase-capture.md`
+  documents that seed. A structural change to how future teardown-plan
+  declarations are authored — out of this session's write scope; next
+  action: Evan decides whether to fold this into a future teardown-plan
+  template or a planning skill.
 
 ## Next steps
 
@@ -140,7 +184,8 @@ rules-index.)
 
 ## Rulings
 
-Verbatim, from the (soon-to-be-deleted) progress ledger:
+Verbatim, every line containing "Ruling:" from the (soon-to-be-deleted)
+progress ledger:
 
 - Ruling: Task 10 Step 1 runs `post` exactly as the plan writes it (no
   GATE_REVIEW) — the plan text mandates it, `post` is read-only against
@@ -156,3 +201,11 @@ Verbatim, from the (soon-to-be-deleted) progress ledger:
   change — the paths are the plan text and become valid at the finish merge
   — cost if wrong: two dead doc links in infra if Evan merges infra but not
   portfolio_site.
+- Ruling: keep the session log ## Rulings heading despite the template — the
+  execution prompt requires every ruling to reach Evan and the ledger is
+  deleted at finish, so the log is their only durable home — cost if wrong:
+  one non-template heading in one log.
+- Ruling: Tasks 3–7 State times are aligned to each execute.log time per the
+  plan template — execute.log still exists and is checkable, while
+  task-time post.log files were overwritten in Task 10 — cost if wrong:
+  times shift 10–40 s earlier than previously recorded.
