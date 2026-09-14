@@ -12,7 +12,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 | co-author | POST-VERIFIED |
 | chudios (db + files) | POST-VERIFIED |
 | mind-palace | POST-VERIFIED |
-| leonsbudget | NOT-STARTED |
+| leonsbudget | POST-VERIFIED |
 | the-classic | NOT-STARTED |
 | chunk-norris audit | NOT-STARTED |
 
@@ -120,3 +120,23 @@ State: **POST-VERIFIED** (2026-09-14 22:51:23 UTC)
 | post | 0 | `mind-palace/post.log` (Route 1, Entity 228, HAS_STEP 1, demo route gone; degrees 2/1/8/13; survivor hash unchanged) |
 
 Deleted: Route 1 (`60c383d5-921e-443c-9430-b2242469fbe0`) and its HAS_STEP relationships 4; 228 Entities retained.
+
+## Task 6 — LeonsBudget
+
+### leonsbudget (leons_budget)
+State: **POST-VERIFIED** (2026-09-14 23:05:50 UTC)
+
+No G6 failure occurred, so there was no refreeze.
+
+| Phase | exit | Evidence |
+|---|---|---|
+| `sha256sum -c SHA256SUMS` | 0 | all OK |
+| preflight | 0 | `leonsbudget/preflight.log` |
+| freeze | 0 | `leonsbudget/scope.json`, rows digest `48c9a5df96a3` |
+| G7 inspection | fictional | `leonsbudget/g7-inspection.txt` (679 lines, read in full): per-table counts match the expected scope exactly (user 1, household 1, member 1, institution 1, bank accounts 2, monthly budgets 4, budget lines 44, transactions 71; importbatch, category rules/overrides, user groups/permissions and admin log 0). `auth_user` id 3 is `demo` / `demo@example.com` with empty first/last name; household id 3 "Demo Household"; institution id 9 "Northwind Bank" / `northwind-bank`; accounts "Everyday Checking" ···4242 and "Rewards Card" ···1881. The 71 descriptions are invented merchants (Northwind/Contoso/Fabrikam/Acme placeholder brands plus generic names such as "GREENLEAF GROCERS"), every `notes` empty. Every `created_at`/`joined_at`/`date_joined` is 2026-09-06 19:51:32 UTC; transaction `date`s fall in 2026-06-01..09-05, the four seeded budget months. All of these values match the showcase run's own `seed.py` and `report.md` in `/home/evan/showcase-pending/budget-app/`. No real merchant, account number, person or email. |
+| rehearse | 0 | `leonsbudget/rehearse.log` (GATE ROLLED BACK; survivors OK after rollback) |
+| negative | 0 | `leonsbudget/negative.log` (GATE FAIL G3 count, as designed) |
+| execute | 0 | `leonsbudget/execute.log` (GATE COMMITTED; state COMMITTED) |
+| post | 0 | `leonsbudget/post.log` (GATE POST SCOPE OK, GATE POST OK) |
+
+Deleted: transactions 71, budget lines 44, monthly budgets 4, bank accounts 2, institution 1 (Northwind Bank), household member 1, household 1, user 1; categories retained.
