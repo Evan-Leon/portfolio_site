@@ -1,7 +1,11 @@
 # Showcase Demo Data — Guarded Cleanup, Seeds Later
 
 **Date:** 2026-09-14
-**Status:** Rev 2 — Codex spec review folded in. Rev 1 was `e0d0703`; the review is `2026-09-14-showcase-demo-data-codex-review.md`: 8 BLOCKER / 4 MAJOR / 1 MINOR, disposition table at the end.
+**Status:** Rev 3. Two Codex reviews are folded in:
+- **Spec review** (rev 1 `e0d0703`): 8 BLOCKER / 4 MAJOR / 1 MINOR. The review is `2026-09-14-showcase-demo-data-codex-review.md`.
+- **Plan review** (plan rev 1.1 `5c0259b`): 6 BLOCKER / 9 MAJOR / 1 MINOR. The review is `../plans/2026-09-14-showcase-demo-data-plan-codex-review.md`.
+
+**Where Rev 3 overrides earlier text:** decisions D5 and D6, and the "Rev 3 amendments" section at the end, override any earlier line they contradict. Both disposition tables are at the end.
 **Author:** Claude. The brainstorming session started in jourNOW and was landed here at Evan's direction.
 **Related:**
 - `infra/meta-prompts/portfolio-showcase/portfolio-showcase.md`: teardown rule added in infra `c0bee1d`.
@@ -149,9 +153,11 @@ Every app's gate first verifies an exact target tuple and prints it. Any mismatc
   8. If the backend container isn't running, stop.
 - **co-host.**
   - FKs are `NO ACTION`, so the delete order is explicit: children → episodes → channel.
-  - Before any delete, `chud.artifacts`, `chud.cohost_documents` and `chud.cohost_mirror_gaps` must have 0 rows mentioning the demo channel, episode or job ids (verified 0 on 2026-09-14).
-  - The failed CHUD job `job_fba52731d285` was never mirrored.
-  - Nothing is deleted in chud.
+  - **CHUD residue (Rev 3, D5).** The failed job `job_fba52731d285` ingested one source-bundle artifact into CHUD before its workflow failed: `artifacts` `e6135781-781a-436f-9af0-fb79136abd5b`, created 2026-09-06 19:23:58 UTC.
+    - It names "The Long Fuse" but not the demo ids, so the Rev 2 id-only check read 0 and missed it.
+    - It is removed by its own gated declaration against `chud` (`co-host-chud`).
+    - Every other chud table was scanned: nothing else references it, and `cohost_documents` and `cohost_mirror_gaps` hold 0 rows naming the demo show.
+    - Nothing else in chud is deleted, and conversation 7206 is untouched (D2).
 - **mind-palace (Neo4j).**
   - Export the Route node's properties and its 4 `HAS_STEP` relationship properties (`elaboration_note`, `last_reviewed_at`, `position`) to the evidence directory.
   - Snapshot the Entity count (228), `HAS_STEP` count (5), `Route` count (2), and the degree of each linked Entity: United Nations 2, World War II 14, League of Nations 3, World War I 9.
@@ -231,3 +237,72 @@ The executing agent re-verifies every number at G3. Any difference is a stop.
 | 11 | MAJOR | **Moot.** No app code changes, so no app test suites run against the live Supabase. |
 | 12 | MAJOR | **Accepted.** Every read-only statement is qualified consistently, and the grep list is widened. |
 | 13 | MINOR | **Accepted.** Coverage gets per-row dispositions (no wholesale strike), the voice-trainer timestamp mutation is recorded, and a chunk-norris read-only audit is added. |
+
+## Rev 3 amendments (after the Codex plan review)
+
+### New decisions (Evan, 2026-09-14)
+
+- **D5 — Delete co-host's CHUD residue, gated.** Artifact `e6135781-…` (above) is removed through the same fail-closed gate, as declaration `co-host-chud` against the `chud` database. Conversation 7206 stays untouched; D2 still holds.
+- **D6 — Delete the demo user's auth audit rows.** the-classic's `auth.audit_log_entries` holds exactly 5 rows whose `payload->>'actor_id'` is the demo user: its signup and 4 logins, 2026-09-06 18:49–18:53 UTC. No other row mentions it. They are deleted by exact id inside the same transaction as the rest of the demo user. They sit outside every FK, so this is a declared non-FK scope table.
+
+### Gate protocol amendments
+
+These supersede the matching Rev 2 steps.
+
+- **G1.**
+  - The migration check pins a SHA-256 of the **complete** migration manifest, not a lexical maximum:
+    - Django `app.name` pairs for LeonsBudget and co-author;
+    - the `schema_migrations` versions for chudios and co-host;
+    - `supabase_migrations` and `auth.schema_migrations` for the-classic;
+    - the `artifacts` column list for chud, which has no migrations table.
+  - Anchors are **mode-aware**. In pre mode each anchor must exist; in post mode it must be gone.
+- **G2.**
+  - Every allowlisted FK also pins its `confdeltype`.
+  - Every DELETE- or UPDATE-firing trigger on a scope, referencing or parent table must be allowlisted with a SHA-256 of `pg_get_triggerdef || pg_get_functiondef`.
+  - Any rewrite rule is a stop.
+- **G6 scope rows.**
+  - **What is frozen.** Freeze is **one** repeatable-read transaction producing the export, ids, survivor snapshot, id digest and a **scope-row content digest**: length-prefixed canonical JSON, ordered by key.
+  - **The check at delete time.** The delete transaction is repeatable-read. It takes `FOR UPDATE` row locks on every scope row, then requires the content digest to equal the freeze before anything is deleted. A row whose content changed after G7 inspected it is a stop.
+  - **Hashing.** All hashes are SHA-256 over length-prefixed canonical JSON.
+- **mind-palace.**
+  - The conditional delete also requires a canonical fingerprint of every route and step property to equal the frozen one, inside the same statement.
+  - A read-only `dry` phase runs the exact assembled statement without its delete line.
+- **Commit state.**
+  - After every `execute`, a read-only classifier records `PRE-STATE` (all frozen ids present), `COMMITTED` (none) or `MIXED` in `state.txt`. `execute` passes only on `COMMITTED`.
+  - chudios purges its quarantined files only on `COMMITTED` and restores them only on `PRE-STATE`. `MIXED`, `UNKNOWN` or a timeout keeps the files quarantined and stops.
+  - A committed `execute` can't be re-run, and it can't be re-frozen afterwards.
+- **Post (G10).**
+  - The declaration is loaded in **post mode**. Every scope selector must re-resolve to nothing, every extra check must equal its declared post value, and the closure must be intact.
+  - Then the frozen ids must be gone and the survivors identical to the freeze.
+- **Timeouts.** `lock_timeout` 10 s, `statement_timeout` 300 s, `idle_in_transaction_session_timeout` 600 s, and `timeout` around every docker call. A timed-out `execute` is classified, never assumed.
+- **Files.** Quarantine, restore and purge are **resumable per file**. Each file must be in exactly one allowed place with its exact size and sha256. A stray file or a file found in both places is a stop.
+- **Self-tests.**
+  - The file self-test uses a validated `mktemp` directory and removes only that directory.
+  - Selftest overrides are refused against the real volume.
+  - Every diagnostic is matched against the invoking phase's own log.
+  - New planted cases cover: scope-row drift, a changed FK delete rule, a changed allowlisted trigger, post-mode residue, classifier states, re-freeze, execute re-run refusal, and crash-and-resume at each file step.
+
+### chunk-norris audit, measured
+
+Qdrant points carry `indexed_at`. A read-only scroll of all 18 collections on 2026-09-14 found **0 points** dated 2026-08-25 or 2026-08-26; everything has been re-indexed since. Postgres (half-open ET window) shows 3 nightly `ingest_jobs` at 02:00 ET and 1 at 11:02 ET, for a source the nightly run also ingests. The disposition question to Evan stays as the plan states it.
+
+## Codex plan review disposition (plan rev 1.1 → rev 2)
+
+| # | Sev | Disposition |
+|---|---|---|
+| 1 | BLOCKER | **Accepted.** Scope-row content digest frozen in the same transaction as the export, re-checked under `FOR UPDATE` locks in the delete transaction. Neo4j property fingerprint inside the conditional delete. The G7 inspector walks JSON recursively without truncation. |
+| 2 | BLOCKER | **Accepted and confirmed live.** Artifact `e6135781-…` found by content. Removed under D5 via `co-host-chud`. |
+| 3 | BLOCKER | **Accepted and confirmed live.** 5 audit rows. Removed under D6. |
+| 4 | BLOCKER | **Accepted.** Post mode re-resolves every selector and extra check. |
+| 5 | BLOCKER | **Accepted.** Every `execute` is classified. File purge/restore is keyed to the classified state. |
+| 6 | BLOCKER | **Accepted.** Unique validated `mktemp` directory with a trap; selftest overrides refused on the real volume. |
+| 7 | MAJOR | **Accepted.** FK delete rules and trigger definition/function digests pinned. |
+| 8 | MAJOR | **Accepted.** Full migration-manifest SHA-256 pins, including the GoTrue auth schema. |
+| 9 | MAJOR | **Accepted.** Per-file resumable moves, with crash-injection self-tests. |
+| 10 | MAJOR | **Accepted.** Server and client timeouts; a timeout during `execute` is classified. |
+| 11 | MAJOR | **Accepted.** Qdrant `indexed_at` scroll done (0 pilot-day points). Half-open windows in the audit. |
+| 12 | MAJOR | **Accepted.** Explicit per-app states. Tasks 9–10 wait until every D4 question is answered. |
+| 13 | MAJOR | **Accepted.** An SDD worktree for portfolio_site, a separate infra worktree branch for Task 9, and reviewers who re-run post/classify read-only against the evidence. The Codex worker-pool point does not apply: Claude executes. |
+| 14 | MAJOR | **Accepted.** The listed planted cases were added, and matching is per-invocation. |
+| 15 | MAJOR | **Accepted.** Task 9 edits in an infra worktree and never runs `git checkout --` on a shared checkout. |
+| 16 | MINOR | **Accepted.** SHA-256 over length-prefixed canonical JSON everywhere. |

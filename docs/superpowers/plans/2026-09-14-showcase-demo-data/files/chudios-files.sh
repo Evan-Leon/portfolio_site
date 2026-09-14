@@ -1,14 +1,20 @@
 #!/usr/bin/env bash
-# chudios-files.sh — two-phase removal of the three showcase demo recordings from the chudios volume.
+# chudios-files.sh — two-phase, resumable removal of the three showcase demo recordings from the chudios volume. Rev 2.
 #
 #   chudios-files.sh check        G1 target + mount; exactly the 3 files with the recorded size + sha256; no quarantine dir
-#   chudios-files.sh quarantine   check, then mv the 3 files into <root>/.showcase-quarantine/ (same volume) and verify
-#   chudios-files.sh restore      move them back (used when the database execute did NOT succeed) and verify
-#   chudios-files.sh purge        delete the quarantined files and the quarantine dir (only after the database COMMIT)
+#   chudios-files.sh quarantine   move each file into <root>/.showcase-quarantine/ (same volume). Resumable: a file
+#                                 already in quarantine (exact size + sha) is skipped.
+#   chudios-files.sh restore      move each quarantined file back. Resumable: a file already back in <root> is skipped.
+#                                 Used only when the database execute is classified PRE-STATE.
+#   chudios-files.sh purge        delete each quarantined file. Resumable: a file already gone from both places is
+#                                 skipped. Used only when the database execute is classified COMMITTED.
 #   chudios-files.sh post         the 3 files are absent from <root> and no quarantine dir exists
 #
-# Files are named exactly; there are no globs. Exit 0 = passed; anything else = STOP under D4.
-# Selftest overrides: GATE_FILES_ROOT (must be under /tmp), GATE_FILES_MANIFEST (lines: "name size sha256").
+# Each file must be in exactly one allowed place with its exact size + sha256; anything else (in both places, in
+# neither when it must exist, a stray file in the quarantine dir) is a STOP. Files are named exactly; no globs.
+# Exit 0 = passed; anything else = STOP under D4.
+# Selftest-only overrides (all require GATE_FILES_ROOT under /tmp): GATE_FILES_ROOT, GATE_FILES_MANIFEST
+# (lines "name size sha256"), GATE_FILES_CRASH_AFTER=N (exit after N file operations, to simulate a crash).
 set -uo pipefail
 
 C=chudios-backend-1
@@ -17,6 +23,7 @@ VOLUME=chudios_chudios-recordings
 ROOT="${GATE_FILES_ROOT:-/data/recordings}"
 Q="$ROOT/.showcase-quarantine"
 EVID="${GATE_EVIDENCE_DIR:-/home/evan/showcase-pending/_teardown-evidence}"
+CRASH_AFTER="${GATE_FILES_CRASH_AFTER:-}"
 phase="${1:?usage: chudios-files.sh <phase>}"
 
 MANIFEST="${GATE_FILES_MANIFEST:-}"
@@ -29,58 +36,99 @@ mkdir -p "$OUT" && chmod 700 "$EVID" "$OUT"
 LOG="$OUT/files-$phase.log"
 echo "target: container=$C root=$ROOT" > "$LOG"
 fail() { echo "GATE FAIL $*" | tee -a "$LOG" >&2; echo "STOP chudios files $phase — see $LOG" >&2; exit 1; }
-inc()  { docker exec "$C" sh -c "$1" 2>>"$LOG"; }
+inc()  { timeout --foreground -k 5 120 docker exec "$C" sh -c "$1" 2>>"$LOG"; }
 
-got="$(docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
+got="$(timeout 30 docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
 [ "$got" = "true $PROJ" ] || fail "G1 target: container $C reports '$got', expected 'true $PROJ'"
 if [ -n "${GATE_FILES_ROOT:-}" ]; then
-  case "$ROOT" in /tmp/*) ;; *) fail "G1 selftest root must be under /tmp, got $ROOT" ;; esac
+  case "$ROOT" in /tmp/gate-files-selftest.*) ;; *) fail "G1 selftest root must be /tmp/gate-files-selftest.*, got $ROOT" ;; esac
 else
-  mount="$(docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data/recordings"}}{{.Name}}{{end}}{{end}}' "$C")"
+  [ -z "$CRASH_AFTER" ] && [ -z "${GATE_FILES_MANIFEST:-}" ] || fail "G1 selftest overrides are refused against the real volume"
+  mount="$(timeout 30 docker inspect -f '{{range .Mounts}}{{if eq .Destination "/data/recordings"}}{{.Name}}{{end}}{{end}}' "$C")"
   [ "$mount" = "$VOLUME" ] || fail "G1 mount: /data/recordings is '$mount', expected volume $VOLUME"
 fi
 
-verify_in() {  # verify_in <dir>: every manifest file is present there with the exact size and sha256
-  local dir="$1" name size sha got_size got_sha
-  while read -r name size sha; do
-    got_size="$(inc "stat -c %s '$dir/$name'")" || fail "missing $dir/$name"
-    got_sha="$(inc "sha256sum '$dir/$name'" | cut -d' ' -f1)"
-    echo "$dir/$name size=$got_size sha=$got_sha" >> "$LOG"
-    [ "$got_size" = "$size" ] && [ "$got_sha" = "$sha" ] || fail "G3 $dir/$name size/sha differ from the manifest"
-  done <<< "$MANIFEST"
+ops=0
+op() {  # op <shell command> <label>: one file operation, counted for the selftest crash hook
+  inc "$1" || fail "$2 failed"
+  ops=$((ops + 1))
+  echo "op $ops: $2" >> "$LOG"
+  if [ -n "$CRASH_AFTER" ] && [ "$ops" -ge "$CRASH_AFTER" ]; then echo "simulated crash after $ops op(s)" >> "$LOG"; exit 9; fi
 }
 
-absent_in() {  # absent_in <dir>: no manifest file exists there
-  local dir="$1" name _
-  while read -r name _; do
-    inc "test ! -e '$dir/$name'" || fail "G10 $dir/$name still exists"
-  done <<< "$MANIFEST"
+where() {  # where <name> <size> <sha> -> prints root | quarantine | both | none ; STOP on a wrong size/sha
+  local name="$1" size="$2" sha="$3" r=0 q=0 dir got_size got_sha
+  for dir in "$ROOT" "$Q"; do
+    if inc "test -e '$dir/$name'"; then
+      got_size="$(inc "stat -c %s '$dir/$name'")"; got_sha="$(inc "sha256sum '$dir/$name'" | cut -d' ' -f1)"
+      echo "$dir/$name size=$got_size sha=$got_sha" >> "$LOG"
+      [ "$got_size" = "$size" ] && [ "$got_sha" = "$sha" ] || fail "G3 $dir/$name size/sha differ from the manifest"
+      [ "$dir" = "$ROOT" ] && r=1 || q=1
+    fi
+  done
+  if [ $r -eq 1 ] && [ $q -eq 1 ]; then echo both; elif [ $r -eq 1 ]; then echo root; elif [ $q -eq 1 ]; then echo quarantine; else echo none; fi
+}
+
+no_strays() {  # the quarantine dir, if present, holds only manifest names
+  inc "test -d '$Q'" || return 0
+  local listed name
+  listed="$(inc "ls -A '$Q'")"
+  while read -r name; do
+    [ -z "$name" ] && continue
+    grep -q "^$name " <<< "$MANIFEST" || fail "stray file in quarantine: $name"
+  done <<< "$listed"
 }
 
 case "$phase" in
   check)
     inc "test ! -e '$Q'" || fail "quarantine dir $Q already exists"
-    verify_in "$ROOT" ;;
+    while read -r name size sha; do
+      [ "$(where "$name" "$size" "$sha")" = root ] || fail "G3 $name is not (only) in $ROOT"
+    done <<< "$MANIFEST" ;;
   quarantine)
-    inc "test ! -e '$Q'" || fail "quarantine dir $Q already exists"
-    verify_in "$ROOT"
-    inc "mkdir '$Q'" || fail "mkdir $Q failed"
-    while read -r name _; do inc "mv '$ROOT/$name' '$Q/$name'" || fail "mv $name failed — run restore"; done <<< "$MANIFEST"
-    verify_in "$Q"; absent_in "$ROOT" ;;
+    no_strays
+    inc "test -d '$Q'" || op "mkdir '$Q'" "mkdir quarantine"
+    while read -r name size sha; do
+      case "$(where "$name" "$size" "$sha")" in
+        root)       op "mv '$ROOT/$name' '$Q/$name'" "quarantine $name" ;;
+        quarantine) echo "$name already quarantined" >> "$LOG" ;;
+        *)          fail "G3 $name must be in $ROOT or quarantine, found: $(where "$name" "$size" "$sha")" ;;
+      esac
+    done <<< "$MANIFEST"
+    while read -r name size sha; do
+      [ "$(where "$name" "$size" "$sha")" = quarantine ] || fail "G9 $name did not end in quarantine"
+    done <<< "$MANIFEST" ;;
   restore)
-    verify_in "$Q"
-    while read -r name _; do inc "test ! -e '$ROOT/$name'" || fail "$ROOT/$name exists; refusing to overwrite"; done <<< "$MANIFEST"
-    while read -r name _; do inc "mv '$Q/$name' '$ROOT/$name'" || fail "mv back $name failed"; done <<< "$MANIFEST"
-    inc "rmdir '$Q'" || fail "rmdir $Q failed (unexpected files inside?)"
-    verify_in "$ROOT" ;;
+    no_strays
+    while read -r name size sha; do
+      case "$(where "$name" "$size" "$sha")" in
+        quarantine) op "mv '$Q/$name' '$ROOT/$name'" "restore $name" ;;
+        root)       echo "$name already restored" >> "$LOG" ;;
+        *)          fail "G3 $name must be in quarantine or $ROOT, found: $(where "$name" "$size" "$sha")" ;;
+      esac
+    done <<< "$MANIFEST"
+    inc "test ! -d '$Q'" || op "rmdir '$Q'" "rmdir quarantine"
+    while read -r name size sha; do
+      [ "$(where "$name" "$size" "$sha")" = root ] || fail "G9 $name did not end in $ROOT"
+    done <<< "$MANIFEST" ;;
   purge)
-    verify_in "$Q"
-    while read -r name _; do inc "rm '$Q/$name'" || fail "rm $name failed"; done <<< "$MANIFEST"
-    inc "rmdir '$Q'" || fail "rmdir $Q failed (unexpected files inside?)"
-    absent_in "$ROOT" ;;
+    no_strays
+    while read -r name size sha; do
+      case "$(where "$name" "$size" "$sha")" in
+        quarantine) op "rm '$Q/$name'" "purge $name" ;;
+        none)       echo "$name already purged" >> "$LOG" ;;
+        *)          fail "G3 $name is in $ROOT — refusing to purge (was it restored?)" ;;
+      esac
+    done <<< "$MANIFEST"
+    inc "test ! -d '$Q'" || op "rmdir '$Q'" "rmdir quarantine"
+    while read -r name size sha; do
+      [ "$(where "$name" "$size" "$sha")" = none ] || fail "G10 $name still exists"
+    done <<< "$MANIFEST" ;;
   post)
     inc "test ! -e '$Q'" || fail "G10 quarantine dir still exists"
-    absent_in "$ROOT" ;;
+    while read -r name size sha; do
+      [ "$(where "$name" "$size" "$sha")" = none ] || fail "G10 $name still exists"
+    done <<< "$MANIFEST" ;;
   *) echo "GATE FAIL unknown phase: $phase" >&2; exit 2 ;;
 esac
 

@@ -2,70 +2,89 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Remove the portfolio-showcase demo data still sitting in six apps' local stores, proving with a fail-closed gate that no real row, node or file was deleted or changed. Then record every showcase-touched app's disposition and change the showcase meta-prompt so demo data goes into throwaway stores from now on.
+**Goal:** Remove the portfolio-showcase demo data still sitting in six apps' local stores, plus co-host's one leftover artifact in CHUD. Prove with a fail-closed gate that no real row, node or file was deleted or changed. Then record every showcase-touched app's disposition and change the showcase meta-prompt so demo data goes into throwaway stores from now on.
 
 **Architecture:** All deletion runs through committed, already-validated tooling in `docs/superpowers/plans/2026-09-14-showcase-demo-data/`.
-- **Postgres gate** (`gate.sql` + `gate-run.sh` + one declaration per app): session-temporary functions check the target, the dependency closure (foreign keys, plus reviewed-and-allowlisted DELETE/UPDATE triggers; any rewrite rule stops), exact scope counts, inbound references, outbound references and survivor hashes. It then runs a rehearsal that rolls back and a negative control, and only then commits one guarded delete.
-- **Neo4j** (`neo4j/mind-palace-gate.sh`): the same phase shape, ending in one atomic conditional delete.
-- **Volume files** (`files/chudios-files.sh`): a two-phase quarantine protocol.
+- **Postgres gate** (`gate.sql` + `gate-run.sh` + one declaration per target). Session-temporary functions check:
+  - the target: container, compose project, database, a pinned migration manifest, and anchors;
+  - the dependency closure: foreign keys with pinned delete rules, DELETE/UPDATE triggers pinned by definition digest, and no rewrite rules;
+  - exact scope counts, inbound references, outbound references, and survivor hashes.
 
-Each task runs one app's phases in a fixed order, records the evidence, and commits a results row. Nothing is committed to any app repo.
+  Freeze captures everything in one repeatable-read transaction, including a digest of the scope rows' content. The delete transaction locks the scope rows, re-proves the content digest, the ids and the survivors, deletes children first by exact id, and re-proves the survivors. Rehearsal (rolled back) and a negative control come first. Every `execute` is followed by a read-only commit-state classification.
+- **Neo4j** (`neo4j/mind-palace-gate.sh`): the same phase shape, ending in one atomic conditional delete that also requires the route's property fingerprint to equal the freeze.
+- **Volume files** (`files/chudios-files.sh`): a two-phase, per-file resumable quarantine protocol keyed to the database's classified commit state.
+
+Each task runs one app's phases in a fixed order, records the evidence and the app's state, and commits a results entry. Nothing is committed to any app repo.
 
 **Tech Stack:** bash, PostgreSQL 17 (`infra-postgres-1`, local Supabase `supabase_db_the-classic`), Neo4j 5.26 community (`mind-palace-neo4j-1`), docker, python3 (read-only evidence inspection only).
 
-**Spec:** `docs/superpowers/specs/2026-09-14-showcase-demo-data-design.md` (rev 2). Its Codex review is `docs/superpowers/specs/2026-09-14-showcase-demo-data-codex-review.md`.
+**Spec:** `docs/superpowers/specs/2026-09-14-showcase-demo-data-design.md` (Rev 3; D1–D6 and the "Rev 3 amendments" section are binding). Reviews: `docs/superpowers/specs/2026-09-14-showcase-demo-data-codex-review.md` (spec) and `docs/superpowers/plans/2026-09-14-showcase-demo-data-plan-codex-review.md` (plan rev 1.1).
 
 ## Global Constraints
 
 - **D4 — STOP-AND-ASK. This overrides everything else in this plan.** If you are unsure **at all** about any row, node, relationship, file or reference, stop. Report what you found and ask Evan. Delete nothing for that app until he answers. Never guess, never widen a selector, and never "clean up what looks like demo data".
-  - **Mechanical triggers.** Any gate check failing (target identity, dependency closure, scope counts, inbound references, survivor hashes, negative control). Also any command erroring, and any count or id that differs between the frozen export and the in-transaction re-query.
-  - **Judgment triggers.**
+  - **Mechanical triggers:** every `GATE FAIL`, every non-zero phase exit, every commit state other than the expected one, and every tooling-manifest mismatch.
+  - **Judgment triggers:**
     - exported text that reads like real content (a real person's name, a real email, prose that reads like Evan's own writing);
     - a timestamp outside the showcase window that nothing explains;
     - a table, column or reference this plan did not anticipate;
     - anything you would describe as "probably fine".
   - **Outbound references to allowlisted retained shared rows are not triggers.**
-  - **A stop on one app halts only that app.** Continue independent tasks; the controller asks Evan.
-- **D3 — Authority.** Evan's approval of this plan authorizes exactly the deletes performed by the committed tooling's `execute` phases for the six apps named in Tasks 2–7, and nothing more.
-  - `execute` may run only after the same app's `rehearse` and `negative` phases have passed against the current freeze.
-  - No other DELETE, UPDATE, `DETACH DELETE`, `rm` or `mv` may be run by hand against any app store.
-- **Tooling is frozen.** Before every task, run `(cd docs/superpowers/plans/2026-09-14-showcase-demo-data && sha256sum -c SHA256SUMS)`, and every line must say `OK`.
-  - Never edit `gate.sql`, `gate-run.sh`, `apps/*.sql`, `neo4j/*`, `files/*`, `selftest/*` or `SHA256SUMS` during execution.
-  - A needed change to the tooling (a count, an allowlist entry, a check) is a D4 stop, never a fix.
-- **Evidence** lives only in `/home/evan/showcase-pending/_teardown-evidence/` (mode 700). It is never committed and never pasted in full into a commit, a report or a dispatch. Quote single log lines only.
-- **Phase order per app is fixed:** preflight → freeze → G7 content inspection → rehearse → negative → execute → post.
-  - **Re-freeze rule:** at most once per app, and only when `rehearse`, `negative` or `execute` fails with `GATE FAIL G6 survivors`, meaning live data outside the scope changed between freeze and delete. Move the frozen files into `superseded-<UTC timestamp>/` inside the app's evidence dir, then restart from freeze.
-  - A second G6 failure is a D4 stop.
-- **Never touch:** chud conversation 7206 or anything in chud's database (D2; only co-host's read-only residue check reads it), app-dash, graces-tree, jourNOW, voice-trainer, NomNoms, Prompt-heus, logson, el-blackjack-pwa.
+  - **A stop on one app halts only that app.** Continue with independent tasks; the controller asks Evan.
+- **D3 — Authority.** Evan's approval of this plan authorizes exactly:
+  - the `execute` phases of the committed tooling for co-host, co-host-chud, co-author, chudios, mind-palace, LeonsBudget and the-classic (Tasks 2–7);
+  - the chudios `purge` of the three quarantined files once the chudios database execute is classified `COMMITTED`.
+
+  `execute` may run only after that target's `rehearse` and `negative` phases have passed against its current freeze (mind-palace also needs `dry`). No other DELETE, UPDATE, `DETACH DELETE`, `rm` or `mv` may be run by hand against any app store, by you or by any sub-agent.
+- **D5 / D6.** co-host's CHUD artifact `e6135781-…` (declaration `co-host-chud`) and the-classic's 5 demo `auth.audit_log_entries` rows are in scope. Nothing else in chud is touched. Conversation 7206 stays (D2), and `co-host-chud`'s declaration checks its 8 messages before and after.
+- **The tooling is frozen.** Before every task, run `(cd docs/superpowers/plans/2026-09-14-showcase-demo-data && sha256sum -c SHA256SUMS)`; every line must say `OK`. Never edit anything under that directory during execution. A change the tooling seems to need (a count, an allowlist entry, a pin, a check) is a D4 stop, never a fix.
+- **Evidence** lives only in `/home/evan/showcase-pending/_teardown-evidence/` (mode 700). It is never committed. Never paste it wholesale into a commit, a report or a dispatch; quote single log lines only, except the G7 inspection, which the implementer reads in full.
+- **Phase order per Postgres target is fixed:** preflight → freeze → G7 inspection → rehearse → negative → execute → post. mind-palace adds `dry` after G7.
+- **Re-freeze rule.** Applies at most **once per target**, and only when `rehearse`, `negative` or `execute` fails with `GATE FAIL G6` (`survivors` or `scope rows changed`) and `state.txt` is not `COMMITTED`: run `gate-run.sh <target> refreeze`, redo G7 on the new freeze, then continue from rehearse. A second G6 failure is a D4 stop. Neo4j has no re-freeze; a changed hash or fingerprint there is a stop.
+- **Commit states.** `execute` writes `state.txt` and passes only on `COMMITTED`.
+  - `PRE-STATE` means nothing was deleted: apply the re-freeze rule if the failure was G6, otherwise D4 stop.
+  - `COMMITTED` with a non-zero exit (a transport anomaly): run `post` (read-only), record both, then D4 stop.
+  - `MIXED` or `UNKNOWN`: D4 stop immediately, with no further command on that target.
+- **Per-app state** is recorded in the results file as exactly one of: `NOT-STARTED`, `STOPPED at <phase> — question: <question>`, `ROLLED-BACK (PRE-STATE)`, `COMMITTED`, `POST-VERIFIED`. A task finishes cleanly only at `POST-VERIFIED`.
+- **Questions gate the finish.** Tasks 9 and 10 run only after Evan has answered every open D4 question from Tasks 1–8, with each answer recorded in the results file. The controller asks and waits. That wait is the one intended pause.
+- **Never touch:** chud's conversations, messages, notes or anything outside `co-host-chud`'s scope; app-dash, graces-tree, jourNOW, voice-trainer, NomNoms, Prompt-heus, logson, el-blackjack-pwa.
   - No container restarts.
   - No `supabase` CLI command. the-classic's CLI is linked to production.
+  - No app test suites; the-classic's backend suite writes to the live local Supabase.
   - No app repo writes or commits.
-- **Commits.** Only this worktree's results file and session log in portfolio_site, and `meta-prompts/portfolio-showcase/portfolio-showcase.md` + `portfolio-showcase-changelog.md` in infra. Always use `git commit --only -m "<msg>" -- <paths>`.
-- **Sub-agents** never run on Fable. Use Opus for the Tasks 2–8 implementers and every reviewer. The Task 9–10 implementers may use Sonnet. Tasks run strictly one at a time.
+- **Commits.**
+  - portfolio_site: only this plan's worktree (the results file and the session log).
+  - infra: only the Task 9 worktree branch.
+  - Always use `git commit --only -m "<msg>" -- <paths>`. Never push.
+- **Sub-agents** never run on Fable.
+  - `opus` for the implementers of Tasks 1–8 and every reviewer.
+  - `sonnet` may implement Tasks 9–10.
+  - Tasks run strictly one at a time.
 
 ## File Structure
 
-Existing, committed, validated before this plan was written:
+Existing, committed, validated before this plan was written (see "Plan review record"):
 
 | Path (under `docs/superpowers/plans/2026-09-14-showcase-demo-data/`) | Responsibility |
 |---|---|
-| `gate.sql` | Session-temporary gate library: preflight (G2–G5), snapshot/digest (G6), export, delete (G9), post (G10). Creates nothing persistent. |
-| `gate-run.sh` | Runs one Postgres app's phase: G1 container/project check, the co-host CHUD residue check, evidence files, rehearse/negative/execute ordering. |
-| `apps/{co-host,co-author,chudios,leonsbudget,the-classic}.sql` | Per-app declaration: G1 database/schema/anchor checks, exact scope + counts + delete order, FK allowlist, retained parents, extra checks. |
-| `apps/selftest.sql`, `apps/selftest-flip.sql`, `selftest/schema.sql`, `selftest/selftest.sh` | 17-case gate selftest in the throwaway database `showcase_gate_selftest` (created and dropped by the script). |
-| `neo4j/mind-palace-gate.sh` | mind-palace Route removal: counts/shape/degree checks, survivor hash, `:begin`/`:rollback` rehearsal, wrong-name negative control, conditional delete. |
-| `files/chudios-files.sh`, `files/selftest-files.sh` | chudios demo recordings: exact size+sha checks, quarantine/restore/purge/post; 11-case selftest in `/tmp` inside the container. |
+| `gate.sql` | Session-temporary gate library: G1 helpers, closure G2, preflight G3–G5, post-mode preflight, SHA-256 survivor/scope-row/id digests, row locks, delete G9, post G10, commit-state classifier. Creates nothing persistent. |
+| `gate-run.sh` | Runs one Postgres target's phase: `preflight`, `freeze`, `refreeze`, `rehearse`, `negative`, `execute`, `classify`, `post`. It also does the G1 container check, timeouts and evidence files. |
+| `apps/{co-host,co-host-chud,co-author,chudios,leonsbudget,the-classic}.sql` | Per-target declaration: mode-aware anchors, the migration-manifest pin, the exact scope and counts, the delete order, the FK allowlist with delete rules, the trigger allowlist with digests, retained parents, and extra checks with pre and post values. |
+| `apps/selftest.sql`, `apps/selftest-flip.sql`, `selftest/schema.sql`, `selftest/selftest.sh` | Gate self-test in the throwaway database `showcase_gate_selftest` (created and dropped by the script). |
+| `neo4j/mind-palace-gate.sh` | mind-palace Route removal: `preflight`, `freeze` (with fingerprint), `dry`, `rehearse`, `negative`, `execute`, `classify`, `post`. |
+| `files/chudios-files.sh`, `files/selftest-files.sh` | chudios demo recordings: `check`, `quarantine`, `restore`, `purge`, `post`, resumable per file. Its self-test runs in a unique `mktemp` directory inside the container. |
+| `inspect-scope.py` | G7 aid: prints every text value of a frozen `scope.json`, untruncated, with secret keys masked; exit 3 on a count mismatch. |
 | `SHA256SUMS` | Freeze manifest for all of the above. |
 
 Created by this plan:
 
 | Path | Responsibility |
 |---|---|
-| `docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md` (portfolio_site) | One section per task, holding the outcome, phase exits, key numbers and evidence paths. It is the review surface for every task. |
-| `infra/meta-prompts/portfolio-showcase/portfolio-showcase.md` + `portfolio-showcase-changelog.md` | Task 9: throwaway-store rule, read-only qualification, D4 copy, dispositions. |
-| `docs/session-logs/<timestamp>-claude-code-showcase-demo-data-cleanup.md` (portfolio_site) | Task 10. |
+| `docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md` (portfolio_site worktree) | One section per task: the app state, every phase exit, key numbers, and evidence paths. It is each task's review surface. |
+| `/home/evan/worktrees/infra-showcase-demo-data/meta-prompts/portfolio-showcase/{portfolio-showcase.md,portfolio-showcase-changelog.md}` (infra worktree branch `showcase-demo-data-meta-prompt`) | Task 9 edits. |
+| `docs/session-logs/<timestamp>-claude-code-showcase-demo-data-cleanup.md` (portfolio_site worktree) | Task 10. |
 
-Shell variables used in every task. Set them at the start of each Bash call, because shell state does not persist between calls:
+Shell variables: set them at the start of **each** Bash call, because shell state does not persist between calls.
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
@@ -73,18 +92,24 @@ R=docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
 EVID=/home/evan/showcase-pending/_teardown-evidence
 ```
 
-Every phase command prints `PASS <app> <phase>` and exits 0, or prints `STOP …` plus the first `GATE FAIL` line and exits non-zero. Capture the exit code directly: `"$T/gate-run.sh" co-host preflight; echo "exit=$?"`. Never pipe a phase through `tail`, `head` or `tee`.
+Every phase prints `PASS <target> <phase>` and exits 0, or prints `STOP …` plus the first `GATE FAIL` line and exits non-zero. Capture the exit directly: `"$T/gate-run.sh" co-host preflight; echo "exit=$?"`. Never pipe a phase through `tail`, `head` or `tee`.
+
+**Reviewer checklist for every cleanup task (Tasks 2–7).** The reviewer gets the task brief, the implementer's report, the review package (the results-file diff) and the target's evidence directory path. It may read the evidence, but must never edit it. It runs, read-only:
+- `"$T/gate-run.sh" <target> classify`, or `"$T/neo4j/mind-palace-gate.sh" classify`, and confirms `state: COMMITTED`;
+- `post`, and confirms `PASS`.
+
+It then confirms, from the log files' mtimes (`ls -l --time-style=full-iso "$EVID/<target>"`), that the phases ran in the fixed order, that `g7-inspection.txt` exists and was read, and that the results entry's numbers match the logs. For a stopped task, it confirms instead that `state.txt` and the question are recorded, and that no write-phase ran after the stop.
 
 ---
 
-### Task 1: Verify tooling and preflight every target (read-only)
+### Task 1: Verify tooling, run the self-tests, preflight every target (read-only)
 
 **Files:**
 - Create: `docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md`
 
 **Interfaces:**
 - Consumes: the committed tooling listed above.
-- Produces: the results file, with a `## Task 1` section. Later tasks append `## Task N — <app>` sections in the same format.
+- Produces: the results file with `## Task 1` and a `## States` table. Later tasks update their row and append `## Task N — <target>` sections.
 
 - [ ] **Step 1: Verify the tooling manifest**
 
@@ -92,85 +117,117 @@ Every phase command prints `PASS <app> <phase>` and exits 0, or prints `STOP …
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 (cd "$T" && sha256sum -c SHA256SUMS); echo "exit=$?"
 ```
-Expected: every line `OK`, `exit=0`. Anything else → D4 stop.
+Expected: every line `OK`, and `exit=0`. Anything else → D4 stop.
 
-- [ ] **Step 2: Confirm the evidence directory holds no previous gate run**
+- [ ] **Step 2: Confirm nothing from an earlier run exists**
 
 ```bash
 EVID=/home/evan/showcase-pending/_teardown-evidence
 stat -c '%a %U' "$EVID"; ls -la "$EVID"
+docker exec infra-postgres-1 psql -U postgres -At -c "SELECT count(*) FROM pg_database WHERE datname IN ('showcase_gate_selftest','showcase_gate_digestcalc')"
+docker exec chudios-backend-1 sh -c 'ls -d /tmp/gate-files-selftest.* /data/recordings/.showcase-quarantine 2>/dev/null | wc -l'
 ```
-Expected: `700 evan`. Only these three files are present: `graces-tree-pre-cleanup-backup-2026-09-13.json`, `journow-demo-entries-2026-09-14.csv`, `journow-demo-user-2026-09-14.csv`. Any per-app subdirectory (`co-host/`, `chudios/`, …) means an earlier run happened → D4 stop.
+Expected:
+- `700 evan`;
+- only these three files: `graces-tree-pre-cleanup-backup-2026-09-13.json`, `journow-demo-entries-2026-09-14.csv`, `journow-demo-user-2026-09-14.csv`;
+- `0`, then `0`.
 
-- [ ] **Step 3: Run the SQL gate selftest**
+Anything else → D4 stop. Do not clean it up.
+
+- [ ] **Step 3: Run the SQL gate self-test**
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 "$T/selftest/selftest.sh" > /tmp/showcase-gate-selftest.log 2>&1; echo "exit=$?"
 grep '^FAIL\|selftest:' /tmp/showcase-gate-selftest.log
 ```
-Expected: `exit=0`, no `FAIL` line, and last line `selftest: 0 failure(s)`. If it says the database `showcase_gate_selftest already exists`, that is a D4 stop. Do not drop it.
+Expected: `exit=0`, no `FAIL` line, and last line `selftest: 0 failure(s)`.
 
-- [ ] **Step 4: Run the file-protocol selftest**
+- [ ] **Step 4: Run the file-protocol self-test**
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 "$T/files/selftest-files.sh" > /tmp/showcase-files-selftest.log 2>&1; echo "exit=$?"
 grep '^FAIL\|selftest-files:' /tmp/showcase-files-selftest.log
+docker exec chudios-backend-1 sh -c 'ls -d /tmp/gate-files-selftest.* 2>/dev/null | wc -l'
 ```
-Expected: `exit=0`, no `FAIL` line, and `selftest-files: 0 failure(s)`.
+Expected: `exit=0`, no `FAIL`, `selftest-files: 0 failure(s)`, then `0` (its temporary directory is gone).
 
 - [ ] **Step 5: Preflight every target**
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
-for a in co-host co-author chudios leonsbudget the-classic; do "$T/gate-run.sh" "$a" preflight; echo "$a exit=$?"; done
+for a in co-host co-host-chud co-author chudios leonsbudget the-classic; do "$T/gate-run.sh" "$a" preflight; echo "$a exit=$?"; done
 "$T/neo4j/mind-palace-gate.sh" preflight; echo "mind-palace exit=$?"
 "$T/files/chudios-files.sh" check; echo "chudios-files exit=$?"
 ```
-Expected: seven `PASS` lines and seven `exit=0`. Any STOP is a D4 stop for **that app only**. Record it, then continue Task 1 and skip that app's task later, with the stop recorded.
+Expected: eight `PASS` lines and eight `exit=0`. A STOP is a D4 stop for **that target only**. Record it as `STOPPED at preflight — …`, keep going with Task 1, and later record that target's task as not run.
 
 - [ ] **Step 6: Create the results file**
 
-Write `docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md` with this content, filling each `exit=` value with the real value from Steps 1–5:
+Write `docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md`, filling in real values:
 
 ```markdown
 # Showcase Demo Data Cleanup — Results
 
 Plan: `docs/superpowers/plans/2026-09-14-showcase-demo-data.md` · Spec: `docs/superpowers/specs/2026-09-14-showcase-demo-data-design.md`
-Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<app>/`
+Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<target>/`
+
+## States
+
+| Target | State |
+|---|---|
+| co-host | NOT-STARTED |
+| co-host-chud | NOT-STARTED |
+| co-author | NOT-STARTED |
+| chudios (db + files) | NOT-STARTED |
+| mind-palace | NOT-STARTED |
+| leonsbudget | NOT-STARTED |
+| the-classic | NOT-STARTED |
+| chunk-norris audit | NOT-STARTED |
+
+## Open questions for Evan
+
+(none yet)
 
 ## Task 1 — tooling and preflight
 
 | Check | Result |
 |---|---|
-| `sha256sum -c SHA256SUMS` | exit=0, 14 OK |
-| gate selftest | exit=0, 0 failures |
-| file selftest | exit=0, 0 failures |
-| preflight co-host / co-author / chudios / leonsbudget / the-classic | exit=0 ×5 |
+| `sha256sum -c SHA256SUMS` | exit=0, all OK |
+| no earlier run (evidence, selftest DBs, container temp dirs, quarantine) | clean |
+| gate self-test | exit=0, 0 failures |
+| file self-test | exit=0, 0 failures, temp dir removed |
+| preflight co-host / co-host-chud / co-author / chudios / leonsbudget / the-classic | exit=0 ×6 |
 | preflight mind-palace | exit=0 |
 | chudios files check | exit=0 |
 ```
+
+A target that stopped at Step 5 gets its `States` row set to `STOPPED at preflight — question: <question>`, and the question is added under "Open questions for Evan".
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
-git commit --only -m "docs(showcase-cleanup): task 1 — tooling verified, all targets preflighted" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
+git commit --only -m "docs(showcase-cleanup): task 1 — tooling verified, self-tests pass, all targets preflighted" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
 ```
 
 ---
 
-### Task 2: co-host — remove channel `ch_b11b31a0d9ae` "The Long Fuse"
+### Task 2: co-host — channel `ch_b11b31a0d9ae` "The Long Fuse", then its CHUD artifact
 
 **Files:**
-- Modify: `docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md` (append the `## Task 2 — co-host` section)
+- Modify: the results file (the `States` rows for co-host and co-host-chud; append `## Task 2 — co-host`)
 
 **Interfaces:**
-- Consumes: `gate-run.sh co-host <phase>`, `apps/co-host.sql`.
-- Produces: the co-host evidence dir `$EVID/co-host/` (`scope.json`, `scope-ids.json`, `snapshot.txt`, `digest.txt`, per-phase logs).
+- Consumes: `gate-run.sh co-host <phase>`, `gate-run.sh co-host-chud <phase>`, `inspect-scope.py`.
+- Produces: `$EVID/co-host/` and `$EVID/co-host-chud/`.
 
-**Expected scope** (from `apps/co-host.sql`): timeline_events 7, table_reads 1, reviews 0, script_versions 2, beat_sheet_versions 2, chud_jobs 1 (`job_fba52731d285`), episodes 2 (`ep_a78a3f018922`, `ep_df1c614c159e`), premises 2, bible_amendments 0, character_bible_versions 0, character_bibles 0, show_bible_versions 1, show_bibles 1, channels 1. The CHUD residue check must read 0.
+**Expected scope.**
+- **co-host** (database `co_host`): timeline_events 7, table_reads 1, reviews 0, script_versions 2, beat_sheet_versions 2, chud_jobs 1 (`job_fba52731d285`), episodes 2 (`ep_a78a3f018922` "The Year Without a Summer", `ep_df1c614c159e` "The Great Molasses Flood"), premises 2, bible_amendments 0, character_bible_versions 0, character_bibles 0, show_bible_versions 1, show_bibles 1, channels 1. The 6 other channels survive.
+- **co-host-chud** (database `chud`, D5): artifacts 1 (`e6135781-781a-436f-9af0-fb79136abd5b`, `source_bundle`, created 2026-09-06 19:23:58 UTC, naming "The Long Fuse"). No other chud row references it. Conversation 7206 keeps its 8 messages.
+
+The two targets are independent gates. Run co-host fully, then co-host-chud. A stop in one does not block the other.
 
 - [ ] **Step 1: Verify tooling**
 
@@ -180,108 +237,124 @@ T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 ```
 Expected: `exit=0`.
 
-- [ ] **Step 2: Preflight**
+- [ ] **Step 2: co-host — preflight and freeze**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-host preflight; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-host preflight; echo "preflight exit=$?"
+"$T/gate-run.sh" co-host freeze; echo "freeze exit=$?"
 ```
-Expected: `PASS co-host preflight`, `exit=0`.
+Expected: two `PASS` lines, and both exits 0. Five frozen files are now in `$EVID/co-host/`.
 
-- [ ] **Step 3: Freeze**
+- [ ] **Step 3: co-host — G7 content inspection (judgment step)**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-host freeze; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data; EVID=/home/evan/showcase-pending/_teardown-evidence
+python3 "$T/inspect-scope.py" "$EVID/co-host/scope.json" > "$EVID/co-host/g7-inspection.txt"; echo "exit=$?"
+wc -l "$EVID/co-host/g7-inspection.txt"
 ```
-Expected: `PASS co-host freeze`, `exit=0`. Four files are now in `$EVID/co-host/`.
+Expected: `exit=0`, meaning every count matches. Now **read the whole of `g7-inspection.txt` with the Read tool**. Every text must belong to the fictional "The Long Fuse" show: its premises, bible, beat sheets, scripts and table read, the episodes "The Year Without a Summer" and "The Great Molasses Flood", and the failed energy-map job. Evan's real channels must not appear.
+- A real person's name, text belonging to another channel, or prose that reads like Evan's own notes → D4 stop.
+- Write one sentence of what you read into the results entry (Step 9).
 
-- [ ] **Step 4: G7 content inspection (read the frozen rows; judgment step)**
+- [ ] **Step 4: co-host — rehearse, negative control, execute, post**
 
 ```bash
-python3 - /home/evan/showcase-pending/_teardown-evidence/co-host/scope.json <<'PY'
-import json, sys
-SKIP = ("password", "token", "secret", "hash", "key")
-d = json.load(open(sys.argv[1]))
-for table, v in d.items():
-    print(f"== {table}: expected {v['expected']}, rows {len(v['rows'])}")
-    for row in v["rows"]:
-        texts = {k: (val[:160] + "…" if isinstance(val, str) and len(val) > 160 else val)
-                 for k, val in row.items() if isinstance(val, str) and not any(s in k.lower() for s in SKIP)}
-        print("  ", texts)
-PY
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-host rehearse; echo "rehearse exit=$?"
+"$T/gate-run.sh" co-host negative; echo "negative exit=$?"
 ```
-Expected: every table's `rows` equals `expected`. The text is the fictional "The Long Fuse" show: its premises, bible and episodes, including "The Year Without a Summer". Evan's real channels must not appear.
-- Any row that reads like real content, names a real person, or belongs to another channel → D4 stop.
-- Write one sentence of what you read into the results section (Step 9).
-
-- [ ] **Step 5: Rehearse (full delete, rolled back)**
+Expected: both `PASS`, both exits 0.
+- A G6 failure: apply the re-freeze rule. Run `"$T/gate-run.sh" co-host refreeze`, repeat Step 3 on the new freeze, then repeat this step.
+- Any other failure → D4 stop.
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-host rehearse; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-host execute; echo "execute exit=$?"; cat /home/evan/showcase-pending/_teardown-evidence/co-host/state.txt
+"$T/gate-run.sh" co-host post; echo "post exit=$?"
 ```
-Expected: `PASS co-host rehearse`, `exit=0`, and `grep -c '^GATE ROLLED BACK$' /home/evan/showcase-pending/_teardown-evidence/co-host/rehearse.log` prints `1`. A `GATE FAIL G6 survivors` falls under the re-freeze rule in Global Constraints. Any other failure → D4 stop.
+Expected: `PASS co-host execute`, `exit=0`, `COMMITTED`, then `PASS co-host post`, `exit=0`. On any other outcome, follow the **Commit states** rule in Global Constraints.
 
-- [ ] **Step 6: Negative control**
+- [ ] **Step 5: co-host-chud — preflight and freeze**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-host negative; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-host-chud preflight; echo "preflight exit=$?"
+"$T/gate-run.sh" co-host-chud freeze; echo "freeze exit=$?"
 ```
-Expected: `PASS co-host negative`, `exit=0`. The script passes only when the off-by-one transaction failed with `GATE FAIL G3 count` and the data is unchanged afterwards.
+Expected: two `PASS` lines, both exits 0.
 
-- [ ] **Step 7: Execute (the one committed delete)**
+- [ ] **Step 6: co-host-chud — G7 content inspection**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-host execute; echo "exit=$?"
-grep -c '^GATE COMMITTED$' /home/evan/showcase-pending/_teardown-evidence/co-host/execute.log
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data; EVID=/home/evan/showcase-pending/_teardown-evidence
+python3 "$T/inspect-scope.py" "$EVID/co-host-chud/scope.json" > "$EVID/co-host-chud/g7-inspection.txt"; echo "exit=$?"
 ```
-Expected: `PASS co-host execute`, `exit=0`, `1`. On failure the transaction was rolled back and nothing is deleted. Do not retry; this is a D4 stop, apart from the G6 re-freeze rule.
+Expected: `exit=0`. Read the whole file. The artifact must be a source bundle for "The Long Fuse" demo show's energy map: episode premises, beats and the like from the demo channel. Anything about Evan's real channels or other content → D4 stop.
 
-- [ ] **Step 8: Post-check**
+- [ ] **Step 7: co-host-chud — rehearse, negative control, execute, post**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-host post; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-host-chud rehearse; echo "rehearse exit=$?"
+"$T/gate-run.sh" co-host-chud negative; echo "negative exit=$?"
 ```
-Expected: `PASS co-host post`, `exit=0`: every frozen id is gone and survivors are identical to the snapshot. A failure after a committed execute → D4 stop. Report it immediately and do not attempt any repair.
+Expected: both `PASS`. CHUD writes artifacts during its nightly jobs, so a G6 `survivors` failure here is plausible: apply the re-freeze rule. Any other failure → D4 stop.
+
+```bash
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-host-chud execute; echo "execute exit=$?"; cat /home/evan/showcase-pending/_teardown-evidence/co-host-chud/state.txt
+"$T/gate-run.sh" co-host-chud post; echo "post exit=$?"
+```
+Expected: `PASS`, `exit=0`, `COMMITTED`, then `PASS`, `exit=0`. The post check also re-confirms conversation 7206 still has 8 messages.
+
+- [ ] **Step 8: Update States**
+
+Set the `States` rows for co-host and co-host-chud to their final state (`POST-VERIFIED` or the stop). Add any question under "Open questions for Evan".
 
 - [ ] **Step 9: Record and commit**
 
-Append to the results file, with the real values:
+Append:
 
 ```markdown
 ## Task 2 — co-host
 
-Outcome: **cleaned** (<UTC timestamp of execute.log>)
+### co-host (co_host)
+State: **<POST-VERIFIED | STOPPED at …>** (<UTC time of execute.log>)
 | Phase | exit | Evidence |
 |---|---|---|
-| preflight | 0 | `co-host/preflight.log` (CHUD residue 0) |
-| freeze | 0 | `co-host/scope.json`, `snapshot.txt` sha256 `<first 12 hex of sha256sum snapshot.txt>` |
-| G7 inspection | fictional | <one sentence: what the rows were> |
-| rehearse | 0 | `co-host/rehearse.log` |
+| preflight | 0 | `co-host/preflight.log` |
+| freeze | 0 | `co-host/scope.json`, rows digest `<first 12 hex of rows-digest.txt>` |
+| G7 inspection | fictional | `co-host/g7-inspection.txt` — <one sentence> |
+| rehearse | 0 | `co-host/rehearse.log` (GATE ROLLED BACK) |
 | negative | 0 | `co-host/negative.log` (GATE FAIL G3 count, as designed) |
-| execute | 0 | `co-host/execute.log` (GATE COMMITTED) |
-| post | 0 | `co-host/post.log` |
+| execute | 0 | `co-host/execute.log` (GATE COMMITTED; state COMMITTED) |
+| post | 0 | `co-host/post.log` (GATE POST SCOPE OK, GATE POST OK) |
 Deleted: timeline_events 7, table_reads 1, script_versions 2, beat_sheet_versions 2, chud_jobs 1, episodes 2, premises 2, show_bible_versions 1, show_bibles 1, channels 1.
+
+### co-host-chud (chud)
+State: **<…>** — same table shape. Deleted: artifacts 1 (`e6135781-…`). Conversation 7206: 8 messages before and after.
 ```
 
-On a D4 stop, write `Outcome: **STOPPED at <phase>** — <the GATE FAIL line or your judgment> — question for Evan: <question>` and list only the phases that ran.
+A refreeze adds a row `refreeze | 0 | co-host/superseded-<ts>/ — reason: <the G6 line>`. A stop lists only the phases that ran, plus the question.
 
 ```bash
-git commit --only -m "docs(showcase-cleanup): task 2 — co-host demo channel removed" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
+git commit --only -m "docs(showcase-cleanup): task 2 — co-host demo channel and its CHUD artifact" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
 ```
-(On a stop: `-m "docs(showcase-cleanup): task 2 — co-host STOPPED at <phase>"`.)
 
 ---
 
-### Task 3: co-author — remove user 2 and story 7 "The Lighthouse at Kestrel Point"
+### Task 3: co-author — user 2 and story 7 "The Lighthouse at Kestrel Point"
 
 **Files:**
-- Modify: the results file (append `## Task 3 — co-author`)
+- Modify: the results file (the `States` row; append `## Task 3 — co-author`)
 
 **Interfaces:**
-- Consumes: `gate-run.sh co-author <phase>`, `apps/co-author.sql`.
+- Consumes: `gate-run.sh co-author <phase>`, `inspect-scope.py`.
 - Produces: `$EVID/co-author/`.
 
 **Expected scope:** token_blacklist_blacklistedtoken 0, token_blacklist_outstandingtoken 16, beat_drafts_beatdraft 3, beats_beat_characters 14, beats_beat_events 6, events_event_characters 15, open_questions_openquestion_linked_characters 7, …_linked_events 4, …_linked_relationships 0, …_linked_settings 0, beats_beat 5, open_questions_openquestion 4, relationships_relationship 3, events_event 6, characters_character 5, settings_places_setting 4, stories_story 1, auth_user_groups 0, auth_user_user_permissions 0, django_admin_log 0, auth_user 1.
-- The outstanding-token count grows each time the demo account logs in. A different count at preflight is a D4 stop; it means someone used the account.
+- The outstanding-token count grows each time the demo account logs in. A different count is a D4 stop: someone used the account.
 
 - [ ] **Step 1: Verify tooling**
 
@@ -291,90 +364,69 @@ T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 ```
 Expected: `exit=0`.
 
-- [ ] **Step 2: Preflight**
+- [ ] **Step 2: Preflight and freeze**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-author preflight; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-author preflight; echo "preflight exit=$?"
+"$T/gate-run.sh" co-author freeze; echo "freeze exit=$?"
 ```
-Expected: `PASS co-author preflight`, `exit=0`.
+Expected: two `PASS` lines, both exits 0.
 
-- [ ] **Step 3: Freeze**
+- [ ] **Step 3: G7 content inspection**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-author freeze; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data; EVID=/home/evan/showcase-pending/_teardown-evidence
+python3 "$T/inspect-scope.py" "$EVID/co-author/scope.json" > "$EVID/co-author/g7-inspection.txt"; echo "exit=$?"
 ```
-Expected: `PASS co-author freeze`, `exit=0`.
+Expected: `exit=0`. Read the whole file. `auth_user` is `demo@example.com` ("Demo Writer"). Every story element belongs to the fictional radio drama "The Lighthouse at Kestrel Point". Token rows show only masked values. Anything from Evan's real stories or account → D4 stop.
 
-- [ ] **Step 4: G7 content inspection**
+- [ ] **Step 4: Rehearse and negative control**
 
 ```bash
-python3 - /home/evan/showcase-pending/_teardown-evidence/co-author/scope.json <<'PY'
-import json, sys
-SKIP = ("password", "token", "secret", "hash", "key", "jti")
-d = json.load(open(sys.argv[1]))
-for table, v in d.items():
-    print(f"== {table}: expected {v['expected']}, rows {len(v['rows'])}")
-    if table.startswith("token_blacklist"):
-        continue  # token rows: count only, never print
-    for row in v["rows"]:
-        texts = {k: (val[:160] + "…" if isinstance(val, str) and len(val) > 160 else val)
-                 for k, val in row.items() if isinstance(val, str) and not any(s in k.lower() for s in SKIP)}
-        print("  ", texts)
-PY
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-author rehearse; echo "rehearse exit=$?"
+"$T/gate-run.sh" co-author negative; echo "negative exit=$?"
 ```
-Expected: counts match. `auth_user` is `demo@example.com` ("Demo Writer"). All story elements belong to the fictional radio drama "The Lighthouse at Kestrel Point": a lighthouse, a storm, a keeper and similar. Anything from Evan's real stories or account → D4 stop.
+Expected: both `PASS`. For G6, apply the re-freeze rule (`refreeze`, then Step 3 again, then this step). Anything else → D4 stop.
 
-- [ ] **Step 5: Rehearse**
+- [ ] **Step 5: Execute and post**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-author rehearse; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" co-author execute; echo "execute exit=$?"; cat /home/evan/showcase-pending/_teardown-evidence/co-author/state.txt
+"$T/gate-run.sh" co-author post; echo "post exit=$?"
 ```
-Expected: `PASS co-author rehearse`, `exit=0`. G6 falls under the re-freeze rule. Anything else → D4 stop.
+Expected: `PASS`, `exit=0`, `COMMITTED`, then `PASS`, `exit=0`. Otherwise follow the **Commit states** rule.
 
-- [ ] **Step 6: Negative control**
+- [ ] **Step 6: Record and commit**
 
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-author negative; echo "exit=$?"
-```
-Expected: `PASS co-author negative`, `exit=0`.
-
-- [ ] **Step 7: Execute**
+Update the `States` row. Append `## Task 3 — co-author` in Task 2's table shape. `Deleted:` outstanding tokens 16, beat drafts 3, beat↔character 14, beat↔event 6, event↔character 15, open-question↔character 7, open-question↔event 4, beats 5, open questions 4, relationships 3, events 6, characters 5, settings 4, story 1, user 1.
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-author execute; echo "exit=$?"
-grep -c '^GATE COMMITTED$' /home/evan/showcase-pending/_teardown-evidence/co-author/execute.log
-```
-Expected: `PASS co-author execute`, `exit=0`, `1`. On failure → D4 stop, apart from the G6 re-freeze rule.
-
-- [ ] **Step 8: Post-check**
-
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" co-author post; echo "exit=$?"
-```
-Expected: `PASS co-author post`, `exit=0`.
-
-- [ ] **Step 9: Record and commit**
-
-Append the `## Task 3 — co-author` section, using the same table format as Task 2 with co-author's evidence paths. The `Deleted:` line is: outstanding tokens 16, beat drafts 3, beat↔character 14, beat↔event 6, event↔character 15, open-question↔character 7, open-question↔event 4, beats 5, open questions 4, relationships 3, events 6, characters 5, settings 4, story 1, user 1. On a stop, use the STOPPED form from Task 2.
-
-```bash
-git commit --only -m "docs(showcase-cleanup): task 3 — co-author demo user and story removed" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
+git commit --only -m "docs(showcase-cleanup): task 3 — co-author demo user and story" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
 ```
 
 ---
 
-### Task 4: chudios — remove the "Signal & Noise" show and its three recordings
+### Task 4: chudios — the "Signal & Noise" show and its three recordings
 
 **Files:**
-- Modify: the results file (append `## Task 4 — chudios`)
+- Modify: the results file (the `States` row; append `## Task 4 — chudios`)
 
 **Interfaces:**
-- Consumes: `gate-run.sh chudios <phase>`, `apps/chudios.sql`, `files/chudios-files.sh <phase>`.
-- Produces: `$EVID/chudios/` (gate files + `files-*.log`).
+- Consumes: `gate-run.sh chudios <phase>`, `files/chudios-files.sh <phase>`, `inspect-scope.py`.
+- Produces: `$EVID/chudios/` (gate files, `state.txt`, `files-*.log`).
 
-**Expected scope:** qc_reports 1, transcripts 2, stage_runs 8, clips 9, marketing_assets 7, published_status 4, attempts 6, content_items 6 (ids `dddddddd-…`). The 8 other content items survive. Files in volume `chudios_chudios-recordings` at `/data/recordings`: `demo-sn-ep09.m4a` (230111 B), `demo-sn-ep11.m4a` (246791 B), `demo-sn-ep12.m4a` (286386 B), with the sha256 values embedded in `files/chudios-files.sh`.
+**Expected scope:**
+- **Database:** qc_reports 1, transcripts 2, stage_runs 8, clips 9, marketing_assets 7, published_status 4, attempts 6, content_items 6 (ids `dddddddd-…`). The 8 other content items survive.
+- **Files** in volume `chudios_chudios-recordings` at `/data/recordings`: `demo-sn-ep09.m4a` (230111 B), `demo-sn-ep11.m4a` (246791 B), `demo-sn-ep12.m4a` (286386 B), with the sha256 values embedded in `files/chudios-files.sh`.
 
-**Ordering is load-bearing.** The files move into quarantine only after the database gate's rehearse and negative have passed. They are purged only after the database execute has committed, and restored if it has not.
+**The ordering is load-bearing.**
+1. Files move to quarantine only after the database's `rehearse` and `negative` pass.
+2. They are purged only when the database `execute` is classified `COMMITTED`.
+3. They are restored only when it is classified `PRE-STATE`.
+4. Any other state keeps them quarantined and stops.
 
 - [ ] **Step 1: Verify tooling**
 
@@ -384,176 +436,156 @@ T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 ```
 Expected: `exit=0`.
 
-- [ ] **Step 2: Preflight the database and check the files**
+- [ ] **Step 2: Preflight, file check, freeze**
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
-"$T/gate-run.sh" chudios preflight; echo "db exit=$?"
-"$T/files/chudios-files.sh" check; echo "files exit=$?"
+"$T/gate-run.sh" chudios preflight; echo "preflight exit=$?"
+"$T/files/chudios-files.sh" check; echo "files check exit=$?"
+"$T/gate-run.sh" chudios freeze; echo "freeze exit=$?"
 ```
-Expected: two `PASS` lines, `db exit=0`, `files exit=0`.
+Expected: three `PASS` lines, all exits 0.
 
-- [ ] **Step 3: Freeze**
+- [ ] **Step 3: G7 content inspection**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" chudios freeze; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data; EVID=/home/evan/showcase-pending/_teardown-evidence
+python3 "$T/inspect-scope.py" "$EVID/chudios/scope.json" > "$EVID/chudios/g7-inspection.txt"; echo "exit=$?"
 ```
-Expected: `PASS chudios freeze`, `exit=0`.
+Expected: `exit=0`. Read the whole file. Every item belongs to the fictional "Signal & Noise" podcast, and recording paths name only `demo-sn-ep09/11/12.m4a`. Any real episode title, or a path to a non-demo file → D4 stop, with the files untouched.
 
-- [ ] **Step 4: G7 content inspection**
-
-```bash
-python3 - /home/evan/showcase-pending/_teardown-evidence/chudios/scope.json <<'PY'
-import json, sys
-SKIP = ("password", "token", "secret", "hash", "key")
-d = json.load(open(sys.argv[1]))
-for table, v in d.items():
-    print(f"== {table}: expected {v['expected']}, rows {len(v['rows'])}")
-    for row in v["rows"]:
-        texts = {k: (val[:160] + "…" if isinstance(val, str) and len(val) > 160 else val)
-                 for k, val in row.items() if isinstance(val, str) and not any(s in k.lower() for s in SKIP)}
-        print("  ", texts)
-PY
-```
-Expected: counts match. Every item belongs to the fictional "Signal & Noise" podcast. Recording paths name only `demo-sn-ep09/11/12.m4a`. Any real episode title, or any path to a non-demo file → D4 stop.
-
-- [ ] **Step 5: Rehearse and negative control**
+- [ ] **Step 4: Rehearse and negative control**
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 "$T/gate-run.sh" chudios rehearse; echo "rehearse exit=$?"
 "$T/gate-run.sh" chudios negative; echo "negative exit=$?"
 ```
-Expected: both `PASS`, both `exit=0`. G6 falls under the re-freeze rule. Anything else → D4 stop, with the files untouched.
+Expected: both `PASS`. For G6, apply the re-freeze rule. Anything else → D4 stop, with the files untouched.
 
-- [ ] **Step 6: Quarantine the files**
+- [ ] **Step 5: Quarantine the files**
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/files/chudios-files.sh" quarantine; echo "exit=$?"
 ```
-Expected: `PASS chudios files quarantine`, `exit=0`. If it fails partway, run `"$T/files/chudios-files.sh" restore` (which must `PASS`), then D4 stop.
+Expected: `PASS chudios files quarantine`, `exit=0`. If it fails partway, run the same command once more; it resumes per file. If that fails too, D4 stop, and record where each file is, from `files-quarantine.log`.
 
-- [ ] **Step 7: Execute the database delete, then purge or restore the files**
+- [ ] **Step 6: Execute the database delete, then purge or restore, by classified state**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data; EVID=/home/evan/showcase-pending/_teardown-evidence
 "$T/gate-run.sh" chudios execute; st=$?; echo "execute exit=$st"
-if [ "$st" -eq 0 ] && grep -q '^GATE COMMITTED$' /home/evan/showcase-pending/_teardown-evidence/chudios/execute.log; then
-  "$T/files/chudios-files.sh" purge; echo "purge exit=$?"
-else
-  "$T/files/chudios-files.sh" restore; echo "restore exit=$?"
-fi
+state="$(cat "$EVID/chudios/state.txt" 2>/dev/null)"; echo "state=$state"
+case "$state" in
+  COMMITTED) "$T/files/chudios-files.sh" purge;   echo "purge exit=$?" ;;
+  PRE-STATE) "$T/files/chudios-files.sh" restore; echo "restore exit=$?" ;;
+  *)         echo "state '$state': files stay quarantined — D4 stop" ;;
+esac
 ```
-Expected: `execute exit=0` and `purge exit=0`.
-- **If execute failed:** `restore exit=0` must print. The database rolled back and the files are back. This is a D4 stop, apart from the G6 re-freeze rule, where you restart at Step 3 after restoring.
-- **If purge failed after a commit:** the rows are gone and the files sit in quarantine. D4 stop immediately. Run nothing else on these files.
+Expected: `execute exit=0`, `state=COMMITTED`, `purge exit=0`.
+- **`PRE-STATE`:** nothing was deleted and `restore exit=0` must follow. For a G6 failure, apply the re-freeze rule, restarting at Step 3 after the restore. Otherwise D4 stop.
+- **`COMMITTED` with a non-zero execute exit:** purge still runs, because the rows are gone. Then run Step 7 and D4 stop.
+- **A purge failure after `COMMITTED`:** re-run purge once, since it resumes. If it fails again, D4 stop immediately.
 
-- [ ] **Step 8: Post-checks**
+- [ ] **Step 7: Post-checks**
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 "$T/gate-run.sh" chudios post; echo "db post exit=$?"
 "$T/files/chudios-files.sh" post; echo "files post exit=$?"
 ```
-Expected: both `PASS`, both `exit=0`.
-
-- [ ] **Step 9: Record and commit**
-
-Append `## Task 4 — chudios` in the Task 2 table format, with extra rows for `files check`, `files quarantine`, `files purge` and `files post` (each exit and log `chudios/files-<phase>.log`). The `Deleted:` line is: qc_reports 1, transcripts 2, stage_runs 8, clips 9, marketing_assets 7, published_status 4, attempts 6, content_items 6, and files demo-sn-ep09/11/12.m4a. On a stop, use the STOPPED form, and say where the files are: in place, quarantined, or restored.
-
-```bash
-git commit --only -m "docs(showcase-cleanup): task 4 — chudios demo show and recordings removed" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
-```
-
----
-
-### Task 5: mind-palace — remove the "Collective Security" Route
-
-**Files:**
-- Modify: the results file (append `## Task 5 — mind-palace`)
-
-**Interfaces:**
-- Consumes: `neo4j/mind-palace-gate.sh <phase>`.
-- Produces: `$EVID/mind-palace/` (`scope.txt`, `degrees.txt`, `snapshot.txt`, phase logs).
-
-**Expected shape:** Route 2 total; Entity 228; HAS_STEP 5 total. The demo route `60c383d5-921e-443c-9430-b2242469fbe0`, named "Collective Security", has 0 inbound and 4 outbound HAS_STEP links, to League of Nations (degree 3), United Nations (2), World War I (9) and World War II (14). The other route has 1 relationship. Only the Route node and its own 4 relationships are deleted; Entity nodes are never deleted.
-
-- [ ] **Step 1: Verify tooling**
-
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data
-(cd "$T" && sha256sum -c SHA256SUMS) > /dev/null; echo "exit=$?"
-```
-Expected: `exit=0`.
-
-- [ ] **Step 2: Preflight**
-
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/neo4j/mind-palace-gate.sh" preflight; echo "exit=$?"
-```
-Expected: `PASS mind-palace preflight`, `exit=0`.
-
-- [ ] **Step 3: Freeze**
-
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/neo4j/mind-palace-gate.sh" freeze; echo "exit=$?"
-```
-Expected: `PASS mind-palace freeze`, `exit=0`.
-
-- [ ] **Step 4: G7 content inspection**
-
-```bash
-cat /home/evan/showcase-pending/_teardown-evidence/mind-palace/scope.txt
-```
-Expected: one route "Collective Security" with 4 `HAS_STEP` rows. Each has `elaboration_note`, `last_reviewed_at` and `position`, and points at League of Nations, United Nations, World War I and World War II. The notes are short demo elaborations about collective security between the wars. A note that reads like Evan's own study notes → D4 stop.
-
-- [ ] **Step 5: Rehearse and negative control**
-
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data
-"$T/neo4j/mind-palace-gate.sh" rehearse; echo "rehearse exit=$?"
-"$T/neo4j/mind-palace-gate.sh" negative; echo "negative exit=$?"
-```
-Expected: both `PASS`, both `exit=0`.
-- `rehearse.log` contains `deleted_steps` / `4` / `remaining_in_tx` / `0`, which was rolled back.
-- `negative.log` contains only `remaining_in_tx` / `1`.
-- Any failure → D4 stop. The Neo4j tooling has no re-freeze rule; a changed survivor hash is a stop.
-
-- [ ] **Step 6: Execute**
-
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/neo4j/mind-palace-gate.sh" execute; echo "exit=$?"
-```
-Expected: `PASS mind-palace execute`, `exit=0`. The log ends `deleted_steps` / `4`. An empty result means the condition did not hold and nothing was deleted → D4 stop.
-
-- [ ] **Step 7: Post-check**
-
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/neo4j/mind-palace-gate.sh" post; echo "exit=$?"
-```
-Expected: `PASS mind-palace post`, `exit=0`. That means Route 1, Entity 228, HAS_STEP 1, the demo route gone, degrees 2/1/8/13, and an unchanged survivor hash.
+Expected: both `PASS`, both exits 0.
 
 - [ ] **Step 8: Record and commit**
 
-Append `## Task 5 — mind-palace` in the Task 2 table format, with mind-palace evidence paths. The `Deleted:` line is: Route 1 and its HAS_STEP relationships 4; Entities retained 228. On a stop, use the STOPPED form.
+Update the `States` row. Append `## Task 4 — chudios` in Task 2's table shape, plus rows for `files check`, `files quarantine` and `files purge` (or `restore`), and `files post`. `Deleted:` qc_reports 1, transcripts 2, stage_runs 8, clips 9, marketing_assets 7, published_status 4, attempts 6, content_items 6, and files demo-sn-ep09/11/12.m4a. On a stop, record where the files are.
 
 ```bash
-git commit --only -m "docs(showcase-cleanup): task 5 — mind-palace demo route removed" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
+git commit --only -m "docs(showcase-cleanup): task 4 — chudios demo show and recordings" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
 ```
 
 ---
 
-### Task 6: LeonsBudget — remove user 3, household 3 and institution 9
+### Task 5: mind-palace — the "Collective Security" Route
 
 **Files:**
-- Modify: the results file (append `## Task 6 — LeonsBudget`)
+- Modify: the results file (the `States` row; append `## Task 5 — mind-palace`)
 
 **Interfaces:**
-- Consumes: `gate-run.sh leonsbudget <phase>`, `apps/leonsbudget.sql`.
+- Consumes: `neo4j/mind-palace-gate.sh <phase>`.
+- Produces: `$EVID/mind-palace/` (`scope.txt`, `degrees.txt`, `snapshot.txt`, `fingerprint.txt`, `state.txt`, logs).
+
+**Expected shape:**
+- Route 2 total, Entity 228, HAS_STEP 5 total.
+- The demo route `60c383d5-921e-443c-9430-b2242469fbe0` is "Collective Security", with 0 inbound links and 4 outbound HAS_STEP links to League of Nations (degree 3), United Nations (2), World War I (9) and World War II (14).
+- The other route has 1 relationship.
+
+Only the Route node and its own 4 relationships are deleted. Entity nodes are never deleted.
+
+- [ ] **Step 1: Verify tooling**
+
+```bash
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+(cd "$T" && sha256sum -c SHA256SUMS) > /dev/null; echo "exit=$?"
+```
+Expected: `exit=0`.
+
+- [ ] **Step 2: Preflight and freeze**
+
+```bash
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/neo4j/mind-palace-gate.sh" preflight; echo "preflight exit=$?"
+"$T/neo4j/mind-palace-gate.sh" freeze; echo "freeze exit=$?"
+```
+Expected: two `PASS` lines, both exits 0.
+
+- [ ] **Step 3: G7 content inspection**
+
+```bash
+cat /home/evan/showcase-pending/_teardown-evidence/mind-palace/scope.txt /home/evan/showcase-pending/_teardown-evidence/mind-palace/fingerprint.txt
+```
+Expected: one route "Collective Security" with 4 `HAS_STEP` rows, each with `elaboration_note`, `last_reviewed_at` and `position`, pointing at the four entities. The notes are short demo lines about collective security between the wars; one reads "The referee they built — but with no standing army and no United States, it had no whistle." A note that reads like Evan's own study notes → D4 stop.
+
+- [ ] **Step 4: Dry run, rehearse, negative control**
+
+```bash
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/neo4j/mind-palace-gate.sh" dry; echo "dry exit=$?"
+"$T/neo4j/mind-palace-gate.sh" rehearse; echo "rehearse exit=$?"
+"$T/neo4j/mind-palace-gate.sh" negative; echo "negative exit=$?"
+```
+Expected: three `PASS` lines. `dry.log` shows the real statement returning `4` and the wrong-name one returning nothing. `rehearse.log` contains `deleted_steps` / `4` / `remaining_in_tx` / `0` (rolled back). Any failure → D4 stop; there is no re-freeze.
+
+- [ ] **Step 5: Execute and post**
+
+```bash
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/neo4j/mind-palace-gate.sh" execute; echo "execute exit=$?"; cat /home/evan/showcase-pending/_teardown-evidence/mind-palace/state.txt
+"$T/neo4j/mind-palace-gate.sh" post; echo "post exit=$?"
+```
+Expected: `PASS`, `exit=0`, `COMMITTED`, then `PASS`, `exit=0`. That means Route 1, Entity 228, HAS_STEP 1, the demo route gone, degrees 2/1/8/13 and an unchanged survivor hash. `PRE-STATE` means nothing was deleted: D4 stop. Anything else also follows the **Commit states** rule.
+
+- [ ] **Step 6: Record and commit**
+
+Update the `States` row. Append `## Task 5 — mind-palace` in Task 2's table shape, with `dry` as its own row. `Deleted:` Route 1 and its HAS_STEP relationships 4; 228 Entities retained.
+
+```bash
+git commit --only -m "docs(showcase-cleanup): task 5 — mind-palace demo route" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
+```
+
+---
+
+### Task 6: LeonsBudget — user 3, household 3, institution 9
+
+**Files:**
+- Modify: the results file (the `States` row; append `## Task 6 — LeonsBudget`)
+
+**Interfaces:**
+- Consumes: `gate-run.sh leonsbudget <phase>`, `inspect-scope.py`.
 - Produces: `$EVID/leonsbudget/`.
 
-**Expected scope:** categorization_categoryoverride 0, categorization_categoryrule 0, transactions_transaction 71, transactions_importbatch 0, budgets_budgetline 44, budgets_monthlybudget 4, accounts_bankaccount 2, accounts_institution 1 (id 9 "Northwind Bank"), accounts_householdmember 1, accounts_household 1 (id 3 "Demo Household"), auth_user_groups 0, auth_user_user_permissions 0, django_admin_log 0, auth_user 1 (id 3). The retained shared parent is `categorization_category`: 11 distinct categories referenced by both lines and transactions.
-- This database holds Evan's real finances. Survivor hashes cover every table the scope touches, including `auth_user`. If Evan logs in during the run, that is a G6 failure and falls under the re-freeze rule.
+**Expected scope:** categorization_categoryoverride 0, categorization_categoryrule 0, transactions_transaction 71, transactions_importbatch 0, budgets_budgetline 44, budgets_monthlybudget 4, accounts_bankaccount 2, accounts_institution 1 (id 9 "Northwind Bank"), accounts_householdmember 1, accounts_household 1 (id 3 "Demo Household"), auth_user_groups 0, auth_user_user_permissions 0, django_admin_log 0, auth_user 1 (id 3). The retained shared parent is `categorization_category`: 11 distinct categories referenced by lines and 11 by transactions.
+- This database holds Evan's real finances. Evan logging in during the run changes `auth_user` and trips G6 (the re-freeze rule).
 
 - [ ] **Step 1: Verify tooling**
 
@@ -563,89 +595,66 @@ T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 ```
 Expected: `exit=0`.
 
-- [ ] **Step 2: Preflight**
+- [ ] **Step 2: Preflight and freeze**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" leonsbudget preflight; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" leonsbudget preflight; echo "preflight exit=$?"
+"$T/gate-run.sh" leonsbudget freeze; echo "freeze exit=$?"
 ```
-Expected: `PASS leonsbudget preflight`, `exit=0`.
+Expected: two `PASS` lines, both exits 0.
 
-- [ ] **Step 3: Freeze**
+- [ ] **Step 3: G7 content inspection**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" leonsbudget freeze; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data; EVID=/home/evan/showcase-pending/_teardown-evidence
+python3 "$T/inspect-scope.py" "$EVID/leonsbudget/scope.json" > "$EVID/leonsbudget/g7-inspection.txt"; echo "exit=$?"
 ```
-Expected: `PASS leonsbudget freeze`, `exit=0`.
-
-- [ ] **Step 4: G7 content inspection**
-
-```bash
-python3 - /home/evan/showcase-pending/_teardown-evidence/leonsbudget/scope.json <<'PY'
-import json, sys
-SKIP = ("password", "token", "secret", "hash", "key")
-d = json.load(open(sys.argv[1]))
-for table, v in d.items():
-    print(f"== {table}: expected {v['expected']}, rows {len(v['rows'])}")
-    for row in v["rows"][:80]:
-        texts = {k: (val[:120] + "…" if isinstance(val, str) and len(val) > 120 else val)
-                 for k, val in row.items() if isinstance(val, str) and not any(s in k.lower() for s in SKIP)}
-        print("  ", texts)
-PY
-```
-Expected: counts match. `auth_user` is `demo` / `demo@example.com`, the household is "Demo Household", the institution "Northwind Bank", and the accounts belong to that household. Transaction descriptions are fictional merchants.
+Expected: `exit=0`. Read the whole file.
+- `auth_user` is `demo` / `demo@example.com`, the household is "Demo Household", the institution is "Northwind Bank", and every transaction description is a fictional merchant.
 - **D4 stop, not a guess:** any description that looks like a real merchant from Evan's statements, a real account number, or a real person's name.
 
-- [ ] **Step 5: Rehearse**
+- [ ] **Step 4: Rehearse and negative control**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" leonsbudget rehearse; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" leonsbudget rehearse; echo "rehearse exit=$?"
+"$T/gate-run.sh" leonsbudget negative; echo "negative exit=$?"
 ```
-Expected: `PASS leonsbudget rehearse`, `exit=0`. G6 falls under the re-freeze rule. Anything else → D4 stop.
+Expected: both `PASS`. For G6, apply the re-freeze rule. Anything else → D4 stop.
 
-- [ ] **Step 6: Negative control**
+- [ ] **Step 5: Execute and post**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" leonsbudget negative; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" leonsbudget execute; echo "execute exit=$?"; cat /home/evan/showcase-pending/_teardown-evidence/leonsbudget/state.txt
+"$T/gate-run.sh" leonsbudget post; echo "post exit=$?"
 ```
-Expected: `PASS leonsbudget negative`, `exit=0`.
+Expected: `PASS`, `exit=0`, `COMMITTED`, then `PASS`, `exit=0`. Otherwise follow the **Commit states** rule.
 
-- [ ] **Step 7: Execute**
+- [ ] **Step 6: Record and commit**
 
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" leonsbudget execute; echo "exit=$?"
-grep -c '^GATE COMMITTED$' /home/evan/showcase-pending/_teardown-evidence/leonsbudget/execute.log
-```
-Expected: `PASS leonsbudget execute`, `exit=0`, `1`.
-
-- [ ] **Step 8: Post-check**
+Update the `States` row. Append `## Task 6 — LeonsBudget` in Task 2's table shape. `Deleted:` transactions 71, budget lines 44, monthly budgets 4, bank accounts 2, institution 1 (Northwind Bank), household member 1, household 1, user 1; categories retained.
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" leonsbudget post; echo "exit=$?"
-```
-Expected: `PASS leonsbudget post`, `exit=0`.
-
-- [ ] **Step 9: Record and commit**
-
-Append `## Task 6 — LeonsBudget` in the Task 2 table format. The `Deleted:` line is: transactions 71, budget lines 44, monthly budgets 4, bank accounts 2, institution 1 (Northwind Bank), household member 1, household 1, user 1; categories retained. On a stop, use the STOPPED form.
-
-```bash
-git commit --only -m "docs(showcase-cleanup): task 6 — LeonsBudget demo household removed" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
+git commit --only -m "docs(showcase-cleanup): task 6 — LeonsBudget demo household" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
 ```
 
 ---
 
-### Task 7: the-classic — remove the demo auth user, tournament and course
+### Task 7: the-classic — the demo auth user, its audit rows, the tournament and the course
 
 **Files:**
-- Modify: the results file (append `## Task 7 — the-classic`)
+- Modify: the results file (the `States` row; append `## Task 7 — the-classic`)
 
 **Interfaces:**
-- Consumes: `gate-run.sh the-classic <phase>`, `apps/the-classic.sql`.
+- Consumes: `gate-run.sh the-classic <phase>`, `inspect-scope.py`.
 - Produces: `$EVID/the-classic/`.
 
-**Expected scope:** auth.mfa_amr_claims 4, auth.refresh_tokens 4, auth.sessions 4, auth.mfa_challenges 0, auth.mfa_factors 0, auth.one_time_tokens 0, auth.oauth_authorizations 0, auth.oauth_consents 0, auth.webauthn_challenges 0, auth.webauthn_credentials 0, auth.identities 1, public.player_scores 0, public.chat_messages 6, public.accolades 6, public.scores 37, public.tournament_players 12, public.foursomes 3, public.tournaments 1 (`dddddddd-dddd-dddd-dddd-dddddddddddd`), public.course_holes 18, public.courses 1 (`d0000000-…`), public.profiles 1, auth.users 1 (`921fafc9-d77f-4b55-b57e-7422f39c30f3`).
+**Expected scope:** auth.audit_log_entries 5 (D6: `actor_id` = the demo user), auth.mfa_amr_claims 4, auth.refresh_tokens 4, auth.sessions 4, auth.mfa_challenges 0, auth.mfa_factors 0, auth.one_time_tokens 0, auth.oauth_authorizations 0, auth.oauth_consents 0, auth.webauthn_challenges 0, auth.webauthn_credentials 0, auth.identities 1, public.player_scores 0, public.chat_messages 6, public.accolades 6, public.scores 37, public.tournament_players 12, public.foursomes 3, public.tournaments 1 (`dddddddd-dddd-dddd-dddd-dddddddddddd`), public.course_holes 18, public.courses 1 (`d0000000-…`), public.profiles 1, auth.users 1 (`921fafc9-d77f-4b55-b57e-7422f39c30f3`).
 - `chirp_templates` row `d22792ea…` is real app data and is **not** in scope.
-- Never run a `supabase` CLI command. Never run the app's test suite: `pnpm test:backend` writes to this database.
+- Never run a `supabase` CLI command or the app's test suite.
+- Any real user logging in writes an audit row, which trips G6 (the re-freeze rule).
 
 - [ ] **Step 1: Verify tooling**
 
@@ -655,79 +664,51 @@ T=docs/superpowers/plans/2026-09-14-showcase-demo-data
 ```
 Expected: `exit=0`.
 
-- [ ] **Step 2: Preflight**
+- [ ] **Step 2: Preflight and freeze**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" the-classic preflight; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" the-classic preflight; echo "preflight exit=$?"
+"$T/gate-run.sh" the-classic freeze; echo "freeze exit=$?"
 ```
-Expected: `PASS the-classic preflight`, `exit=0`.
+Expected: two `PASS` lines, both exits 0.
 
-- [ ] **Step 3: Freeze**
+- [ ] **Step 3: G7 content inspection**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" the-classic freeze; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data; EVID=/home/evan/showcase-pending/_teardown-evidence
+python3 "$T/inspect-scope.py" "$EVID/the-classic/scope.json" > "$EVID/the-classic/g7-inspection.txt"; echo "exit=$?"
 ```
-Expected: `PASS the-classic freeze`, `exit=0`.
+Expected: `exit=0`. Read the whole file.
+- The 5 audit rows are `user_signedup` plus 4 `login` rows for `demo@example.com`, all between 18:49 and 18:53 UTC on 2026-09-06.
+- The user and identity are `demo@example.com`, the profile is "Sam", the course "Cypress Ridge Golf Club", the tournament "The Classic 2026". The 12 players are fictional names, and the 6 chat messages and 6 accolades are golf chirps and awards about them.
+- The extra score and chat message (37 and 6, where the capture log said 36 and 5) must sit inside the demo tournament and read as the take's live final beat: a score and its auto-chirp.
+- **D4 stop:** any player or message naming a real person (Evan's golf group), or any row you cannot tie to the demo account or tournament.
 
-- [ ] **Step 4: G7 content inspection**
+- [ ] **Step 4: Rehearse and negative control**
 
 ```bash
-python3 - /home/evan/showcase-pending/_teardown-evidence/the-classic/scope.json <<'PY'
-import json, sys
-SKIP = ("password", "token", "secret", "hash", "key", "code", "factor")
-d = json.load(open(sys.argv[1]))
-for table, v in d.items():
-    print(f"== {table}: expected {v['expected']}, rows {len(v['rows'])}")
-    if table.startswith("auth.") and table not in ("auth.users", "auth.identities"):
-        continue  # session/token rows: counts only, never print
-    for row in v["rows"]:
-        texts = {k: (val[:120] + "…" if isinstance(val, str) and len(val) > 120 else val)
-                 for k, val in row.items() if isinstance(val, str) and not any(s in k.lower() for s in SKIP)}
-        print("  ", texts)
-PY
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" the-classic rehearse; echo "rehearse exit=$?"
+"$T/gate-run.sh" the-classic negative; echo "negative exit=$?"
 ```
-Expected:
-- Counts match.
-- The auth user and identity are `demo@example.com`, the profile is "Sam", the course is "Cypress Ridge Golf Club", and the tournament is "The Classic 2026".
-- The 12 players are fictional names. The 6 chat messages and 6 accolades are golf chirps and awards about those players.
-- The spec expects 37 scores and 6 chat messages, where the capture log said 36 and 5 chirps. The extra score and message must be inside the demo tournament and read as the live final beat of the take, a score and its auto-chirp.
-- **D4 stop:** any player or message naming a real person (Evan's golf group), or any row you cannot tie to the demo tournament.
+Expected: both `PASS`. For G6, apply the re-freeze rule. Anything else → D4 stop.
 
-- [ ] **Step 5: Rehearse**
+- [ ] **Step 5: Execute and post**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" the-classic rehearse; echo "exit=$?"
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data
+"$T/gate-run.sh" the-classic execute; echo "execute exit=$?"; cat /home/evan/showcase-pending/_teardown-evidence/the-classic/state.txt
+"$T/gate-run.sh" the-classic post; echo "post exit=$?"
 ```
-Expected: `PASS the-classic rehearse`, `exit=0`. G6 falls under the re-freeze rule. Anything else → D4 stop.
+Expected: `PASS`, `exit=0`, `COMMITTED`, then `PASS`, `exit=0`. Otherwise follow the **Commit states** rule.
 
-- [ ] **Step 6: Negative control**
+- [ ] **Step 6: Record and commit**
 
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" the-classic negative; echo "exit=$?"
-```
-Expected: `PASS the-classic negative`, `exit=0`.
-
-- [ ] **Step 7: Execute**
+Update the `States` row. Append `## Task 7 — the-classic` in Task 2's table shape. `Deleted:` audit rows 5, auth amr claims 4, refresh tokens 4, sessions 4, identity 1, chat messages 6, accolades 6, scores 37, tournament players 12, foursomes 3, tournament 1, course holes 18, course 1, profile 1, auth user 1.
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" the-classic execute; echo "exit=$?"
-grep -c '^GATE COMMITTED$' /home/evan/showcase-pending/_teardown-evidence/the-classic/execute.log
-```
-Expected: `PASS the-classic execute`, `exit=0`, `1`.
-
-- [ ] **Step 8: Post-check**
-
-```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data; "$T/gate-run.sh" the-classic post; echo "exit=$?"
-```
-Expected: `PASS the-classic post`, `exit=0`.
-
-- [ ] **Step 9: Record and commit**
-
-Append `## Task 7 — the-classic` in the Task 2 table format. The `Deleted:` line is: auth amr claims 4, refresh tokens 4, sessions 4, identity 1, chat messages 6, accolades 6, scores 37, tournament players 12, foursomes 3, tournament 1, course holes 18, course 1, profile 1, auth user 1. On a stop, use the STOPPED form.
-
-```bash
-git commit --only -m "docs(showcase-cleanup): task 7 — the-classic demo user, tournament and course removed" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
+git commit --only -m "docs(showcase-cleanup): task 7 — the-classic demo user, audit rows, tournament and course" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
 ```
 
 ---
@@ -735,57 +716,73 @@ git commit --only -m "docs(showcase-cleanup): task 7 — the-classic demo user, 
 ### Task 8: chunk-norris — read-only audit of the 2026-08-25 pilot
 
 **Files:**
-- Modify: the results file (append `## Task 8 — chunk-norris audit`)
+- Modify: the results file (the `States` row; "Open questions for Evan"; append `## Task 8 — chunk-norris audit`)
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
-- Produces: the chunk-norris disposition line that Task 9 copies.
+- Produces: the chunk-norris disposition line Task 9 copies, and one open question.
 
 This task **deletes nothing and writes nothing** to any store.
 
-Known facts, verified 2026-09-14:
-- **The pilot.** It ran on 2026-08-25. Its session log (`portfolio_site/archive/session-logs/2026-08-25-17-05-claude-code-portfolio-showcase-meta-prompt.md`) was written at 17:05 ET. The walk was Health → Collections → Test Query → Data Quality.
-- **Postgres.** `chunk_norris` shows 4 `ingest_jobs` rows touched on 2026-08-25:
-  - three at 06:00 UTC (02:00 ET, the nightly schedule);
-  - one at 15:02:26 UTC (11:02 ET) for source `5d7fdb85-fd80-4719-8498-7ddf55d48527`, which the 06:00 run also ingested.
-  - No other timestamped table has a row that day.
-- **Qdrant** (`infra-qdrant-1`) has no write timestamps.
+Facts measured 2026-09-14:
+- **The pilot.** Its session log (`portfolio_site/archive/session-logs/2026-08-25-17-05-claude-code-portfolio-showcase-meta-prompt.md`) was written at 17:05 ET. The walk was Health → Collections → Test Query → Data Quality, with no ingest step.
+- **Postgres.** `chunk_norris` shows 4 `ingest_jobs` rows started on 2026-08-25 ET:
+  - three at 06:00 UTC, the nightly schedule;
+  - one at 15:02:26 UTC (11:02 ET) for source `5d7fdb85-fd80-4719-8498-7ddf55d48527`, which the nightly run also ingests.
+- **Qdrant.** Points carry `indexed_at`, and none of the 18 collections holds a point dated 2026-08-25 or 2026-08-26.
 
-- [ ] **Step 1: Re-run the Postgres audit**
+- [ ] **Step 1: Re-run the Postgres audit (half-open ET window)**
 
 ```bash
+W="'2026-08-25 00:00 America/New_York' AND %s < '2026-08-26 00:00 America/New_York'"
 docker exec infra-postgres-1 psql -U postgres -d chunk_norris -X -At -v ON_ERROR_STOP=1 -c "
-select 'app_registry', count(*) from app_registry where created_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York' or updated_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York' or last_checked_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York'
-union all select 'ingest_jobs', count(*) from ingest_jobs where started_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York' or completed_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York'
-union all select 'quality_job_results', count(*) from quality_job_results where started_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York' or completed_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York'
-union all select 'sources', count(*) from sources where created_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York' or updated_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York' or last_indexed_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York'
-union all select 'staleness_flags', count(*) from staleness_flags where raised_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York' or reviewed_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York';"; echo "exit=$?"
-docker exec infra-postgres-1 psql -U postgres -d chunk_norris -X -At -c "select id, source_id, status, started_at from ingest_jobs where started_at between '2026-08-25 00:00 America/New_York' and '2026-08-26 00:00 America/New_York' order by started_at;"
+SELECT 'app_registry', count(*) FROM app_registry WHERE (created_at >= $(printf "$W" created_at)) OR (updated_at >= $(printf "$W" updated_at)) OR (last_checked_at >= $(printf "$W" last_checked_at))
+UNION ALL SELECT 'ingest_jobs', count(*) FROM ingest_jobs WHERE (started_at >= $(printf "$W" started_at)) OR (completed_at >= $(printf "$W" completed_at))
+UNION ALL SELECT 'quality_job_results', count(*) FROM quality_job_results WHERE (started_at >= $(printf "$W" started_at)) OR (completed_at >= $(printf "$W" completed_at))
+UNION ALL SELECT 'sources', count(*) FROM sources WHERE (created_at >= $(printf "$W" created_at)) OR (updated_at >= $(printf "$W" updated_at)) OR (last_indexed_at >= $(printf "$W" last_indexed_at))
+UNION ALL SELECT 'staleness_flags', count(*) FROM staleness_flags WHERE (raised_at >= $(printf "$W" raised_at)) OR (reviewed_at >= $(printf "$W" reviewed_at));"; echo "exit=$?"
+docker exec infra-postgres-1 psql -U postgres -d chunk_norris -X -At -c "SELECT id, source_id, status, started_at FROM ingest_jobs WHERE started_at >= '2026-08-25 00:00 America/New_York' AND started_at < '2026-08-26 00:00 America/New_York' ORDER BY started_at;"
 ```
-Expected: `app_registry|0`, `ingest_jobs|4`, `quality_job_results|0`, `sources|0`, `staleness_flags|0`, then the four jobs listed above. Different numbers are new facts: record them exactly.
+Expected: `app_registry|0`, `ingest_jobs|4`, `quality_job_results|0`, `sources|0`, `staleness_flags|0`, `exit=0`, then the four jobs above. Different numbers are new facts: record them exactly.
 
-- [ ] **Step 2: List Qdrant collections (read-only)**
+- [ ] **Step 2: Scroll Qdrant for pilot-day points (read-only)**
 
 ```bash
-docker exec chunk-norris-backend-1 python -c "import json,urllib.request as u; d=json.load(u.urlopen('http://qdrant:6333/collections',timeout=5)); print(sorted(c['name'] for c in d['result']['collections']))"; echo "exit=$?"
+docker exec -i chunk-norris-backend-1 python - <<'PY'; echo "exit=$?"
+import json, urllib.request as u
+def post(path, body):
+    r = u.Request('http://qdrant:6333' + path, data=json.dumps(body).encode(), headers={'Content-Type': 'application/json'})
+    return json.load(u.urlopen(r, timeout=30))
+cols = sorted(c['name'] for c in json.load(u.urlopen('http://qdrant:6333/collections', timeout=10))['result']['collections'])
+for c in cols:
+    n, hits, off = 0, 0, None
+    while True:
+        body = {'limit': 256, 'with_payload': ['indexed_at'], 'with_vector': False}
+        if off: body['offset'] = off
+        res = post(f'/collections/{c}/points/scroll', body)['result']
+        for p in res['points']:
+            n += 1
+            if str(p['payload'].get('indexed_at', ''))[:10] in ('2026-08-25', '2026-08-26'): hits += 1
+        off = res.get('next_page_offset')
+        if not off: break
+    print(c, 'points', n, 'pilot-day points', hits)
+PY
 ```
-Expected: a list of collection names, and `exit=0`. No collection name should suggest demo or showcase data. One that does is a new fact: record it.
+Expected: one line per collection (18 lines), every one showing `pilot-day points 0`, and `exit=0`.
 
 - [ ] **Step 3: Record the audit and raise the question**
 
-Append:
+Set the `States` row to `STOPPED at audit — question pending (read-only; nothing to delete)`. Add to "Open questions for Evan": *"chunk-norris: was the 11:02 ET re-index of source 5d7fdb85 on 2026-08-25 part of the showcase pilot? Nothing will be deleted either way. The answer only sets the Coverage disposition: 'verified read-only' or 'one manual re-index during the pilot, no demo data remains'."* Append:
 
 ```markdown
 ## Task 8 — chunk-norris audit (read-only)
 
-Outcome: **STOPPED for Evan (audit only, nothing to delete)**
-- Postgres, 2026-08-25 ET: <paste the five count lines>. ingest_jobs: 3 nightly at 06:00 UTC; 1 at 15:02:26 UTC for source 5d7fdb85… (also ingested by the nightly run).
-- Qdrant: <collection list>; no write timestamps, so it cannot be dated.
-- The pilot's walk (Health → Collections → Test Query → Data Quality) includes no ingest action.
-- Question for Evan: was the 11:02 ET re-index of source 5d7fdb85 part of the 2026-08-25 chunk-norris showcase pilot? Nothing will be deleted either way; the answer only sets the Coverage disposition ("verified read-only" vs "one manual re-index during the pilot, no demo data").
+- Postgres, 2026-08-25 ET (half-open window): <the five count lines>. ingest_jobs: 3 nightly at 06:00 UTC; 1 at 15:02:26 UTC for source 5d7fdb85… (also nightly-ingested).
+- Qdrant: <N> collections scrolled; pilot-day points: 0 in every collection.
+- The pilot walk had no ingest step.
 ```
 
-The task returns `BLOCKED` with that question. It is a D4 ask under Global Constraints, not a failure. The controller carries the question into its batch for Evan and continues with Task 9.
+The task returns `BLOCKED` with that question. That is expected, not a failure.
 
 ```bash
 git commit --only -m "docs(showcase-cleanup): task 8 — chunk-norris pilot audit recorded" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
@@ -793,26 +790,29 @@ git commit --only -m "docs(showcase-cleanup): task 8 — chunk-norris pilot audi
 
 ---
 
-### Task 9: infra — update the showcase meta-prompt
+### Task 9: infra — update the showcase meta-prompt (in its own worktree)
+
+**Precondition:** every entry under "Open questions for Evan" in the results file has Evan's answer recorded beside it. If any is unanswered, the controller asks Evan and waits; this task does not start.
 
 **Files:**
-- Modify: `/home/evan/EVOsystem/infra/meta-prompts/portfolio-showcase/portfolio-showcase.md`
-- Modify: `/home/evan/EVOsystem/infra/meta-prompts/portfolio-showcase/portfolio-showcase-changelog.md`
+- Modify (in the infra worktree): `meta-prompts/portfolio-showcase/portfolio-showcase.md`, `meta-prompts/portfolio-showcase/portfolio-showcase-changelog.md`
 
 **Interfaces:**
-- Consumes: the `Outcome:` line of each Task 2–8 section in the results file.
-- Produces: an infra commit (its hash goes into Task 10).
+- Consumes: the `States` table and every answered question in the results file.
+- Produces: the infra branch `showcase-demo-data-meta-prompt` and its commit hash.
 
-- [ ] **Step 1: Provenance check**
+- [ ] **Step 1: Create the infra worktree**
 
 ```bash
 git -C /home/evan/EVOsystem/infra status --short -- meta-prompts/portfolio-showcase/
+git -C /home/evan/EVOsystem/infra worktree add /home/evan/worktrees/infra-showcase-demo-data -b showcase-demo-data-meta-prompt
+git -C /home/evan/worktrees/infra-showcase-demo-data status --short; git -C /home/evan/worktrees/infra-showcase-demo-data log --oneline -1
 ```
-Expected: no output. Any line means another session is editing these files → D4 stop, with nothing edited.
+Expected: the first command prints nothing. If it prints lines, another session is editing these files on infra `main` → D4 stop. Then the worktree is created, and it is clean. Every edit below is made **inside** `/home/evan/worktrees/infra-showcase-demo-data`. Never edit the infra main checkout and never run `git checkout --` there. If an edit goes wrong, remove the worktree and branch, and start this task again.
 
 - [ ] **Step 2: Apply edit E1 — the "Decisions already made" teardown bullet**
 
-In `portfolio-showcase.md`, replace exactly:
+In the worktree's `portfolio-showcase.md`, replace exactly:
 ```
 - **Everything the run creates is deleted before the run is done.** That covers
   demo accounts, seeded rows, walk writes, and uploaded files or volume/bucket
@@ -857,19 +857,20 @@ striking from this list:
 - chud: demo conversation 7206.
 - co-author: `demo@example.com` and "The Lighthouse at Kestrel Point".
 ```
-with the block below. Each `<outcome>` is filled from that app's `Outcome:` line in the results file:
-- `cleaned <YYYY-MM-DD> (fail-closed gate; evidence kept outside git)` for a cleaned app;
-- `STOPPED <YYYY-MM-DD> at <phase> — awaiting Evan: <question>` for a stopped one.
+with the block below. Fill each `<outcome>` from the `States` table:
+- `cleaned <YYYY-MM-DD> (fail-closed gate; evidence kept outside git)` for `POST-VERIFIED`;
+- `STOPPED <YYYY-MM-DD> at <phase> — <Evan's answer>` otherwise.
 
 ```
 **Showcase demo data dispositions (2026-09-14)** — what each run left behind and
 what became of it. Record: `portfolio_site/docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md`.
 - co-host ("The Long Fuse" channel, 2 episodes): <outcome>
+- co-host's CHUD residue (source-bundle artifact from the failed demo job): <outcome>
 - co-author (`demo@example.com`, "The Lighthouse at Kestrel Point"): <outcome>
 - chudios ("Signal & Noise", 6 items, 3 `.m4a` files): <outcome>
 - mind-palace ("Collective Security" route): <outcome>
 - LeonsBudget (`demo@example.com`, Demo Household, Northwind Bank): <outcome>
-- the-classic (`demo@example.com` "Sam", "The Classic 2026", Cypress Ridge): <outcome>
+- the-classic (`demo@example.com` "Sam", its 5 auth audit rows, "The Classic 2026", Cypress Ridge): <outcome>
 - graces-tree: cleaned 2026-09-13 by hand (17 demo people + `demo-arborist`).
 - jourNOW: cleaned 2026-09-14 by hand (guarded transaction; 20 entries + demo user).
 - chud: retained — conversation 7206 began as the demo Q&A but was reused on 2026-09-10 for real test messages and a session note.
@@ -878,12 +879,12 @@ what became of it. Record: `portfolio_site/docs/superpowers/plans/2026-09-14-sho
 - NomNoms: cleaned during its run (every CookSession deleted).
 - Prompt-heus, logson: verified read-only.
 - el-blackjack-pwa: ephemeral only (browser-context `localStorage`).
-- chunk-norris (2026-08-25 pilot): <Task 8 outcome — "awaiting Evan: was the 11:02 ET re-index part of the pilot?" until answered>
+- chunk-norris (2026-08-25 pilot): no pilot-day data remains (Postgres audited, Qdrant scrolled 2026-09-14); <Evan's answer to the 11:02 ET re-index question>.
 ```
 
 - [ ] **Step 4: Apply edits E3–E5 — qualify the read-only statements**
 
-Replace exactly `theater rules). The app repo is read-only for this run except \`docker compose\nup -d\`.` (two lines):
+Replace exactly:
 ```
 theater rules). The app repo is read-only for this run except `docker compose
 up -d`.
@@ -1039,64 +1040,69 @@ data as outstanding, never as "left by design".
 - [ ] **Step 9: Verify the edits**
 
 ```bash
-F=/home/evan/EVOsystem/infra/meta-prompts/portfolio-showcase/portfolio-showcase.md
+F=/home/evan/worktrees/infra-showcase-demo-data/meta-prompts/portfolio-showcase/portfolio-showcase.md
 grep -n 'never in the app repo\|no script in the repo\|filter the \*response\* of every list endpoint\|Demo data still in dev databases' "$F"; echo "stale-phrase hits above (expect none)"
 grep -n 'read-only' "$F"
 grep -n 'left by design\|no cleanup owed' "$F"
 grep -c '^````' "$F"
+git -C /home/evan/worktrees/infra-showcase-demo-data diff --stat
 ```
 Expected:
 - the first command prints no matches;
-- every `read-only` hit is one of: the recon "one read-only pass", "App product code is read-only", "app product code is read-only", "app's product code is read-only", or a historical Coverage row;
+- every `read-only` hit is one of: the recon "one read-only pass", "App product code is read-only", "app product code is read-only", "app's product code is read-only", "verified read-only" in the dispositions, or a historical Coverage row;
 - `left by design` appears only in the new E1 and E10 text, and `no cleanup owed` only in the historical LeonsBudget Coverage row;
-- the fence count is `2`.
+- the fence count is `2`;
+- the diff touches only `portfolio-showcase.md`.
 
-Judge every hit. An unexpected one means an edit went wrong: restore the file with `git -C /home/evan/EVOsystem/infra checkout -- meta-prompts/portfolio-showcase/portfolio-showcase.md`, which is safe here because Step 1 proved the file was clean, then redo the edits.
+An unexpected hit means an edit went wrong: `git -C /home/evan/worktrees/infra-showcase-demo-data checkout -- meta-prompts/portfolio-showcase/portfolio-showcase.md` (safe: it is this task's private worktree), then redo Steps 2–8.
 
-- [ ] **Step 10: Changelog receipt and commit**
+- [ ] **Step 10: Changelog receipt and commit on the branch**
 
-Append to `portfolio-showcase-changelog.md`:
+Append to the worktree's `portfolio-showcase-changelog.md`:
 ```
 | 2026-09-14 | **Throwaway stores + dispositions** (spec `portfolio_site/docs/superpowers/specs/2026-09-14-showcase-demo-data-design.md`, after the showcase demo-data cleanup). **Decisions already made:** demo data never lives in the app's real database; seeded runs use a throwaway store and a committed `scripts/showcase_demo.*`; real-database seeding needs Evan's approval and the fail-closed gate. **STEP 0 / 0.5 / STEP 2 trap:** "app repo is read-only" qualified to app product code, with the committed seed script, its fixture/tests and the session log as the only app-repo writes. **STEP 1:** Write-effects rewritten around the throwaway store, walk-write cleanup and the verbatim STOP-AND-ASK rule; the seed sentence points at the committed seed script; the fifth outcome no longer filters list endpoints by id range. **STEP 3 teardown gate:** drop the throwaway store and prove the app is back on its real database. **Coverage:** the leftover-data list replaced by per-app dispositions from the cleanup results. |
 ```
 Then:
 ```bash
-git -C /home/evan/EVOsystem/infra commit --only -m "docs(meta-prompts): portfolio-showcase — throwaway demo stores, stop-and-ask, cleanup dispositions" -- meta-prompts/portfolio-showcase/portfolio-showcase.md meta-prompts/portfolio-showcase/portfolio-showcase-changelog.md
-git -C /home/evan/EVOsystem/infra log --oneline -1
+W=/home/evan/worktrees/infra-showcase-demo-data
+git -C "$W" commit --only -m "docs(meta-prompts): portfolio-showcase — throwaway demo stores, stop-and-ask, cleanup dispositions" -- meta-prompts/portfolio-showcase/portfolio-showcase.md meta-prompts/portfolio-showcase/portfolio-showcase-changelog.md
+git -C "$W" log --oneline -1
 ```
 Append to the results file:
 ```markdown
 ## Task 9 — infra meta-prompt
 
-Outcome: **updated** — infra `<hash>` (edits E1–E10 + changelog receipt; verification greps judged clean).
+Outcome: committed on infra branch `showcase-demo-data-meta-prompt` as `<hash>` (edits E1–E10 + changelog receipt; verification greps judged clean). Merging it into infra `main` is Evan's call at the finish.
 ```
 ```bash
-git commit --only -m "docs(showcase-cleanup): task 9 — meta-prompt updated (infra <hash>)" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
+git commit --only -m "docs(showcase-cleanup): task 9 — meta-prompt updated on infra branch (<hash>)" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
 ```
 
 ---
 
-### Task 10: Close out — summary and session log
+### Task 10: Close out — final verification, summary, session log
+
+**Precondition:** the same as Task 9. Every question is answered.
 
 **Files:**
 - Modify: the results file (append `## Summary`)
-- Create: `docs/session-logs/<YYYY-MM-DD-HH-MM>-claude-code-showcase-demo-data-cleanup.md` in this worktree
+- Create: `docs/session-logs/<YYYY-MM-DD-HH-MM>-claude-code-showcase-demo-data-cleanup.md` (worktree)
 
 **Interfaces:**
-- Consumes: the results file.
-- Produces: the final commit of the branch.
+- Consumes: the results file and every target's `state.txt`.
+- Produces: the branch's final commit.
 
-- [ ] **Step 1: Verify final store state (read-only)**
+- [ ] **Step 1: Re-verify every target that committed (read-only)**
 
 ```bash
-T=docs/superpowers/plans/2026-09-14-showcase-demo-data
-for a in co-host co-author chudios leonsbudget the-classic; do
-  [ -f "/home/evan/showcase-pending/_teardown-evidence/$a/execute.log" ] && { "$T/gate-run.sh" "$a" post; echo "$a post exit=$?"; }
+T=docs/superpowers/plans/2026-09-14-showcase-demo-data; EVID=/home/evan/showcase-pending/_teardown-evidence
+for a in co-host co-host-chud co-author chudios leonsbudget the-classic; do
+  if [ "$(cat "$EVID/$a/state.txt" 2>/dev/null)" = COMMITTED ]; then "$T/gate-run.sh" "$a" post; echo "$a post exit=$?"; fi
 done
-[ -f /home/evan/showcase-pending/_teardown-evidence/mind-palace/execute.log ] && { "$T/neo4j/mind-palace-gate.sh" post; echo "mind-palace post exit=$?"; }
-[ -f /home/evan/showcase-pending/_teardown-evidence/chudios/files-purge.log ] && { "$T/files/chudios-files.sh" post; echo "chudios files post exit=$?"; }
+[ "$(cat "$EVID/mind-palace/state.txt" 2>/dev/null)" = COMMITTED ] && { "$T/neo4j/mind-palace-gate.sh" post; echo "mind-palace post exit=$?"; }
+[ -f "$EVID/chudios/files-purge.log" ] && { "$T/files/chudios-files.sh" post; echo "chudios files post exit=$?"; }
 ```
-Expected: every app that executed prints `PASS … post` with `exit=0`. Apps that stopped print nothing. A `post` failure now → D4 stop, reported first in the summary.
+Expected: every committed target prints `PASS … post` and `exit=0`. A `post` failure now → D4 stop, reported first in the summary.
 
 - [ ] **Step 2: Write the summary**
 
@@ -1104,27 +1110,28 @@ Append to the results file:
 ```markdown
 ## Summary
 
-| App | Outcome |
+| Target | Final state |
 |---|---|
-| co-host | <cleaned / STOPPED at phase> |
+| co-host | … |
+| co-host-chud | … |
 | co-author | … |
-| chudios | … |
+| chudios (db + files) | … |
 | mind-palace | … |
-| LeonsBudget | … |
+| leonsbudget | … |
 | the-classic | … |
-| chunk-norris audit | awaiting Evan (question in Task 8) |
-| infra meta-prompt | infra `<hash>` |
+| chunk-norris audit | … |
+| infra meta-prompt | branch `showcase-demo-data-meta-prompt` `<hash>` (unmerged) |
 
-Questions for Evan (every D4 stop, verbatim): <numbered list, or "none">
+Questions asked and Evan's answers (verbatim): <numbered list>
 ```
 
 - [ ] **Step 3: Write the session log**
 
 Follow `/home/evan/EVOsystem/infra/skills/writing-session-logs/SKILL.md`: frontmatter `type: docs`, `mode: attended`, `repos: [portfolio_site, infra]`, and every heading present.
 - Accomplished = the summary table.
-- Commits = every task commit plus the infra hash.
-- Verification = each phase's exit per app.
-- Open flags = every D4 stop and the chunk-norris question.
+- Commits = every task commit plus the infra branch hash.
+- Verification = each phase's exit per target.
+- Open flags = anything a D4 stop left behind, plus the unmerged infra branch.
 
 - [ ] **Step 4: Commit**
 
@@ -1139,4 +1146,6 @@ git commit --only -m "docs(session-log): showcase demo data cleanup" -- docs/sup
 
 | Date | Event |
 |---|---|
-| 2026-09-14 | Plan rev 1 written. Tooling validated before writing: SQL gate selftest (every planted defect fails with its specific diagnostic; happy path deletes only demo rows) passes in `showcase_gate_selftest`; file-protocol selftest passes; read-only preflight PASS on co-host, co-author, chudios, LeonsBudget, the-classic and mind-palace; mind-palace freeze and Cypher output shapes verified read-only. Pending: Codex adversarial plan review. |
+| 2026-09-14 | Plan rev 1 (`c263cff`) and rev 1.1 (`5c0259b`: trigger allowlist added) written. |
+| 2026-09-14 | **Codex plan review of rev 1.1: 6 BLOCKER / 9 MAJOR / 1 MINOR, all accepted.** Receipt: `2026-09-14-showcase-demo-data-plan-codex-review.md`; dispositions in the spec's "Codex plan review disposition". Two blockers were confirmed live and became Evan's decisions D5 (CHUD artifact) and D6 (5 auth audit rows). |
+| 2026-09-14 | Plan rev 2 + tooling rev 2 written and validated before commit: SQL self-test 0 failures across every planted case; file self-test 0 failures (incl. crash-and-resume); read-only preflight + freeze + classify PASS/PRE-STATE on all six Postgres targets; mind-palace preflight + freeze + `dry` PASS (`dry` caught and fixed a statement-assembly bug before any write). Pending: Codex scoped re-review of rev 2. |

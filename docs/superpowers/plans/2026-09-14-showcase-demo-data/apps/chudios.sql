@@ -1,12 +1,11 @@
 -- chudios (database chudios): the fictional "Signal & Noise" show — 6 content items with ids beginning dddddddd-.
--- The three demo .m4a files in the recordings volume are handled by the plan's file protocol, not here.
+-- The three demo .m4a files in the recordings volume are handled by files/chudios-files.sh, not here.
 DO $$ BEGIN
-  IF current_database() <> 'chudios' THEN
-    RAISE EXCEPTION 'GATE FAIL G1 database: connected to %, expected chudios', current_database();
-  END IF;
-  IF (SELECT max(version) FROM schema_migrations) <> '0010_qc_script_diff.sql' THEN
-    RAISE EXCEPTION 'GATE FAIL G1 schema head changed';
-  END IF;
+  PERFORM pg_temp.gate_g1('database is chudios', (current_database() = 'chudios')::int, 1, 1);
+  PERFORM pg_temp.gate_pin('migration manifest',
+    pg_temp.gate_sha((SELECT string_agg(version::text, ',' ORDER BY version) FROM schema_migrations)),
+    'd01f6b8da5446fb5d6d24591c7cc01aea2ecab56e37b3a65e9070906d369f1a6');
+  PERFORM pg_temp.gate_g1('six demo content items (dddddddd- ids)', (SELECT count(*) FROM content_items WHERE id LIKE 'dddddddd-%'), 6, 0);
 END $$;
 
 CREATE TEMP TABLE demo_items AS SELECT id FROM content_items WHERE id LIKE 'dddddddd-%';
@@ -26,23 +25,30 @@ INSERT INTO gate_scope (tbl, pkcol, ids, expected, del_order) VALUES
   ('attempts', 'id', ARRAY(SELECT id FROM demo_attempts), 6, 70),
   ('content_items', 'id', ARRAY(SELECT id FROM demo_items), 6, 80);
 
-INSERT INTO gate_fk_allow (conrelid, col, confrelid) VALUES
-  ('attempts', 'content_item_id', 'content_items'),
-  ('clips', 'content_item_id', 'content_items'),
-  ('content_items', 'current_attempt_id', 'attempts'),
-  ('marketing_assets', 'content_item_id', 'content_items'),
-  ('published_status', 'content_item_id', 'content_items'),
-  ('qc_reports', 'attempt_id', 'attempts'),
-  ('qc_reports', 'content_item_id', 'content_items'),
-  ('qc_reports', 'stage_run_id', 'stage_runs'),
-  ('stage_runs', 'attempt_id', 'attempts'),
-  ('stage_runs', 'content_item_id', 'content_items'),
-  ('transcripts', 'attempt_id', 'attempts'),
-  ('transcripts', 'content_item_id', 'content_items');
+-- deltype pinned from pg_constraint: every child cascades from content_items/attempts/stage_runs, except
+-- content_items.current_attempt_id, which is SET NULL. The gate deletes children first, so no cascade fires
+-- (a cascade that did would fail G9 on the next statement's row count).
+INSERT INTO gate_fk_allow (conrelid, col, confrelid, deltype) VALUES
+  ('attempts', 'content_item_id', 'content_items', 'c'),
+  ('clips', 'content_item_id', 'content_items', 'c'),
+  ('content_items', 'current_attempt_id', 'attempts', 'n'),
+  ('marketing_assets', 'content_item_id', 'content_items', 'c'),
+  ('published_status', 'content_item_id', 'content_items', 'c'),
+  ('qc_reports', 'attempt_id', 'attempts', 'c'),
+  ('qc_reports', 'content_item_id', 'content_items', 'c'),
+  ('qc_reports', 'stage_run_id', 'stage_runs', 'c'),
+  ('stage_runs', 'attempt_id', 'attempts', 'c'),
+  ('stage_runs', 'content_item_id', 'content_items', 'c'),
+  ('transcripts', 'attempt_id', 'attempts', 'c'),
+  ('transcripts', 'content_item_id', 'content_items', 'c');
 
-INSERT INTO gate_extra VALUES
-  ('content items total (6 demo + 8 real)', (SELECT count(*) FROM content_items), 14),
+INSERT INTO gate_extra (label, n, expected, post_expected) VALUES
+  ('content items total (6 demo + 8 real)', (SELECT count(*) FROM content_items), 14, 8),
   ('non-demo rows naming a demo recording file (non-FK)',
    (SELECT count(*) FROM content_items t WHERE id NOT LIKE 'dddddddd-%' AND row_to_json(t)::text LIKE '%demo-sn-ep%')
    + (SELECT count(*) FROM attempts t WHERE content_item_id NOT LIKE 'dddddddd-%' AND row_to_json(t)::text LIKE '%demo-sn-ep%')
-   + (SELECT count(*) FROM clips t WHERE content_item_id NOT LIKE 'dddddddd-%' AND row_to_json(t)::text LIKE '%demo-sn-ep%'), 0);
+   + (SELECT count(*) FROM clips t WHERE content_item_id NOT LIKE 'dddddddd-%' AND row_to_json(t)::text LIKE '%demo-sn-ep%'), 0, 0),
+  ('any row still naming a demo recording file (non-FK; 1 = yes)',
+   ((SELECT count(*) FROM content_items t WHERE row_to_json(t)::text LIKE '%demo-sn-ep%')
+    + (SELECT count(*) FROM attempts t WHERE row_to_json(t)::text LIKE '%demo-sn-ep%')
+    + (SELECT count(*) FROM clips t WHERE row_to_json(t)::text LIKE '%demo-sn-ep%') > 0)::int, 1, 0);

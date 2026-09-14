@@ -1,17 +1,12 @@
 -- co-author (database co_author): demo user 2 "demo@example.com" and story 7 "The Lighthouse at Kestrel Point".
 DO $$ BEGIN
-  IF current_database() <> 'co_author' THEN
-    RAISE EXCEPTION 'GATE FAIL G1 database: connected to %, expected co_author', current_database();
-  END IF;
-  IF (SELECT max(name) FROM django_migrations WHERE app NOT IN ('admin','auth','contenttypes','sessions')) <> '0013_alter_blacklistedtoken_options_and_more' THEN
-    RAISE EXCEPTION 'GATE FAIL G1 schema head changed';
-  END IF;
-  IF (SELECT count(*) FROM auth_user WHERE id = 2 AND email = 'demo@example.com') <> 1 THEN
-    RAISE EXCEPTION 'GATE FAIL G1 anchor: auth_user 2 is not demo@example.com';
-  END IF;
-  IF (SELECT count(*) FROM stories_story WHERE id = 7 AND owner_id = 2 AND title = 'The Lighthouse at Kestrel Point') <> 1 THEN
-    RAISE EXCEPTION 'GATE FAIL G1 anchor: story 7 is not the demo story owned by user 2';
-  END IF;
+  PERFORM pg_temp.gate_g1('database is co_author', (current_database() = 'co_author')::int, 1, 1);
+  PERFORM pg_temp.gate_pin('django migration manifest',
+    pg_temp.gate_sha((SELECT string_agg(app || '.' || name, ',' ORDER BY app, name) FROM django_migrations)),
+    '117d407112a46d5037c4f19d990cd7a82a85bc61aff27226d39094e429da3797');
+  PERFORM pg_temp.gate_g1('auth_user 2 is demo@example.com', (SELECT count(*) FROM auth_user WHERE id = 2 AND email = 'demo@example.com'), 1, 0);
+  PERFORM pg_temp.gate_g1('story 7 is the demo story owned by user 2',
+    (SELECT count(*) FROM stories_story WHERE id = 7 AND owner_id = 2 AND title = 'The Lighthouse at Kestrel Point'), 1, 0);
 END $$;
 
 CREATE TEMP TABLE d_char  AS SELECT id FROM characters_character       WHERE story_id = 7;
@@ -52,53 +47,56 @@ INSERT INTO gate_scope (tbl, pkcol, ids, expected, del_order) VALUES
   ('django_admin_log', 'id', ARRAY(SELECT id::text FROM django_admin_log WHERE user_id = 2), 0, 200),
   ('auth_user', 'id', ARRAY(SELECT id::text FROM auth_user WHERE id = 2), 1, 210);
 
-INSERT INTO gate_fk_allow (conrelid, col, confrelid) VALUES
-  ('auth_user_groups', 'user_id', 'auth_user'),
-  ('auth_user_user_permissions', 'user_id', 'auth_user'),
-  ('beat_drafts_beatdraft', 'beat_id', 'beats_beat'),
-  ('beat_drafts_draftrequest', 'beat_id', 'beats_beat'),
-  ('beat_proposals_beatproposalrequest', 'story_id', 'stories_story'),
-  ('beats_beat', 'setting_id', 'settings_places_setting'),
-  ('beats_beat', 'story_id', 'stories_story'),
-  ('beats_beat_characters', 'beat_id', 'beats_beat'),
-  ('beats_beat_characters', 'character_id', 'characters_character'),
-  ('beats_beat_events', 'beat_id', 'beats_beat'),
-  ('beats_beat_events', 'event_id', 'events_event'),
-  ('characters_character', 'story_id', 'stories_story'),
-  ('django_admin_log', 'user_id', 'auth_user'),
-  ('element_generations_elementgenerationrequest', 'character_id', 'characters_character'),
-  ('element_generations_elementgenerationrequest', 'event_id', 'events_event'),
-  ('element_generations_elementgenerationrequest', 'open_question_id', 'open_questions_openquestion'),
-  ('element_generations_elementgenerationrequest', 'relationship_id', 'relationships_relationship'),
-  ('element_generations_elementgenerationrequest', 'setting_id', 'settings_places_setting'),
-  ('element_generations_elementgenerationrequest', 'story_id', 'stories_story'),
-  ('element_proposals_elementproposalrequest', 'story_id', 'stories_story'),
-  ('events_event', 'setting_id', 'settings_places_setting'),
-  ('events_event', 'story_id', 'stories_story'),
-  ('events_event_characters', 'character_id', 'characters_character'),
-  ('events_event_characters', 'event_id', 'events_event'),
-  ('open_questions_openquestion', 'story_id', 'stories_story'),
-  ('open_questions_openquestion_linked_characters', 'character_id', 'characters_character'),
-  ('open_questions_openquestion_linked_characters', 'openquestion_id', 'open_questions_openquestion'),
-  ('open_questions_openquestion_linked_events', 'event_id', 'events_event'),
-  ('open_questions_openquestion_linked_events', 'openquestion_id', 'open_questions_openquestion'),
-  ('open_questions_openquestion_linked_relationships', 'openquestion_id', 'open_questions_openquestion'),
-  ('open_questions_openquestion_linked_relationships', 'relationship_id', 'relationships_relationship'),
-  ('open_questions_openquestion_linked_settings', 'openquestion_id', 'open_questions_openquestion'),
-  ('open_questions_openquestion_linked_settings', 'setting_id', 'settings_places_setting'),
-  ('relationships_relationship', 'character_a_id', 'characters_character'),
-  ('relationships_relationship', 'character_b_id', 'characters_character'),
-  ('relationships_relationship', 'story_id', 'stories_story'),
-  ('research_requests_researchrequest', 'story_id', 'stories_story'),
-  ('research_requests_researchrequest', 'subject_character_id', 'characters_character'),
-  ('research_requests_researchrequest', 'subject_event_id', 'events_event'),
-  ('research_requests_researchrequest', 'subject_setting_id', 'settings_places_setting'),
-  ('settings_places_setting', 'story_id', 'stories_story'),
-  ('stories_story', 'owner_id', 'auth_user'),
-  ('timeline_timelinedivider', 'story_id', 'stories_story'),
-  ('timeline_timelineorderingrequest', 'story_id', 'stories_story'),
-  ('token_blacklist_blacklistedtoken', 'token_id', 'token_blacklist_outstandingtoken'),
-  ('token_blacklist_outstandingtoken', 'user_id', 'auth_user');
+-- deltype: Django enforces on_delete in Python (SimpleJWT's SET_NULL included), so every constraint is NO ACTION ('a').
+INSERT INTO gate_fk_allow (conrelid, col, confrelid, deltype) VALUES
+  ('auth_user_groups', 'user_id', 'auth_user', 'a'),
+  ('auth_user_user_permissions', 'user_id', 'auth_user', 'a'),
+  ('beat_drafts_beatdraft', 'beat_id', 'beats_beat', 'a'),
+  ('beat_drafts_draftrequest', 'beat_id', 'beats_beat', 'a'),
+  ('beat_proposals_beatproposalrequest', 'story_id', 'stories_story', 'a'),
+  ('beats_beat', 'setting_id', 'settings_places_setting', 'a'),
+  ('beats_beat', 'story_id', 'stories_story', 'a'),
+  ('beats_beat_characters', 'beat_id', 'beats_beat', 'a'),
+  ('beats_beat_characters', 'character_id', 'characters_character', 'a'),
+  ('beats_beat_events', 'beat_id', 'beats_beat', 'a'),
+  ('beats_beat_events', 'event_id', 'events_event', 'a'),
+  ('characters_character', 'story_id', 'stories_story', 'a'),
+  ('django_admin_log', 'user_id', 'auth_user', 'a'),
+  ('element_generations_elementgenerationrequest', 'character_id', 'characters_character', 'a'),
+  ('element_generations_elementgenerationrequest', 'event_id', 'events_event', 'a'),
+  ('element_generations_elementgenerationrequest', 'open_question_id', 'open_questions_openquestion', 'a'),
+  ('element_generations_elementgenerationrequest', 'relationship_id', 'relationships_relationship', 'a'),
+  ('element_generations_elementgenerationrequest', 'setting_id', 'settings_places_setting', 'a'),
+  ('element_generations_elementgenerationrequest', 'story_id', 'stories_story', 'a'),
+  ('element_proposals_elementproposalrequest', 'story_id', 'stories_story', 'a'),
+  ('events_event', 'setting_id', 'settings_places_setting', 'a'),
+  ('events_event', 'story_id', 'stories_story', 'a'),
+  ('events_event_characters', 'character_id', 'characters_character', 'a'),
+  ('events_event_characters', 'event_id', 'events_event', 'a'),
+  ('open_questions_openquestion', 'story_id', 'stories_story', 'a'),
+  ('open_questions_openquestion_linked_characters', 'character_id', 'characters_character', 'a'),
+  ('open_questions_openquestion_linked_characters', 'openquestion_id', 'open_questions_openquestion', 'a'),
+  ('open_questions_openquestion_linked_events', 'event_id', 'events_event', 'a'),
+  ('open_questions_openquestion_linked_events', 'openquestion_id', 'open_questions_openquestion', 'a'),
+  ('open_questions_openquestion_linked_relationships', 'openquestion_id', 'open_questions_openquestion', 'a'),
+  ('open_questions_openquestion_linked_relationships', 'relationship_id', 'relationships_relationship', 'a'),
+  ('open_questions_openquestion_linked_settings', 'openquestion_id', 'open_questions_openquestion', 'a'),
+  ('open_questions_openquestion_linked_settings', 'setting_id', 'settings_places_setting', 'a'),
+  ('relationships_relationship', 'character_a_id', 'characters_character', 'a'),
+  ('relationships_relationship', 'character_b_id', 'characters_character', 'a'),
+  ('relationships_relationship', 'story_id', 'stories_story', 'a'),
+  ('research_requests_researchrequest', 'story_id', 'stories_story', 'a'),
+  ('research_requests_researchrequest', 'subject_character_id', 'characters_character', 'a'),
+  ('research_requests_researchrequest', 'subject_event_id', 'events_event', 'a'),
+  ('research_requests_researchrequest', 'subject_setting_id', 'settings_places_setting', 'a'),
+  ('settings_places_setting', 'story_id', 'stories_story', 'a'),
+  ('stories_story', 'owner_id', 'auth_user', 'a'),
+  ('timeline_timelinedivider', 'story_id', 'stories_story', 'a'),
+  ('timeline_timelineorderingrequest', 'story_id', 'stories_story', 'a'),
+  ('token_blacklist_blacklistedtoken', 'token_id', 'token_blacklist_outstandingtoken', 'a'),
+  ('token_blacklist_outstandingtoken', 'user_id', 'auth_user', 'a');
 
-INSERT INTO gate_extra VALUES
-  ('outstanding tokens with no user (SET NULL residue)', (SELECT count(*) FROM token_blacklist_outstandingtoken WHERE user_id IS NULL), 0);
+INSERT INTO gate_extra (label, n, expected, post_expected) VALUES
+  ('outstanding tokens with no user (SET NULL residue)', (SELECT count(*) FROM token_blacklist_outstandingtoken WHERE user_id IS NULL), 0, 0),
+  ('stories owned by user 2', (SELECT count(*) FROM stories_story WHERE owner_id = 2), 1, 0),
+  ('other stories titled like the demo story', (SELECT count(*) FROM stories_story WHERE id <> 7 AND title ILIKE '%Kestrel Point%'), 0, 0);

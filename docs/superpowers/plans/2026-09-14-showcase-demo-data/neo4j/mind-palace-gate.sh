@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# mind-palace-gate.sh — fail-closed removal of the showcase demo Route from mind-palace's Neo4j.
+# mind-palace-gate.sh — fail-closed removal of the showcase demo Route from mind-palace's Neo4j. Rev 2.
 #
-#   mind-palace-gate.sh preflight   G1 target + exact counts/shape checks (read-only session)
-#   mind-palace-gate.sh freeze      preflight + export the route, entity degrees and a survivor hash (never overwrites)
+#   mind-palace-gate.sh preflight   G1 target + exact counts/shape/degree checks (read-only session)
+#   mind-palace-gate.sh freeze      preflight + export the route, entity degrees, a survivor hash and the route's
+#                                   property fingerprint (never overwrites)
 #   mind-palace-gate.sh rehearse    conditional delete inside :begin … :rollback, then prove nothing changed
 #   mind-palace-gate.sh negative    rehearse with one entity name wrong; passes only if it deletes nothing
-#   mind-palace-gate.sh execute     the conditional delete, auto-committed (requires rehearse.ok + negative.ok newer than the freeze)
+#   mind-palace-gate.sh execute     the conditional delete, auto-committed (needs rehearse.ok + negative.ok newer than the
+#                                   freeze); it matches only when every route/step property still equals the freeze
+#   mind-palace-gate.sh classify    read-only: PRE-STATE (route present) or COMMITTED (route gone) — state.txt
 #   mind-palace-gate.sh post        route gone, HAS_STEP 1, Route 1, Entity 228, 4 degrees each -1, survivor hash unchanged
 #
 # Only the Route node and its own 4 HAS_STEP relationships are ever deleted. Entity nodes are never deleted.
@@ -17,19 +20,20 @@ OUT="$EVID/mind-palace"
 C=mind-palace-neo4j-1
 PROJ=mind-palace
 NEO_PASS="${NEO4J_PASSWORD:-localdev}"   # the local dev password from mind-palace/docker-compose.yml
+TIMEOUT="${GATE_TIMEOUT:-300}"
 ROUTE=60c383d5-921e-443c-9430-b2242469fbe0
 ROUTE_NAME='Collective Security'
 phase="${1:?usage: mind-palace-gate.sh <phase>}"
 
-got="$(docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
+got="$(timeout 30 docker inspect -f '{{.State.Running}} {{index .Config.Labels "com.docker.compose.project"}}' "$C" 2>/dev/null)"
 [ "$got" = "true $PROJ" ] || { echo "GATE FAIL G1 target: container $C reports '$got', expected 'true $PROJ'" >&2; exit 2; }
 
 mkdir -p "$OUT" && chmod 700 "$EVID" "$OUT"
 LOG="$OUT/$phase.log"
 echo "target: container=$C project=$PROJ route=$ROUTE" > "$LOG"
 
-cy_read()  { docker exec -i "$C" cypher-shell -u neo4j -p "$NEO_PASS" --format plain --access-mode read; }
-cy_write() { docker exec -i "$C" cypher-shell -u neo4j -p "$NEO_PASS" --format plain --access-mode write; }
+cy_read()  { timeout --foreground -k 10 "$TIMEOUT" docker exec -i "$C" cypher-shell -u neo4j -p "$NEO_PASS" --format plain --access-mode read; }
+cy_write() { timeout --foreground -k 10 "$TIMEOUT" docker exec -i "$C" cypher-shell -u neo4j -p "$NEO_PASS" --format plain --access-mode write; }
 fail() { echo "GATE FAIL $*" | tee -a "$LOG" >&2; echo "STOP mind-palace $phase — see $LOG" >&2; exit 1; }
 
 value() {  # value <cypher returning exactly one column, one row>  -> prints the value
@@ -57,19 +61,36 @@ survivor_hash() {
   } 2>>"$LOG" | sha256sum | cut -d' ' -f1
 }
 
+# The route's canonical property fingerprint: every route property and every outbound relationship's type,
+# target name and properties, keys sorted. Its printed value is a Cypher string literal (verified round-trip).
+FP_BODY="CALL (r) { UNWIND keys(r) AS k WITH k ORDER BY k RETURN reduce(s = '', p IN collect(k + '=' + toString(r[k])) | s + p + ';') AS rf }
+CALL (r) { MATCH (r)-[x]->(e) WITH x, e ORDER BY e.name, type(x)
+  CALL (x) { UNWIND keys(x) AS k WITH k ORDER BY k RETURN reduce(s = '', p IN collect(k + '=' + toString(x[k])) | s + p + ';') AS xf }
+  RETURN reduce(s = '', p IN collect(type(x) + '>' + coalesce(e.name, '?') + '{' + xf + '}') | s + p + '|') AS relf }"
+FP_MATCH="MATCH (r:Route {id: '$ROUTE'})
+$FP_BODY"
+
+fingerprint() {
+  printf '%s\n' "$FP_MATCH
+RETURN rf + '#' + relf AS fp;" | cy_read 2>>"$LOG" | tail -n +2
+}
+
 delete_stmt() {  # $1 = the fourth entity name ("World War I" for real, anything else for the negative control)
-  cat <<CYPHER
-MATCH (r:Route {id: '$ROUTE'})
-WHERE r.name = '$ROUTE_NAME'
-  AND count{ (r)<--() } = 0
-  AND count{ (r)-->() } = 4
-  AND count{ (r)-[:HAS_STEP]->(:Entity) } = 4
-  AND all(n IN ['United Nations', 'World War II', 'League of Nations', '$1']
-          WHERE exists{ (r)-[:HAS_STEP]->(:Entity {name: n}) })
-WITH r, count{ (r)-->() } AS steps
-DETACH DELETE r
-RETURN steps AS deleted_steps;
-CYPHER
+  # Built with printf, never a heredoc: the frozen literal may contain characters a shell would expand.
+  printf '%s\n' \
+    "MATCH (r:Route {id: '$ROUTE'})" \
+    "WHERE r.name = '$ROUTE_NAME'" \
+    "  AND count{ (r)<--() } = 0" \
+    "  AND count{ (r)-->() } = 4" \
+    "  AND count{ (r)-[:HAS_STEP]->(:Entity) } = 4" \
+    "  AND all(n IN ['United Nations', 'World War II', 'League of Nations', '$1'] WHERE exists{ (r)-[:HAS_STEP]->(:Entity {name: n}) })" \
+    "WITH r" \
+    "$FP_BODY" \
+    "WITH r, rf + '#' + relf AS fp" \
+    "WHERE fp = $(cat "$OUT/fingerprint.txt")" \
+    "WITH r, count{ (r)-->() } AS steps" \
+    "DETACH DELETE r" \
+    "RETURN steps AS deleted_steps;"
 }
 
 preflight() {
@@ -88,7 +109,7 @@ preflight() {
 }
 
 need_frozen() {
-  for f in scope.txt degrees.txt snapshot.txt; do
+  for f in scope.txt degrees.txt snapshot.txt fingerprint.txt; do
     [ -s "$OUT/$f" ] || fail "frozen evidence missing: $OUT/$f (run freeze first)"
   done
 }
@@ -97,13 +118,25 @@ unchanged() {  # $1 = label
   preflight
   [ "$(degrees)" = "$(cat "$OUT/degrees.txt")" ] || fail "G6 degrees changed ($1)"
   [ "$(survivor_hash)" = "$(cat "$OUT/snapshot.txt")" ] || fail "G6 survivor hash changed ($1)"
+  [ "$(fingerprint)" = "$(cat "$OUT/fingerprint.txt")" ] || fail "G6 scope rows changed: route fingerprint differs ($1)"
+}
+
+classify() {
+  local n
+  n="$(value "MATCH (r:Route {id: '$ROUTE'}) RETURN count(r);")" || { echo UNKNOWN > "$OUT/state.txt"; return 1; }
+  case "$n" in
+    1) echo PRE-STATE > "$OUT/state.txt" ;;
+    0) echo COMMITTED > "$OUT/state.txt" ;;
+    *) echo UNKNOWN > "$OUT/state.txt"; return 1 ;;
+  esac
+  echo "state: $(cat "$OUT/state.txt")" | tee -a "$LOG"
 }
 
 case "$phase" in
   preflight) preflight ;;
 
   freeze)
-    for f in scope.txt degrees.txt snapshot.txt; do
+    for f in scope.txt degrees.txt snapshot.txt fingerprint.txt; do
       [ -e "$OUT/$f" ] && fail "freeze refuses to overwrite $OUT/$f"
     done
     preflight
@@ -111,7 +144,9 @@ case "$phase" in
       | cy_read > "$OUT/scope.txt" 2>>"$LOG" || fail "freeze export failed"
     degrees > "$OUT/degrees.txt" || fail "freeze degrees failed"
     survivor_hash > "$OUT/snapshot.txt" || fail "freeze hash failed"
-    chmod 600 "$OUT/scope.txt" "$OUT/degrees.txt" "$OUT/snapshot.txt" ;;
+    fingerprint > "$OUT/fingerprint.txt" || fail "freeze fingerprint failed"
+    [ "$(wc -l < "$OUT/fingerprint.txt")" -eq 1 ] || fail "freeze fingerprint is not one line"
+    chmod 600 "$OUT/scope.txt" "$OUT/degrees.txt" "$OUT/snapshot.txt" "$OUT/fingerprint.txt" ;;
 
   rehearse|negative)
     need_frozen
@@ -130,13 +165,32 @@ case "$phase" in
 
   execute)
     need_frozen
+    [ -f "$OUT/state.txt" ] && [ "$(cat "$OUT/state.txt")" = COMMITTED ] && fail "execute refused: already classified COMMITTED"
     for m in rehearse.ok negative.ok; do
       [ "$OUT/$m" -nt "$OUT/snapshot.txt" ] || fail "execute requires $m newer than the freeze"
     done
     unchanged "before delete"
-    out="$(delete_stmt 'World War I' | cy_write 2>>"$LOG")" || fail "delete statement failed"
-    echo "$out" >> "$LOG"
-    [ "$out" = $'deleted_steps\n4' ] || fail "G9 execute: the conditional delete did not report 4 steps (nothing was deleted if empty)" ;;
+    out="$(delete_stmt 'World War I' | cy_write 2>>"$LOG")"; s=$?
+    echo "$out (exit $s)" >> "$LOG"
+    classify || fail "execute: commit state could not be classified"
+    state="$(cat "$OUT/state.txt")"
+    if [ "$s" -ne 0 ] || [ "$out" != $'deleted_steps\n4' ] || [ "$state" != COMMITTED ]; then
+      fail "G9 execute outcome: exit $s, output '$out', state $state (PRE-STATE means nothing was deleted)"
+    fi ;;
+
+  dry)   # read-only: the exact assembled delete statement with its DETACH DELETE line removed
+    need_frozen
+    for name in 'World War I' 'Not A Real Entity'; do
+      out="$(delete_stmt "$name" | sed 's/^DETACH DELETE r$//' | cy_read 2>>"$LOG")" || fail "dry statement failed ($name)"
+      echo "dry [$name]: $out" >> "$LOG"
+      if [ "$name" = 'World War I' ]; then
+        [ "$out" = $'deleted_steps\n4' ] || fail "G9 dry: the real statement does not match the frozen route"
+      else
+        [ -z "$out" ] || fail "G9 dry: the wrong-name statement matched"
+      fi
+    done ;;
+
+  classify) need_frozen; classify || fail "classify failed" ;;
 
   post)
     need_frozen
@@ -144,6 +198,7 @@ case "$phase" in
     expect "Entity count"   "MATCH (e:Entity) RETURN count(e);" 228
     expect "HAS_STEP count" "MATCH ()-[h:HAS_STEP]->() RETURN count(h);" 1
     expect "demo route gone" "MATCH (r:Route {id: '$ROUTE'}) RETURN count(r);" 0
+    expect "routes named Collective Security" "MATCH (r:Route) WHERE r.name = '$ROUTE_NAME' RETURN count(r);" 0
     for pair in "League of Nations:2" "United Nations:1" "World War I:8" "World War II:13"; do
       expect "degree ${pair%%:*}" "MATCH (e:Entity {name: '${pair%%:*}'}) RETURN count{ (e)--() };" "${pair##*:}"
     done
