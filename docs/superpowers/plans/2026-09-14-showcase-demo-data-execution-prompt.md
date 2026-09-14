@@ -40,7 +40,7 @@ A one-time cleanup.
   - `opus` for the Tasks 1–8 implementers, every task reviewer, and the final whole-branch reviewer.
   - `sonnet` is acceptable for the Tasks 9–10 implementers.
 - **Implementer reports.** An implementer that hits D4 records the target's state and question in the results file, commits, and returns `BLOCKED` with the exact `GATE FAIL` line (or its judgment) and the question. It then stops: no retry, and no alternative path. Record the stop in the ledger as `Task <N>: STOPPED — <target> — <reason> — question: <question>`, then move to the next task.
-- **Task 8** always ends `BLOCKED` with the chunk-norris question. That is expected.
+- **Task 8** is a read-only audit. Evan already answered its known question (spec D7: the 11:02 ET re-index was not part of the pilot), so it ends `DONE`. It ends `BLOCKED` only if the live audit differs from the measured facts or Qdrant reports an unparseable or pilot-window point.
 - **Reviewers** get the task brief, the implementer's report, the review package (the results-file diff) and the target's evidence directory. They follow the plan's "Reviewer checklist". For cleanup tasks that means:
   1. snapshot the original evidence mtimes first;
   2. read the whole G7 file (`g7-inspection.txt`, or mind-palace's `fingerprint.txt`) and judge it independently;

@@ -244,6 +244,7 @@ The executing agent re-verifies every number at G3. Any difference is a stop.
 
 - **D5 — Delete co-host's CHUD residue, gated.** Artifact `e6135781-…` (above) is removed through the same fail-closed gate, as declaration `co-host-chud` against the `chud` database. Conversation 7206 stays untouched; D2 still holds.
 - **D6 — Delete the demo user's auth audit rows.** the-classic's `auth.audit_log_entries` holds exactly 5 rows whose `payload->>'actor_id'` is the demo user: its signup and 4 logins, 2026-09-06 18:49–18:53 UTC. No other row mentions it. They are deleted by exact id inside the same transaction as the rest of the demo user. They sit outside every FK, so this is a declared non-FK scope table.
+- **D7 — The chunk-norris 11:02 ET re-index was not part of the pilot (Evan, 2026-09-14).** The 2026-08-25 15:02:26 UTC `ingest_jobs` row for source `5d7fdb85…` is unrelated to the showcase. With the Postgres and Qdrant audits as measured, chunk-norris's disposition is "verified read-only". The audit still re-runs, and it becomes a question again only if its live numbers differ from the measured ones, or if Qdrant reports any unparseable or pilot-window point.
 
 ### Gate protocol amendments
 

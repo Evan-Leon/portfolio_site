@@ -723,7 +723,7 @@ git commit --only -m "docs(showcase-cleanup): task 7 — the-classic demo user, 
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks.
-- Produces: the chunk-norris disposition line Task 9 copies, and one open question.
+- Produces: the chunk-norris disposition line Task 9 copies. There is no open question unless the audit finds new facts: Evan answered the only known one on 2026-09-14 (spec D7). The 11:02 ET re-index was not part of the pilot.
 
 This task **deletes nothing and writes nothing** to any store.
 
@@ -788,9 +788,17 @@ PY
 ```
 Expected: 18 collection lines, each with `unparseable_indexed_at=0 pilot_window_hits=0`, then `TOTAL unparseable=0 hits=0`, and `exit=0` (measured 2026-09-14). `exit=3` means at least one `UNPARSEABLE` or `HIT` line was printed. Any such line is a new fact: record every such line in the results entry, and add it to the Evan question. It changes the disposition, and nothing is deleted.
 
-- [ ] **Step 3: Record the audit and raise the question**
+- [ ] **Step 3: Record the audit**
 
-Set the `States` row to `STOPPED at audit — question pending (read-only; nothing to delete)`. Add to "Open questions for Evan": *"chunk-norris: was the 11:02 ET re-index of source 5d7fdb85 on 2026-08-25 part of the showcase pilot? Nothing will be deleted either way. The answer only sets the Coverage disposition: 'verified read-only' or 'one manual re-index during the pilot, no demo data remains'."* Append:
+**If** Step 1 printed exactly the counts and four jobs listed under "Facts measured", **and** Step 2 printed `TOTAL unparseable=0 hits=0` with `exit=0`:
+- set the `States` row to `DONE — verified read-only (11:02 ET re-index not part of the pilot: Evan, 2026-09-14, spec D7)`;
+- raise no question.
+
+**Otherwise** the audit found new facts:
+- set the row to `STOPPED at audit — question pending (read-only; nothing to delete)`;
+- add a question to "Open questions for Evan" that quotes every differing count and every `UNPARSEABLE` or `HIT` line.
+
+Either way, append:
 
 ```markdown
 ## Task 8 — chunk-norris audit (read-only)
@@ -800,7 +808,7 @@ Set the `States` row to `STOPPED at audit — question pending (read-only; nothi
 - The pilot walk had no ingest step.
 ```
 
-The task returns `BLOCKED` with that question. That is expected, not a failure.
+Also add the line `- 11:02 ET re-index: not part of the pilot (Evan, 2026-09-14, spec D7).` to that section. The task returns `DONE`. It returns `BLOCKED` only in the "Otherwise" case, with the new question.
 
 ```bash
 git commit --only -m "docs(showcase-cleanup): task 8 — chunk-norris pilot audit recorded" -- docs/superpowers/plans/2026-09-14-showcase-demo-data-results.md
@@ -897,7 +905,7 @@ what became of it. Record: `portfolio_site/docs/superpowers/plans/2026-09-14-sho
 - NomNoms: cleaned during its run (every CookSession deleted).
 - Prompt-heus, logson: verified read-only.
 - el-blackjack-pwa: ephemeral only (browser-context `localStorage`).
-- chunk-norris (2026-08-25 pilot): <Task 8's recorded result: if its Qdrant TOTAL line was "unparseable=0 hits=0", write "no pilot-day data remains (Postgres audited, Qdrant scrolled <date>)"; otherwise write the recorded UNPARSEABLE/HIT facts and Evan's disposition of them>; <Evan's answer to the 11:02 ET re-index question>.
+- chunk-norris (2026-08-25 pilot): <Task 8's recorded result: if its Qdrant TOTAL line was "unparseable=0 hits=0", write "no pilot-day data remains (Postgres audited, Qdrant scrolled <date>)"; otherwise write the recorded UNPARSEABLE/HIT facts and Evan's disposition of them>; verified read-only (the 11:02 ET re-index was unrelated to the pilot: Evan, 2026-09-14).
 ```
 
 - [ ] **Step 4: Apply edits E3–E5 — qualify the read-only statements**
