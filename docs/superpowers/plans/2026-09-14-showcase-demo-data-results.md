@@ -11,7 +11,7 @@ Evidence (never committed): `/home/evan/showcase-pending/_teardown-evidence/<tar
 | co-host-chud | POST-VERIFIED |
 | co-author | POST-VERIFIED |
 | chudios (db + files) | STOPPED at G7 inspection — question: are `demo-signal-noise.m4a` (named by 3 in-scope demo attempts) and the 2026-09-02..04 back-dated timestamps expected seed artifacts, so chudios may continue from rehearse? |
-| mind-palace | NOT-STARTED |
+| mind-palace | POST-VERIFIED |
 | leonsbudget | NOT-STARTED |
 | the-classic | NOT-STARTED |
 | chunk-norris audit | NOT-STARTED |
@@ -97,3 +97,22 @@ State: **STOPPED at G7 inspection — question: are `demo-signal-noise.m4a` (nam
 | post / files post | not run | — |
 
 Deleted: nothing. Files: `demo-sn-ep09.m4a` (230111 B), `demo-sn-ep11.m4a` (246791 B) and `demo-sn-ep12.m4a` (286386 B) are untouched in `/data/recordings`, and there is no `.showcase-quarantine` directory (read-only `ls`, 2026-09-14). A read-only check found `demo-signal-noise.m4a` absent from the volume, and no surviving attempt names it.
+
+## Task 5 — mind-palace
+
+### mind-palace (Neo4j `mind-palace-neo4j-1`)
+State: **POST-VERIFIED** (2026-09-14 22:51:23 UTC)
+
+| Phase | exit | Evidence |
+|---|---|---|
+| `sha256sum -c SHA256SUMS` | 0 | all OK (16/16 files) |
+| preflight | 0 | `mind-palace/preflight.log` (Route 2, Entity 228, HAS_STEP 5; degrees 3/2/9/14) |
+| freeze | 0 | `mind-palace/scope.txt`, `degrees.txt`, `fingerprint.txt`, survivor hash `02d3e149b634` |
+| G7 inspection | fictional | `mind-palace/fingerprint.txt` (one line, read in full): route "Collective Security" with only `created_at`, `id`, `name`, `updated_at`; 4 `HAS_STEP` rows (positions 0–3 → World War I, League of Nations, World War II, United Nations), each with exactly `elaboration_note`, `last_reviewed_at`, `position`. The notes are four one-sentence demo lines on one "referee without a whistle" metaphor, including the one the plan quotes; every timestamp 2026-09-06 19:31:32–37 UTC; no study notes, real person or private data. |
+| dry | 0 | `mind-palace/dry.log` (real statement → `deleted_steps` 4; wrong-name statement → nothing) |
+| rehearse | 0 | `mind-palace/rehearse.log` (`deleted_steps` 4, `remaining_in_tx` 0, rolled back; unchanged after) |
+| negative | 0 | `mind-palace/negative.log` (`remaining_in_tx` 1: the wrong-name delete matched nothing) |
+| execute | 0 | `mind-palace/execute.log` (`deleted_steps` 4, exit 0; state COMMITTED) |
+| post | 0 | `mind-palace/post.log` (Route 1, Entity 228, HAS_STEP 1, demo route gone; degrees 2/1/8/13; survivor hash unchanged) |
+
+Deleted: Route 1 (`60c383d5-921e-443c-9430-b2242469fbe0`) and its HAS_STEP relationships 4; 228 Entities retained.
