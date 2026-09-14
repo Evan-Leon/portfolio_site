@@ -10,7 +10,7 @@ DBN=showcase_gate_selftest
 WORK="$(mktemp -d)"
 fails=0
 
-pg()   { docker exec -i infra-postgres-1 psql -U postgres -X -q -At -v ON_ERROR_STOP=1 "$@"; }
+pg()   { timeout --foreground -k 10 300 docker exec -i infra-postgres-1 psql -U postgres -X -q -At -v ON_ERROR_STOP=1 "$@"; }
 sql()  { pg -d "$DBN" -c "$1"; }
 NOOP_FN="CREATE FUNCTION noop_trg() RETURNS trigger LANGUAGE plpgsql AS \$\$ BEGIN RETURN OLD; END \$\$"
 reset_db() {

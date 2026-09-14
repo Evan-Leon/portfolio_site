@@ -321,3 +321,5 @@ Receipt: `../plans/2026-09-14-showcase-demo-data-plan2-codex-review.md` (reviewe
 | 6 | MAJOR | **Accepted.** New self-test cases: a non-FK `audit_note` residue caught only by a post-only extra check (`GATE FAIL G10 extra check`), and a lost COMMIT marker (execute fails, state `COMMITTED`, post verifies). |
 | 7 | MINOR | **Accepted.** Exact-name stray matching (`grep -xF`); a self-test case covers a regex-lookalike `f..m4a`. |
 | 8 | MINOR | **Accepted.** The scope-id digest length-prefixes every table name and id. |
+
+**Narrow verification of rev 3** (`../plans/2026-09-14-showcase-demo-data-plan3-codex-review.md`, reviewed `2265ac3`): 6 fixed, 2 partially fixed (#4 timeouts, #5 Qdrant exit status and disposition), and no new findings. Both partial fixes were completed in the following commit.

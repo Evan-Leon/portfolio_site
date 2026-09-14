@@ -142,16 +142,16 @@ Anything else → D4 stop. Do not clean it up.
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
-"$T/selftest/selftest.sh" > /tmp/showcase-gate-selftest.log 2>&1; echo "exit=$?"
+timeout --foreground -k 30 1800 "$T/selftest/selftest.sh" > /tmp/showcase-gate-selftest.log 2>&1; echo "exit=$?"
 grep '^FAIL\|selftest:' /tmp/showcase-gate-selftest.log
 ```
-Expected: `exit=0`, no `FAIL` line, and last line `selftest: 0 failure(s)`.
+Expected: `exit=0`, no `FAIL` line, and last line `selftest: 0 failure(s)`. `exit=124` (or 137) means the self-test timed out → D4 stop. Its trap drops the throwaway database on the way out, so re-check Step 2 before reporting.
 
 - [ ] **Step 4: Run the file-protocol self-test**
 
 ```bash
 T=docs/superpowers/plans/2026-09-14-showcase-demo-data
-"$T/files/selftest-files.sh" > /tmp/showcase-files-selftest.log 2>&1; echo "exit=$?"
+timeout --foreground -k 30 1200 "$T/files/selftest-files.sh" > /tmp/showcase-files-selftest.log 2>&1; echo "exit=$?"
 grep '^FAIL\|selftest-files:' /tmp/showcase-files-selftest.log
 timeout --foreground -k 10 60 docker exec chudios-backend-1 sh -c 'ls -d /tmp/gate-files-selftest.* 2>/dev/null | wc -l'
 ```
@@ -783,9 +783,10 @@ for c in cols:
     print(f"{c} points={n} unparseable_indexed_at={bad} pilot_window_hits={len(hits)}")
     for h in hits: print('   HIT', h)
 print(f"TOTAL unparseable={bad_total} hits={hit_total}")
+raise SystemExit(3 if (bad_total or hit_total) else 0)
 PY
 ```
-Expected: 18 collection lines, each with `unparseable_indexed_at=0 pilot_window_hits=0`, then `TOTAL unparseable=0 hits=0`, and `exit=0` (measured 2026-09-14). Any `UNPARSEABLE` or `HIT` line is a new fact: record every such line in the results entry, and add it to the Evan question. It changes the disposition, and nothing is deleted.
+Expected: 18 collection lines, each with `unparseable_indexed_at=0 pilot_window_hits=0`, then `TOTAL unparseable=0 hits=0`, and `exit=0` (measured 2026-09-14). `exit=3` means at least one `UNPARSEABLE` or `HIT` line was printed. Any such line is a new fact: record every such line in the results entry, and add it to the Evan question. It changes the disposition, and nothing is deleted.
 
 - [ ] **Step 3: Record the audit and raise the question**
 
@@ -896,7 +897,7 @@ what became of it. Record: `portfolio_site/docs/superpowers/plans/2026-09-14-sho
 - NomNoms: cleaned during its run (every CookSession deleted).
 - Prompt-heus, logson: verified read-only.
 - el-blackjack-pwa: ephemeral only (browser-context `localStorage`).
-- chunk-norris (2026-08-25 pilot): no pilot-day data remains (Postgres audited, Qdrant scrolled 2026-09-14); <Evan's answer to the 11:02 ET re-index question>.
+- chunk-norris (2026-08-25 pilot): <Task 8's recorded result: if its Qdrant TOTAL line was "unparseable=0 hits=0", write "no pilot-day data remains (Postgres audited, Qdrant scrolled <date>)"; otherwise write the recorded UNPARSEABLE/HIT facts and Evan's disposition of them>; <Evan's answer to the 11:02 ET re-index question>.
 ```
 
 - [ ] **Step 4: Apply edits E3–E5 — qualify the read-only statements**
@@ -1166,4 +1167,5 @@ git commit --only -m "docs(session-log): showcase demo data cleanup" -- docs/sup
 | 2026-09-14 | Plan rev 1 (`c263cff`) and rev 1.1 (`5c0259b`: trigger allowlist added) written. |
 | 2026-09-14 | **Codex plan review of rev 1.1: 6 BLOCKER / 9 MAJOR / 1 MINOR, all accepted.** Receipt: `2026-09-14-showcase-demo-data-plan-codex-review.md`; dispositions in the spec's "Codex plan review disposition". Two blockers were confirmed live and became Evan's decisions D5 (CHUD artifact) and D6 (5 auth audit rows). |
 | 2026-09-14 | Plan rev 2 + tooling rev 2 written and validated before commit: SQL self-test 0 failures across every planted case; file self-test 0 failures (incl. crash-and-resume); read-only preflight + freeze + classify PASS/PRE-STATE on all six Postgres targets; mind-palace preflight + freeze + `dry` PASS (`dry` caught and fixed a statement-assembly bug before any write). Committed as `e4298e3`. |
-| 2026-09-14 | **Codex scoped re-review of rev 2: 1 BLOCKER / 5 MAJOR / 2 MINOR; prior findings 9 addressed, 7 partial, 0 not addressed. All 8 new findings accepted.** Receipt: `2026-09-14-showcase-demo-data-plan2-codex-review.md`; dispositions in the spec's "Codex plan re-review disposition". Fixes: the mind-palace G7 now inspects the exact typed, length-prefixed fingerprint the delete compares, bound as a Cypher parameter; a reviewer mode that never overwrites evidence; trigger event masks and enabled states pinned; hard-kill timeouts on every docker call; a strict Qdrant audit (parseable timestamps, `source_id`, hits reported); self-test cases for a post-only extra check, a lost commit marker, a disabled or re-pointed trigger, reviewer mode, and a regex-lookalike stray; exact-name stray matching; a length-prefixed id digest. |
+| 2026-09-14 | **Codex scoped re-review of rev 2: 1 BLOCKER / 5 MAJOR / 2 MINOR; prior findings 9 addressed, 7 partial, 0 not addressed. All 8 new findings accepted.** Receipt: `2026-09-14-showcase-demo-data-plan2-codex-review.md`; dispositions in the spec's "Codex plan re-review disposition". Fixes: the mind-palace G7 now inspects the exact typed, length-prefixed fingerprint the delete compares, bound as a Cypher parameter; a reviewer mode that never overwrites evidence; trigger event masks and enabled states pinned; hard-kill timeouts on every docker call; a strict Qdrant audit (parseable timestamps, `source_id`, hits reported); self-test cases for a post-only extra check, a lost commit marker, a disabled or re-pointed trigger, reviewer mode, and a regex-lookalike stray; exact-name stray matching; a length-prefixed id digest. Committed as `2265ac3`. |
+| 2026-09-14 | **Codex narrow verification of rev 3: 6 FIXED, 2 PARTIALLY FIXED, 0 new findings.** Receipt: `2026-09-14-showcase-demo-data-plan3-codex-review.md`. Both partial fixes were completed: Task 1's self-tests now run under an outer hard-kill timeout (and the SQL self-test's `pg()` is bounded); the Qdrant audit exits 3 on any hit or unparseable point, and Task 9's chunk-norris disposition is taken from Task 8's recorded result instead of being hard-coded. |
