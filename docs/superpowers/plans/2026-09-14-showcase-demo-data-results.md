@@ -171,3 +171,38 @@ Deleted: audit rows 5, auth amr claims 4, refresh tokens 4, sessions 4, identity
 ## Task 9 — infra meta-prompt
 
 Outcome: committed on infra branch `showcase-demo-data-meta-prompt` as `da7a629` (edits E1–E10 + changelog receipt; verification greps judged clean). Merging it into infra `main` is Evan's call at the finish.
+
+## Task 10 — close-out (final read-only re-verification)
+
+Step 1 re-ran `post` (read-only) against every committed target; each rewrote its `post.log` in the evidence directory (accepted per the controller's Task 10 ruling). All 8/8 PASS, exit=0:
+
+| Target | post re-verify |
+|---|---|
+| co-host | PASS, exit=0 |
+| co-host-chud | PASS, exit=0 |
+| co-author | PASS, exit=0 |
+| chudios (db) | PASS, exit=0 |
+| chudios (files) | PASS, exit=0 |
+| mind-palace | PASS, exit=0 |
+| leonsbudget | PASS, exit=0 |
+| the-classic | PASS, exit=0 |
+
+## Summary
+
+| Target | Final state |
+|---|---|
+| co-host | POST-VERIFIED |
+| co-host-chud | POST-VERIFIED |
+| co-author | POST-VERIFIED |
+| chudios (db + files) | POST-VERIFIED (stopped at G7, resumed on Evan's answer) |
+| mind-palace | POST-VERIFIED |
+| leonsbudget | POST-VERIFIED |
+| the-classic | POST-VERIFIED |
+| chunk-norris audit | DONE — verified read-only |
+| infra meta-prompt | branch `showcase-demo-data-meta-prompt` `da7a629` (unmerged) |
+
+Questions asked and Evan's answers (verbatim):
+
+1. **chudios (Task 4, stopped at G7).** Are `demo-signal-noise.m4a` (recording_path on 3 in-scope attempts, not in the plan/spec/tooling and not in the volume) and the 2026-09-02..04 `created_at` back-dating (outside the 09-05/06 window) both expected artifacts of the showcase seed, so Task 4 may continue from `rehearse` on the current freeze (rows digest `94c9fa17f3a1`)? — **Answer (Evan, 2026-09-14):** "yes, continue chudios from rehearse"
+
+Note: D7 (answered before execution) — the 11:02 ET re-index was not part of the pilot (Evan, 2026-09-14, spec D7); this fixed chunk-norris audit's disposition (Task 8) as DONE rather than BLOCKED.
