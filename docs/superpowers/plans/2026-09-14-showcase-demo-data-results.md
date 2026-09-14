@@ -167,3 +167,7 @@ Deleted: audit rows 5, auth amr claims 4, refresh tokens 4, sessions 4, identity
 - Qdrant: 18 collections scrolled with `indexed_at` + `source_id`: `TOTAL unparseable=0 hits=0` (exit=0); none.
 - The pilot walk had no ingest step.
 - 11:02 ET re-index: not part of the pilot (Evan, 2026-09-14, spec D7).
+
+## Task 9 — infra meta-prompt
+
+Outcome: committed on infra branch `showcase-demo-data-meta-prompt` as `da7a629` (edits E1–E10 + changelog receipt; verification greps judged clean). Merging it into infra `main` is Evan's call at the finish.
