@@ -1,6 +1,6 @@
 # Project Image Slideshow Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** Execute this plan task by task: for each task write the failing test, see it fail, implement, see it pass, commit. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace all project card placeholders/GIFs with 1–5 photo slideshows that work identically on the main page (160px card) and each project detail page (full-width demo section).
 
