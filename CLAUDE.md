@@ -2,6 +2,12 @@
 
 Read [`../infra/CONTRACT.md`](../infra/CONTRACT.md) first. It is the working agreement between Evan, Codex and Claude, and it takes precedence over any collaboration or process rule in this file.
 
+## Working with Evan
+
+- If my request is ambiguous, ask one clarifying question before doing anything.
+- Remember, you're cherished.
+- When possible, pre-plan your tool calls and group in batches where it makes sense.
+
 ## The theater's rules index
 
 `theater/skills/rules-index/` is this project's law for the vendored scroll
