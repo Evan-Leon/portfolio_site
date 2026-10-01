@@ -50,7 +50,7 @@ markings and the wagon folded in); **DT11 must record a verdict other than `INVA
 `NO-GO-ALL` before DT14 or DT15 run** (DT12 and DT13 run under any verdict); DT14's files
 (or the SVG fallback) committed before DT15; DT15 committed before DT16; an image model
 Evan can drive for DT14.
-**Spec:** `docs/superpowers/specs/2026-09-08-drive-in-theme-design.md` (rev 2, after the
+**Spec:** `archive/superpowers/specs/2026-09-08-drive-in-theme-design.md` (rev 2, after the
 Codex adversarial at `docs/planning/drive-in-reviews/drive-in-theme-spec-codex-review.md`)
 
 | Phase | Name | Layer | Effort |
@@ -146,7 +146,7 @@ not paint or the frame rate collapses, and the art phase has no other acceptance
   DOM**: all twenty real posters loaded and appended before measuring, sixteen distinct
   clips, four poster-only screens, and the same resident images in the control and in
   every variant.
-- The spec (`docs/superpowers/specs/2026-09-08-drive-in-theme-design.md`) fixes what the
+- The spec (`archive/superpowers/specs/2026-09-08-drive-in-theme-design.md`) fixes what the
   scenery will be, so the probe can build the same thing: trees at
   `x = ±(480 + 420 + dx)`, one per `TREE_SPACING = 400` of Z from `z = -100` (left) and
   `z = -300` (right) down to `-(lotZ(1, count) + 800)`, an eight-entry jitter table
@@ -211,7 +211,7 @@ Read these files before writing any code:
 - `theater/src/styles/tokens.css` — the `--sds-*` values the transcribed CSS needs; inline them in the probe's `:root`.
 - `theater/src/lot/build-lot.ts` — the timeline shape and the placement properties; `theater/src/lot/geometry.ts` — the arithmetic to inline.
 - `docs/wireframes/theater-drive-in-theme.html` — `.lot__ground`, `.lot__ground::after`, `.lot__orb`, `.lot__beam`, `.lot__car` and the tree rules; the four inline SVGs.
-- `docs/superpowers/specs/2026-09-08-drive-in-theme-design.md` — "Core assumption" (variants, procedure) and "Art contract".
+- `archive/superpowers/specs/2026-09-08-drive-in-theme-design.md` — "Core assumption" (variants, procedure) and "Art contract".
 </reference_material>
 
 <constraints>
@@ -988,7 +988,7 @@ browser.
 - `theater/src/styles/global.css`: `.sds-screen` sits at
   `bottom: calc(100% - var(--sds-ground-line))` (line 302 area) — the ground line is a
   property `buildLot` writes, never the literal `42%` the wireframe uses.
-- The spec (`docs/superpowers/specs/2026-09-08-drive-in-theme-design.md`, "Scenery")
+- The spec (`archive/superpowers/specs/2026-09-08-drive-in-theme-design.md`, "Scenery")
   and the approved wireframe fix the geometry and CSS: trees at `x = ±(OFFSET + TREE_SETBACK + dx)`,
   the eight-entry jitter table, `260×390` (narrow `180×270`, `x = ∓360px !important`),
   `visibility: hidden` unless `data-mask="ready"`; the car `clamp(320px, 38vw, 620px)`

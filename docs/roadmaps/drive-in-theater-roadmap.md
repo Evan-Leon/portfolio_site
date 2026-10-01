@@ -45,7 +45,7 @@ test now passes on all eight**;
 for DT10, droplet SSH access, the three repo secrets (`DROPLET_HOST`, `DROPLET_USER`,
 `DROPLET_SSH_KEY`) and control of `evanleon.com`'s DNS (Cloudflare); both wireframes approved 2026-08-25
 (`docs/wireframes/theater.html` @ `c9e55bd`, `docs/wireframes/index-hero-cta.html` @ `959cdb9`).
-**Spec:** `docs/superpowers/specs/2026-08-25-drive-in-theater-design.md`
+**Spec:** `archive/superpowers/specs/2026-08-25-drive-in-theater-design.md`
 
 | Phase | Name | Layer | Effort |
 |---|---|---|---|
@@ -127,7 +127,7 @@ Read these files before writing any code:
 - `docs/wireframes/theater.html` — the `.lot`, `.lot__world`, `.screen` CSS block, the lit/unlit screen rules (`filter: brightness`, marquee glow) and the eight `nth-of-type` placements: the probe reproduces exactly this transform stack with `<video>` in place of `<img>`. Do not copy the annotations (`.note`) or the beats.
 - `/home/evan/EVOsystem/projects/scroll-driven-skeleton/src/engine/engine.ts` — the frame loop (`Lenis({ autoRaf: false })` ticked from rAF, one scroll read, `seek(progress)`): the probe's loop must have this shape, not a `scroll` listener.
 - `/home/evan/EVOsystem/projects/scroll-driven-skeleton/src/adapters/gsap-timeline.ts` — how progress is applied (`timeline.progress(p)`), which the probe mirrors.
-- `docs/superpowers/specs/2026-08-25-drive-in-theater-design.md` — "Core assumption" section, for what the result feeds.
+- `archive/superpowers/specs/2026-08-25-drive-in-theater-design.md` — "Core assumption" section, for what the result feeds.
 </reference_material>
 
 <constraints>
@@ -1507,7 +1507,7 @@ Applicable rules from the shared tier for this phase:
 Read these files before writing any code:
 - `.claude/skills/adding-project-screenshots/SKILL.md` and `.agents/skills/adding-project-screenshots/SKILL.md` — structure and wrapper shape to mirror.
 - `scripts/validate_codex_setup.py` — what a valid wrapper must contain.
-- `docs/superpowers/specs/2026-08-25-drive-in-theater-design.md` "Media pipeline" — the convention.
+- `archive/superpowers/specs/2026-08-25-drive-in-theater-design.md` "Media pipeline" — the convention.
 - `theater/src/projects.ts` and `theater/src/lot/build-lot.ts` — the file path the theater expects and the `<video>` attributes it sets (so the skill's encode matches: H.264, yuv420p, no audio, faststart).
 </reference_material>
 

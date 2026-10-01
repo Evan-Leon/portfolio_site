@@ -11,6 +11,10 @@
 | `*runlog*.md` | history | runlogs |
 | `*rollout-log*.md` | history | rollout logs |
 | `.gitignore::.superpowers` | compat-exception | keeps any stray `.superpowers/` state untracked |
+| `.gitignore::# Superpowers` | compat-exception | the comment line heading the `.superpowers/` ignore entry |
+| `.dockerignore::.superpowers` | compat-exception | keeps any stray `.superpowers/` scratch out of the Docker build context |
+| docs/roadmaps/drive-in-theater-roadmap.md::`.claude`, `.superpowers` | compat-exception | line 410: the roadmap's quoted `.dockerignore` entry list, matching the real `.dockerignore` |
+| `docs/planning/drive-in-reviews/*` | history | past-session review prompts and records; their spec citations record what was reviewed at the time |
 
 ## Moves
 
@@ -60,3 +64,5 @@ redesign mockups: `approaches.html`, `section-1…7-*.html`, `.server-info`) and
 `.server-stopped`) — and `.superpowers/sdd/.gitignore`.
 
 Empty dirs under `docs/superpowers/`: none.
+
+**Confirmed:** Evan, 2026-10-01, moves-sha256:d15d3098a01fe4459a65d67757a79a0df70097238877c4882a412c96b7dbc97b
