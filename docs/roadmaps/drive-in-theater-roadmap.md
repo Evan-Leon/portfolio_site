@@ -1452,11 +1452,13 @@ After this phase — the session's workflow plus Evan's Manual Verification — 
 Decision records row names (`evanleon.com/theater/` on `CUTOVER: GO`, else
 `portfolio-site.evanleon.com/theater/`).
 
-Paste Phase DT8.
+**Phase DT8 is superseded; do not paste it.** The clip recipe lives in the portfolio-showcase meta-prompt, `infra/meta-prompts/portfolio-showcase/portfolio-showcase.md` (docs `1ddcedd`, imported to infra by `9efd45d`); the `adding-project-demo-clips` skill was never written.
 
 ---
 
-## Phase DT8: `adding-project-demo-clips` skill and ffmpeg recipe
+## Phase DT8: `adding-project-demo-clips` skill and ffmpeg recipe — SUPERSEDED
+
+> **Superseded 2026-10-03 (Evan ruled).** Do not execute. The recipe is `infra/meta-prompts/portfolio-showcase/portfolio-showcase.md` (STEP 3). The skill below was never written.
 
 <task>
 You are executing **Phase DT8 of the Drive-In Theater Roadmap** — writing the skill that
@@ -1570,7 +1572,7 @@ Paste Phase DT9 (a manual checklist for Evan).
 This phase is executed by Evan, not an agent. It produces the content the theater was
 built for; the theater is complete and shipped without it, showing posters.
 
-**Checklist** (follow `.claude/skills/adding-project-demo-clips/SKILL.md` for each):
+**Checklist** (follow `infra/meta-prompts/portfolio-showcase/portfolio-showcase.md` STEP 3 for each; the `adding-project-demo-clips` skill was never written, DT8 superseded):
 
 - [ ] `budget-app` — record Leon's Budget doing its main flow with realistic data; encode to `images/budget-app/demo.mp4`.
 - [ ] `nom-noms` — `images/nom-noms/demo.mp4`.
@@ -1635,3 +1637,4 @@ is not for, and an engine the portfolio owns outright.
 | 2026-08-25 | — | (Part 3 corrective commit) | Part 3 (Codex, Evan-driven; receipt `docs/planning/drive-in-reviews/drive-in-theater-part3-codex-review.md`): 8 findings, 7 accepted / 1 rescoped / 0 rejected. Added DT10 (deploy + cutover — production was never on this container); DTF now reproduces the production path (GSAP + brightness + Lenis-ticked rAF), adds a `reduced` variant and a defined sampling protocol; DT0 removes the canvas describe block; DT3 gates on poster dimensions (el-blackjack's 01.png is a 1×1) and snapshots rendered state; DT6 parameterised over all eight screens, one breakage per spec, nginx parity smoke, Done rescoped to what is proven. |
 | 2026-08-25 | DT6 | `2effd98`, `f42acc3` | Six Chromium specs (18 tests) + `theater/e2e/nginx-parity.sh`; all six falsified one breakage each. **Deviation:** the phase forbids behaviour changes, but `click-through.spec.ts` found screen 0 unclickable in its entire lit band — `.sds-lot__world` is translated to `translateZ(lotZ)` and for `lotZ < 900` (the stage's `perspective`) it occludes hit-testing for the whole lot. Fixed in a separate commit (`pointer-events: none` on the world, `auto` on `.sds-screen`; no visual change). `reveal.spec.ts` also gained a cross-check against `index.html`'s exit list, because comparing the lot to the same `projects.ts` the spec imports cannot fail. Three of the phase's six falsification `sed`s do not compile — see the session log. |
 | 2026-08-25 | DT8/DT9 (partial) | `94793bf` | **Chunk Norris** added as the ninth screen (card, page, four Playwright screenshots, 9.6 s / 150 KB clip) by the pilot of a new meta-prompt, `docs/meta-prompts/portfolio-showcase/` (EVOsystem `docs` repo): Playwright drives the app on localhost and records the clip and screenshots in one run, then builds card + page + screen. It supersedes DT9's hand recording for EVOsystem-hosted apps (budget-app, nom-noms, el-blackjack, classic-golf run it in clip-only mode); the four non-EVOsystem projects still need DT9. DT8's skill is not written — the recipe lives in the meta-prompt's STEP 3 for now. **Deviation:** the lot's unit tests hardcoded eight screens (`build-lot.test.ts`, `lot-scene.contract.test.ts`); they now derive from `projects.length`. |
+| 2026-10-03 | DT8/DT9 | (this commit) | DT8 marked superseded by `infra/meta-prompts/portfolio-showcase/portfolio-showcase.md` (docs `1ddcedd`, infra `9efd45d`); DT9's dead pointer to the unwritten skill repointed to the meta-prompt. Evan ruled 2026-10-03. |
