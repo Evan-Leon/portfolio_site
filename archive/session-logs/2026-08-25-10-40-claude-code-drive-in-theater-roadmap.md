@@ -115,26 +115,35 @@ session; the remaining prerequisite is DTF's browser measurement before DT0.
 None. (Repo has no rules-index — deliberate opt-out recorded 2026-07-23.)
 
 ## Meta-prompt / skill / doc updates
-- `roadmap-meta-prompt.md` Part 2 phase template: the `{{ORIENTATION_SKILL}}`
+- REJECTED (decided-by: human): `roadmap-meta-prompt.md` Part 2 phase template: the `{{ORIENTATION_SKILL}}`
   slot assumes a `project-context` skill; portfolio_site has none and the
   honest substitute was `AGENTS.md`. Propose: "or the repo's `AGENTS.md` when
-  no orientation skill exists — say so in the phase."
-- Same doc, "Independent evaluation": the code-truth evaluator spawned two
+  no orientation skill exists — say so in the phase." Superseded by docs
+  `85dc0bc`: the slot omits the line and names portfolio_site's
+  `rebuild-restart`. Evan ruled 2026-10-03.
+- REJECTED (decided-by: human): Same doc, "Independent evaluation": the code-truth evaluator spawned two
   sub-reviewers of its own (~270k tokens total). Propose adding to the
   dispatch instructions: "do not spawn sub-agents; do the verification
-  yourself" — the split into two lenses is already the parallelism.
-- Same doc, Part 3 "Who runs it": worked as written; the `awk` fence extractor
+  yourself" — the split into two lenses is already the parallelism. A one-time
+  cost observation, not a correctness one; budget discipline belongs to
+  CLAUDE.md and CONTRACT. Evan ruled 2026-10-03.
+- APPLIED: Same doc, Part 3 "Who runs it": worked as written; the `awk` fence extractor
   needs the prompt file to contain exactly one four-backtick fence — worth
-  stating next to the launcher.
-- Same doc, "Aiming it": add a bullet — *the roadmap's deliverable must reach a
+  stating next to the launcher. Stated → `infra/meta-prompts/roadmap/roadmap-part3.md`
+  (see infra `2e5e1b4`). Evan ruled 2026-10-03.
+- REJECTED (decided-by: human): Same doc, "Aiming it": add a bullet — *the roadmap's deliverable must reach a
   user; ask who delivers it and whether that path exists.* Both Part 2 agents
   verified a Dockerfile that builds locally and neither asked how the image
   reaches production; the Decision Record's "unchanged mechanism" was an
   assumption the writing session never checked against `infra/domain-registry.md`.
-- Same doc, Part 1 Step 1: "every file exists" is not "every file is valid" —
+  Part 3 caught it the same run (DT10 added), and infra `e5e84f2` now covers
+  most of it. Evan ruled 2026-10-03.
+- REJECTED (decided-by: human): Same doc, Part 1 Step 1: "every file exists" is not "every file is valid" —
   a checked-in 1×1 placeholder satisfied `test -f`. Propose: when a phase
   depends on existing content assets, inspect them (`file`, dimensions, bytes),
-  not just their presence.
+  not just their presence. A one-off asset, caught and replaced; the general
+  principle landed as Part 2 hygiene bullet (d) (docs `002d288`). Evan ruled
+  2026-10-03.
 - `superpowers:brainstorming`: the architectural path's terminal state is
   `writing-plans`; when the user names the roadmap meta-prompt instead, the
   handoff ("Part 1 follows a brainstorming session … skip Steps 1/3/4") worked

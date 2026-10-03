@@ -160,10 +160,12 @@ rules-index.)
   Task 4's chudios declaration missed the `demo-signal-noise.m4a` placeholder
   recording path even though
   `chudios/docs/session-logs/2026-09-06-15-35-claude-code-portfolio-showcase-capture.md`
-  documents that seed. A structural change to how future teardown-plan
-  declarations are authored — out of this session's write scope; next
-  action: Evan decides whether to fold this into a future teardown-plan
-  template or a planning skill.
+  documents that seed; the portfolio-showcase meta-prompt now puts demo data in a
+  throwaway store dropped after STEP 3, which removed the routine case, so this
+  applies only to an approved real-database seed; next action: at the next
+  showcase run Evan approves to seed a real database, fold the rule into that
+  run's gate declaration or the fail-closed gate's README. Evan ruled
+  2026-10-03. (originated 2026-09-14)
 
 ## Next steps
 
