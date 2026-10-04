@@ -80,7 +80,7 @@ cd <workspace> && setsid nohup env -u NODE_OPTIONS codex exec \
 ```
 
 `gpt-6-astra` is Evan's approved model for **generation** (adversarial reviews stay on
-`gpt-5.6-sol`). Confirm the banner says `model: gpt-6-astra` and `(network access enabled)`
+`gpt-6.1-sol`). Confirm the banner says `model: gpt-6-astra` and `(network access enabled)`
 — the config default runs reasoning effort `none`.
 
 Then watch it with a Monitor whose filter covers failure, not just progress:
