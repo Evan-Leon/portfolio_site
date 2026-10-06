@@ -2,6 +2,8 @@
 
 Read [`../infra/CONTRACT.md`](../infra/CONTRACT.md) first. It is the working agreement between Evan, Codex and Claude, and it takes precedence over any collaboration or process rule in this file.
 
+When writing or changing tests, follow the writing-tests skill (mostly what to avoid). Stub: `.claude/skills/writing-tests/SKILL.md`.
+
 ## Working with Evan
 
 - If my request is ambiguous, ask one clarifying question before doing anything.
