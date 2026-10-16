@@ -30,8 +30,16 @@ lines changed. It is a candidate list, not a verdict:
 - The remote projects (Media Cloud Web Tools, Media Cloud Vitals, ShowRunner
   Digest, spead-read) are not checked. Re-record one only on request.
 
-Then check that each stale app is **serving** its new UI. Apps run prebuilt
-images with no bind mount (chunk-norris's frontend is the exception):
+Then check that each stale app is **serving** its new UI. First grep its
+compose file for `./frontend:/app`. Many frontends (app-dash, chud, Prompt-heus,
+mind-palace, chunk-norris) bind-mount the source into a Vite dev server. For
+those the image date means nothing: fetch a module that only the newest UI work
+has (`curl -s http://<app>.localhost/src/<file>.tsx | grep <new identifier>`). A
+404 from `/` on a container that is up means the mount came up empty
+(`docker compose exec frontend ls /app` shows only `node_modules`; mind-palace,
+2026-10-16). `docker compose up -d --force-recreate frontend` restores it. For a
+prebuilt frontend (logson, voice-trainer), compare the image date with the
+newest UI commit:
 
 ```bash
 cd /home/evan/EVOsystem/<repo> && docker compose ps --format '{{.Service}} {{.Image}}' \
