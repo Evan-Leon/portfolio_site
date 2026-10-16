@@ -1,0 +1,32 @@
+R-VAL proofs on a scratch copy (cp -a of AGENTS.md scripts skills theater .claude .agents .githooks into the scratchpad)
+== accept
+Codex setup validation PASSED.
+  skills (4):
+    - adding-project-screenshots  ->  skills/adding-project-screenshots
+    - rebuild-restart  ->  skills/rebuild-restart
+    - treating-art-sprites  ->  skills/treating-art-sprites
+    - theater-rules-index  ->  theater/skills/rules-index
+  every discovery entry is a relative link to its skill, linked for both harnesses.
+  note: /skills discovery in Codex is a separate manual check.
+exit=0
+== broken link (.agents/skills/rebuild-restart -> ../../skills/no-such-skill)
+Codex setup validation FAILED:
+
+  - [.agents/skills/rebuild-restart] resolves to skills/no-such-skill, expected skills/rebuild-restart
+
+1 error(s).
+exit=1
+== wrong target (.agents/skills/rebuild-restart -> ../../skills/treating-art-sprites)
+Codex setup validation FAILED:
+
+  - [.agents/skills/rebuild-restart] resolves to skills/treating-art-sprites, expected skills/rebuild-restart
+
+1 error(s).
+exit=1
+== wrong target for the protected index (.claude/skills/theater-rules-index -> ../../skills/rebuild-restart)
+Codex setup validation FAILED:
+
+  - [.claude/skills/theater-rules-index] resolves to skills/rebuild-restart, expected theater/skills/rules-index
+
+1 error(s).
+exit=1

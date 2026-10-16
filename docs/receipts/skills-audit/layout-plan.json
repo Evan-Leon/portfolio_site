@@ -1,0 +1,128 @@
+{
+ "repo": "/home/evan/EVOsystem/portfolio_site",
+ "rows": [
+  {
+   "source": ".agents/skills/adding-project-screenshots/SKILL.md",
+   "name": "adding-project-screenshots",
+   "discovery_name": "adding-project-screenshots",
+   "canonical": "../../../.claude/skills/adding-project-screenshots/SKILL.md",
+   "links": [],
+   "class": "adapter",
+   "action": "replace-adapter",
+   "removes": [
+    ".agents/skills/adding-project-screenshots"
+   ]
+  },
+  {
+   "source": ".agents/skills/rebuild-restart/SKILL.md",
+   "name": "rebuild-restart",
+   "discovery_name": "rebuild-restart",
+   "canonical": "../../../.claude/skills/rebuild-restart/SKILL.md",
+   "links": [],
+   "class": "adapter",
+   "action": "replace-adapter",
+   "removes": [
+    ".agents/skills/rebuild-restart"
+   ]
+  },
+  {
+   "source": ".agents/skills/treating-art-sprites/SKILL.md",
+   "name": "treating-art-sprites",
+   "discovery_name": "treating-art-sprites",
+   "canonical": "../../../.claude/skills/treating-art-sprites/SKILL.md",
+   "links": [],
+   "class": "adapter",
+   "action": "replace-adapter",
+   "removes": [
+    ".agents/skills/treating-art-sprites"
+   ]
+  },
+  {
+   "source": ".claude/skills/adding-project-screenshots/SKILL.md",
+   "name": "adding-project-screenshots",
+   "discovery_name": "adding-project-screenshots",
+   "canonical": "skills/adding-project-screenshots",
+   "links": [
+    ".claude/skills/adding-project-screenshots",
+    ".agents/skills/adding-project-screenshots"
+   ],
+   "class": "canonical",
+   "action": "move",
+   "destination": "skills/adding-project-screenshots"
+  },
+  {
+   "source": ".claude/skills/rebuild-restart/SKILL.md",
+   "name": "rebuild-restart",
+   "discovery_name": "rebuild-restart",
+   "canonical": "skills/rebuild-restart",
+   "links": [
+    ".claude/skills/rebuild-restart",
+    ".agents/skills/rebuild-restart"
+   ],
+   "class": "canonical",
+   "action": "move",
+   "destination": "skills/rebuild-restart"
+  },
+  {
+   "source": ".claude/skills/sweeping-session-logs/SKILL.md",
+   "name": "sweeping-session-logs",
+   "discovery_name": "sweeping-session-logs",
+   "canonical": "../infra/skills/sweeping-session-logs/SKILL.md",
+   "links": [],
+   "class": "stub",
+   "action": "remove-stub",
+   "removes": [
+    ".claude/skills/sweeping-session-logs"
+   ]
+  },
+  {
+   "source": ".claude/skills/treating-art-sprites/SKILL.md",
+   "name": "treating-art-sprites",
+   "discovery_name": "treating-art-sprites",
+   "canonical": "skills/treating-art-sprites",
+   "links": [
+    ".claude/skills/treating-art-sprites",
+    ".agents/skills/treating-art-sprites"
+   ],
+   "class": "canonical",
+   "action": "move",
+   "destination": "skills/treating-art-sprites"
+  },
+  {
+   "source": ".claude/skills/writing-session-logs/SKILL.md",
+   "name": "writing-session-logs",
+   "discovery_name": "writing-session-logs",
+   "canonical": "../infra/skills/writing-session-logs/SKILL.md",
+   "links": [],
+   "class": "stub",
+   "action": "remove-stub",
+   "removes": [
+    ".claude/skills/writing-session-logs"
+   ]
+  },
+  {
+   "source": ".claude/skills/writing-tests/SKILL.md",
+   "name": "writing-tests",
+   "discovery_name": "writing-tests",
+   "canonical": "../infra/skills/writing-tests/SKILL.md",
+   "links": [],
+   "class": "stub",
+   "action": "remove-stub",
+   "removes": [
+    ".claude/skills/writing-tests"
+   ]
+  },
+  {
+   "source": "theater/skills/rules-index/SKILL.md",
+   "name": "theater-rules-index",
+   "discovery_name": "theater-rules-index",
+   "canonical": "theater/skills/rules-index",
+   "links": [
+    ".claude/skills/theater-rules-index",
+    ".agents/skills/theater-rules-index"
+   ],
+   "class": "protected",
+   "action": "link"
+  }
+ ]
+}

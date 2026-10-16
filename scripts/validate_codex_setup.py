@@ -1,197 +1,173 @@
 #!/usr/bin/env python3
-"""Deterministic validator for this repo's Codex setup.
+"""Validate portfolio_site's skill layout for Claude Code and Codex (D6).
 
-Standard-library only (no third-party YAML). Verifies that the native Codex
-skill adapters under `.agents/skills/` correctly wrap the canonical skills.
+Standard-library only. `skills/<name>/` is the one real copy of each skill;
+`.claude/skills/<name>` and `.agents/skills/<name>` are relative symlinks to
+`../../skills/<name>`. The one exception is the protected theater rules index
+(D11), which keeps its bytes in place and is linked as `theater-rules-index`
+to `../../theater/skills/rules-index`. This script checks that:
 
-REPO-SPECIFIC NOTE: portfolio_site keeps its canonical skills under
-`.claude/skills/<name>/SKILL.md` (NOT a top-level `skills/`). Wrappers therefore
-reference `../../../.claude/skills/<name>/SKILL.md`. This validator resolves
-canonical skills at that location.
+- every discovery entry under `.claude/skills/` and `.agents/skills/` is a
+  symlink, its target is relative, and it resolves exactly to
+  `skills/<same name>` (or the protected in-place directory);
+- each target holds a SKILL.md whose frontmatter has a single-line `name`
+  equal to the discovery name and a non-empty single-line `description`;
+- every skill under `skills/`, and the protected index, is linked for both
+  harnesses;
+- the paths AGENTS.md documents that are statically checkable exist.
+
+It proves structure only. It cannot prove that Codex displayed a skill in
+`/skills`; that remains a manual check (see docs/codex-setup.md).
 
 Run from the repository root:
 
     python3 scripts/validate_codex_setup.py
 
-Exits 0 on success, nonzero on any validation failure. Needs no network.
+Exit 0 on success, nonzero on any failure. No network, no third-party deps.
 """
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 AGENTS_MD = REPO_ROOT / "AGENTS.md"
-WRAPPERS_DIR = REPO_ROOT / ".agents" / "skills"
-CANONICAL_DIR = REPO_ROOT / ".claude" / "skills"
+CANONICAL_DIR = REPO_ROOT / "skills"
+DISCOVERY_DIRS = [REPO_ROOT / ".claude" / "skills", REPO_ROOT / ".agents" / "skills"]
 
-# Thinness thresholds (see prepare-codex.md §1).
-MAX_WRAPPER_LINES = 30
-MAX_WRAPPER_BYTE_FRACTION = 0.25
+# Protected skills linked in place (D11): discovery name -> repo-relative directory.
+PROTECTED_IN_PLACE = {"theater-rules-index": "theater/skills/rules-index"}
 
-# Expected high-value skills: only fail if a canonical source EXISTS but is not
-# wrapped. None of these have canonical sources in portfolio_site, so this check
-# is vacuously satisfied here — it stays for parity with the meta-prompt.
-EXPECTED_HIGH_VALUE = ("rules-index", "backend", "frontend", "phase-status")
+# Paths AGENTS.md documents that are statically checkable.
+DOCUMENTED_PATHS = ["scripts/validate_codex_setup.py", ".githooks/pre-commit"]
 
 errors: list[str] = []
-notes: list[str] = []
 
 
-def err(msg: str) -> None:
+def fail(msg: str) -> None:
     errors.append(msg)
 
 
-def parse_frontmatter(text: str):
-    """Parse the constrained adapter frontmatter with the standard library only.
+def parse_frontmatter(text: str) -> dict[str, str] | None:
+    """Single-line scalars between `---` delimiters. Not general-purpose YAML.
 
-    Returns (fields_dict, error_or_None). Valid frontmatter = opening `---` on
-    the first line, a closing `---`, and single-line non-empty scalar fields.
+    A folded or literal block (`>` / `|`) or an indented continuation line
+    makes the field multi-line, which is recorded as an empty value.
     """
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
-        return None, "missing opening '---' delimiter"
-    close_idx = None
-    for i in range(1, len(lines)):
-        if lines[i].strip() == "---":
-            close_idx = i
-            break
-    if close_idx is None:
-        return None, "missing closing '---' delimiter"
+        return None
+    close = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if close is None:
+        return None
     fields: dict[str, str] = {}
-    for raw in lines[1:close_idx]:
+    last = None
+    for raw in lines[1:close]:
         if not raw.strip():
             continue
+        if raw[:1] in (" ", "\t"):
+            if last is not None:
+                fields[last] = ""  # continuation: not a single-line scalar
+            continue
         if ":" not in raw:
-            return None, f"frontmatter line is not a 'key: value' scalar: {raw!r}"
+            return None
         key, _, value = raw.partition(":")
-        key = key.strip()
         value = value.strip()
-        # strip matching surrounding quotes
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
-            value = value[1:-1].strip()
-        fields[key] = value
-    return fields, None
+        if value in (">", "|", ">-", "|-"):
+            value = ""
+        fields[key.strip()] = value.strip('"').strip("'")
+        last = key.strip()
+    return fields
 
 
-def references_canonical(body: str, name: str) -> bool:
-    """True if the wrapper body points at the canonical .claude/skills path."""
-    needle = f".claude/skills/{name}/SKILL.md"
-    return needle in body
+def expected_dirs() -> dict[str, str]:
+    """Discovery name -> repo-relative directory every discovery entry must resolve to."""
+    out: dict[str, str] = {}
+    if CANONICAL_DIR.is_dir():
+        for p in sorted(CANONICAL_DIR.iterdir()):
+            if p.is_dir() and (p / "SKILL.md").is_file():
+                out[p.name] = f"skills/{p.name}"
+    out.update(PROTECTED_IN_PLACE)
+    return out
+
+
+def validate_entry(entry: Path, expected: dict[str, str]) -> None:
+    name = entry.name
+    where = entry.relative_to(REPO_ROOT)
+    want = expected.get(name, f"skills/{name}")
+    if not entry.is_symlink():
+        fail(f"[{where}] is not a symlink (D6: link to ../../{want})")
+        return
+    target = os.readlink(entry)
+    if os.path.isabs(target):
+        fail(f"[{where}] symlink target {target} is absolute, not relative")
+        return
+    resolved = (entry.parent / target).resolve()
+    if resolved != (REPO_ROOT / want).resolve():
+        fail(f"[{where}] resolves to {os.path.relpath(resolved, REPO_ROOT)}, expected {want}")
+        return
+    skill_md = resolved / "SKILL.md"
+    if not skill_md.is_file():
+        fail(f"[{where}] target {want} has no SKILL.md")
+        return
+    fields = parse_frontmatter(skill_md.read_text(encoding="utf-8"))
+    if fields is None:
+        fail(f"[{want}] missing or malformed YAML frontmatter")
+        return
+    if not fields.get("name"):
+        fail(f"[{want}] frontmatter `name` is empty, missing or not single-line")
+    elif fields["name"] != name:
+        fail(f"[{want}] frontmatter name `{fields['name']}` != discovery name `{name}`")
+    if not fields.get("description"):
+        fail(f"[{want}] frontmatter `description` is empty, missing or not single-line")
 
 
 def main() -> int:
-    # 1. root AGENTS.md exists
     if not AGENTS_MD.is_file():
-        err("AGENTS.md is missing at the repository root")
+        fail("root AGENTS.md is missing")
 
-    # 2. .agents/skills/ exists
-    if not WRAPPERS_DIR.is_dir():
-        err(".agents/skills/ directory is missing")
-        _summary([])
-        return 1
+    expected = expected_dirs()
+    if not any(v.startswith("skills/") for v in expected.values()):
+        fail("skills/ contains no skills")
 
-    wrapper_dirs = sorted(p for p in WRAPPERS_DIR.iterdir() if p.is_dir())
-    if not wrapper_dirs:
-        err(".agents/skills/ contains no wrapper skills")
-
-    seen_names: dict[str, Path] = {}
-    validated = 0
-
-    for wdir in wrapper_dirs:
-        dir_name = wdir.name
-        skill_md = wdir / "SKILL.md"
-        if not skill_md.is_file():
-            err(f"[{dir_name}] missing SKILL.md")
+    for ddir in DISCOVERY_DIRS:
+        rel = ddir.relative_to(REPO_ROOT)
+        if not ddir.is_dir():
+            fail(f"{rel}/ directory is missing")
             continue
+        entries = sorted(ddir.iterdir())
+        for entry in entries:
+            validate_entry(entry, expected)
+        present = {e.name for e in entries}
+        for name, want in expected.items():
+            if name not in present:
+                fail(f"[{want}] is not linked from {rel}/ as {name}")
 
-        text = skill_md.read_text(encoding="utf-8")
-        fields, ferr = parse_frontmatter(text)
-        if ferr:
-            err(f"[{dir_name}] invalid frontmatter: {ferr}")
-            continue
-
-        name = fields.get("name", "")
-        desc = fields.get("description", "")
-        if not name:
-            err(f"[{dir_name}] frontmatter 'name' is missing or empty")
-        if not desc:
-            err(f"[{dir_name}] frontmatter 'description' is missing or empty")
-
-        # name matches directory
-        if name and name != dir_name:
-            err(f"[{dir_name}] frontmatter name '{name}' != directory name")
-
-        # duplicate detection
-        if name:
-            if name in seen_names:
-                err(f"[{dir_name}] duplicate skill name '{name}' "
-                    f"(also {seen_names[name].name})")
-            else:
-                seen_names[name] = wdir
-
-        # canonical reference resolves
-        canonical = CANONICAL_DIR / dir_name / "SKILL.md"
-        if not references_canonical(text, dir_name):
-            err(f"[{dir_name}] wrapper does not reference "
-                f".claude/skills/{dir_name}/SKILL.md")
-        if not canonical.is_file():
-            err(f"[{dir_name}] canonical skill missing: "
-                f".claude/skills/{dir_name}/SKILL.md")
-            continue
-
-        # thinness
-        canonical_bytes = canonical.stat().st_size
-        wrapper_bytes = skill_md.stat().st_size
-        wrapper_lines = len(text.splitlines())
-        if text.strip() == canonical.read_text(encoding="utf-8").strip():
-            err(f"[{dir_name}] wrapper is identical to the canonical body")
-        if wrapper_lines > MAX_WRAPPER_LINES:
-            err(f"[{dir_name}] wrapper has {wrapper_lines} lines "
-                f"(> {MAX_WRAPPER_LINES})")
-        limit = canonical_bytes * MAX_WRAPPER_BYTE_FRACTION
-        if wrapper_bytes >= limit:
-            err(f"[{dir_name}] wrapper is {wrapper_bytes} B "
-                f"(>= 25% of canonical {canonical_bytes} B = {limit:.0f} B)")
-
-        validated += 1
-
-    # expected high-value skills present in canonical but not wrapped
-    for hv in EXPECTED_HIGH_VALUE:
-        canonical = CANONICAL_DIR / hv / "SKILL.md"
-        if canonical.is_file() and hv not in seen_names:
-            err(f"expected high-value skill '{hv}' has a canonical source "
-                f"but no wrapper under .agents/skills/")
-
-    # documented validation commands/scripts that are statically checkable
     if AGENTS_MD.is_file():
         agents_text = AGENTS_MD.read_text(encoding="utf-8")
-        documented_paths = [
-            "scripts/validate_codex_setup.py",
-            ".githooks/pre-commit",
-        ]
-        for rel in documented_paths:
+        for rel in DOCUMENTED_PATHS:
             if rel in agents_text and not (REPO_ROOT / rel).exists():
-                err(f"AGENTS.md references '{rel}' but it does not exist")
+                fail(f"AGENTS.md references '{rel}' but it does not exist")
 
-    _summary(sorted(seen_names))
+    _report(expected)
     return 1 if errors else 0
 
 
-def _summary(validated_names: list[str]) -> None:
+def _report(expected: dict[str, str]) -> None:
     if errors:
-        print("Codex setup validation FAILED:")
-        for e in errors:
-            print(f"  - {e}")
-        print(f"\n{len(errors)} error(s); "
-              f"{len(validated_names)} wrapper(s) validated.")
-    else:
-        print("Codex setup validation PASSED.")
-        print("  root AGENTS.md: present")
-        print(f"  wrappers validated: {len(validated_names)}")
-        for name in validated_names:
-            print(f"    - {name}  ->  .claude/skills/{name}/SKILL.md")
+        print("Codex setup validation FAILED:\n")
+        for err in errors:
+            print(f"  - {err}")
+        print(f"\n{len(errors)} error(s).")
+        return
+    print("Codex setup validation PASSED.")
+    print(f"  skills ({len(expected)}):")
+    for name, want in expected.items():
+        print(f"    - {name}  ->  {want}")
+    print("  every discovery entry is a relative link to its skill, linked for both harnesses.")
+    print("  note: /skills discovery in Codex is a separate manual check.")
 
 
 if __name__ == "__main__":

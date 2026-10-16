@@ -1,6 +1,6 @@
 ---
 name: rebuild-restart
-description: Use after changing portfolio_site's site files (index.html, projects/*.html, assets/, images/, theater/**, 404.html), the Dockerfile, nginx.conf, or docker-compose.yml — rebuild the nginx image and recreate the container on evo-net so the change is served.
+description: "Rebuilds portfolio_site's nginx image and recreates its container on evo-net so a change is served, then verifies it with curl. Use after changing index.html, projects/*.html, assets/, images/, theater/**, 404.html, the Dockerfile, nginx.conf or docker-compose.yml."
 ---
 
 # Rebuild and Restart Portfolio Site

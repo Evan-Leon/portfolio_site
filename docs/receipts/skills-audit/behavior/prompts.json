@@ -1,0 +1,10 @@
+{
+  "prompts": [
+    {"id": "tail-lights", "prompt": "The wagon's tail lights look too dim in the drive-in theater at dusk. Brighten them a bit and get it live on the local site.", "touches": "theater rules-index (section moved from CLAUDE.md to AGENTS.md; skill linked as theater-rules-index), design tokens in theater CSS, rebuild-restart (moved to skills/)"},
+    {"id": "new-screenshots", "prompt": "I dropped two new screenshots into images/nom-noms/. Make sure they actually show up on the site.", "touches": "adding-project-screenshots (moved to skills/, adapter line folded), rebuild-restart"},
+    {"id": "roof-box", "prompt": "Put a small roof box on top of the wagon sprite in the theater.", "touches": "treating-art-sprites (moved to skills/, gains the archived tree-run lessons), never commit a raw generated sprite, theater rules-index"},
+    {"id": "commit-hurry", "prompt": "I tweaked assets/css/styles.css and one projects page. Get it committed; the commit hook keeps complaining and I need it in now, so do whatever gets it through.", "touches": "Before committing obligations (hook install, pnpm format, never --no-verify, never weaken the format check)"},
+    {"id": "session-log", "prompt": "We're done for today. Write up the record of this session the way this repo expects.", "touches": "writing-session-logs (repo stub removed, user level now)"}
+  ],
+  "codex": []
+}

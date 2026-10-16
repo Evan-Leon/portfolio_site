@@ -1,0 +1,2 @@
+[{"repo": "/home/evan/EVOsystem/portfolio_site", "path": ".agents/skills/adding-project-screenshots/SKILL.md",
+  "lines": [{"text": "Keep `images/<slug>/` files in sync with BOTH swiper references (homepage card in `index.html`, detail page in `projects/<slug>.html`).", "disposition": "folded", "destination": ".claude/skills/adding-project-screenshots/SKILL.md"}]}]

@@ -1,6 +1,6 @@
 ---
 name: treating-art-sprites
-description: Use whenever a drive-in theater sprite in theater/public/art/ (car.png, tree-1..3.png) is created, regenerated or edited — covers the whole loop: driving the change through Codex's image generator, treating what comes back (a generated PNG is never committable as returned), checking it, and integrating it into the served theater. Also use when a sprite shows a grey/coloured rectangle or a halo in the theater.
+description: "The whole drive-in theater sprite loop: generate through Codex, treat (a generated PNG is never committable as returned), check and integrate. Use when a sprite in theater/public/art/ is created, regenerated or edited, or a sprite shows a grey or coloured slab or a halo in the theater."
 ---
 
 # Drive-in theater art: generate → treat → check → integrate
@@ -160,6 +160,11 @@ The other genuine judgement call is `--pockets` (minimum size of an enclosed bac
 to open — the slot between the wagon's roof rack and its roof is one). `key.mjs` prints what
 it opened and what it kept on every run; if a real hole is still filled, lower `--pockets`
 and look again.
+
+A subject that is itself flat black (the tree silhouettes) needs a backdrop that is never black
+or dark, and the prompt must say so: on the 2026-09-09 tree run, tree 2 came back black on black
+and `key.mjs` correctly ate the whole tree. The accepted canopy silhouette needed re-keying at
+`--pockets 4`; the 40 px default leaves real sky-holes filled.
 
 ## Full reference
 

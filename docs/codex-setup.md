@@ -1,145 +1,56 @@
 # Codex setup — portfolio_site
 
-This repository is set up to be used reliably with **Codex** while keeping its
-existing **Claude Code** workflow intact. Codex reads native skill adapters under
-`.agents/skills/`; those adapters are thin wrappers that point at the canonical
-skill bodies, which stay the single source of truth.
+Codex and Claude Code read the same skills and the same guide. `AGENTS.md` is the one guide
+(Codex reads it natively; Claude Code reads it through the `@AGENTS.md` line in `CLAUDE.md`).
 
 ## Default Codex working directory
 
-Launch Codex from the **repository root**:
+Launch Codex from the repository root, `/home/evan/EVOsystem/portfolio_site`. Every documented
+command (`pnpm …`, `python3 scripts/…`, `docker compose …`) assumes it. There is a single root
+`AGENTS.md` and no nested one.
 
-```
-/home/evan/EVOsystem/portfolio_site
-```
+## Skill layout (D6)
 
-All documented commands (`pnpm …`, `python3 scripts/…`, `docker compose …`) and
-all wrapper relative paths assume the repo root as the working directory. This
-holds for both Windows-hosted WSL checkouts and ordinary Linux/cloud checkouts.
+`skills/<name>/SKILL.md` is the one real copy of each repo skill. `.claude/skills/<name>` (Claude
+Code) and `.agents/skills/<name>` (Codex) are relative symlinks to `../../skills/<name>`; both
+harnesses follow them. Edit a skill only through `skills/<name>/`.
 
-## Effective `AGENTS.md` chain
+The theater's rules index is protected and stays in place: `theater/skills/rules-index/` is linked
+as `theater-rules-index` from both discovery directories.
 
-There is a single root `AGENTS.md`. No nested `AGENTS.md` files exist, because no
-subtree has materially different commands or conventions — this is a single-root
-static site. The effective chain for any path in the repo is:
+| Skill | Use it for |
+|---|---|
+| `adding-project-screenshots` | `images/<slug>/` files and their two swiper references |
+| `rebuild-restart` | rebuilding the nginx image and recreating the container so a change is served |
+| `treating-art-sprites` | creating, regenerating or editing a theater sprite in `theater/public/art/` |
+| `theater-rules-index` | the vendored engine's `SDS-*` law; load it before touching `theater/` |
 
-```
-AGENTS.md   (repository root)
-```
-
-## Why `.claude/skills/` remains canonical
-
-Unlike the prepare-codex default (a top-level `skills/`), this repository keeps
-its canonical skills under:
-
-```
-.claude/skills/<name>/SKILL.md
-```
-
-These files are shared, authoritative skill instructions used by Claude Code and
-referenced by Codex. **Do not** copy their contents elsewhere or duplicate them
-into `.agents/skills/`.
-
-## How the `.agents/skills/` wrappers work
-
-Each Codex wrapper lives at `.agents/skills/<name>/SKILL.md` and:
-
-- has minimal YAML frontmatter (`name`, `description`);
-- has a `name` matching its directory;
-- directs Codex to read the canonical `.claude/skills/<name>/SKILL.md` **in full**
-  and treats that file as the source of truth;
-- resolves the canonical file via the relative path
-  `../../../.claude/skills/<name>/SKILL.md` (three levels up from the wrapper to
-  the repo root, then into `.claude/skills/`);
-- tells Codex to resolve any repo paths the canonical skill names from the repo
-  root;
-- contains **no** copied rule catalog or canonical body.
-
-## Available `$skill` invocations
-
-- `$adding-project-screenshots` — adding, updating, or troubleshooting project
-  screenshots: keeping `images/<slug>/` files in sync with the two swiper
-  references (homepage card in `index.html`, detail page in
-  `projects/<slug>.html`).
-- `$rebuild-restart` — rebuild the nginx image and recreate the container on
-  `evo-net` after changing any served file (`index.html`, `projects/*.html`,
-  `assets/`, `images/`, `404.html`), the `Dockerfile`, `nginx.conf`, or
-  `docker-compose.yml`.
-
-## Canonical skills intentionally NOT exposed to Codex
-
-- **`writing-session-logs`** and **`sweeping-session-logs`** — excluded on
-  purpose. Reasons:
-  1. They govern **workflow/session discipline** (write a session log at the end
-     of every *agent session*; periodically roll logs up into digests), not
-     coding-agent implementation, review, testing, or delivery guidance.
-  2. In this repo they are **stubs**: their body only says "read
-     `../infra/skills/<name>/SKILL.md`", i.e. the canonical content lives in a
-     **sibling `infra` repo**, not in this repository. A thin Codex adapter would
-     have to route through a two-hop chain that depends on that sibling repo
-     being checked out — not guaranteed for a Codex cloud task — and it would
-     break the "canonical skill resolves within this repo" model the validator
-     enforces.
-
-  The one thing a Codex session must do mechanically before committing —
-  formatting — is already enforced by the tool-agnostic pre-commit hook and
-  documented in `AGENTS.md`, independent of these skills.
-
-The prepare-codex "expected high-value" skills (`rules-index`, `backend`,
-`frontend`, `phase-status`) do **not** exist in this repository and were not
-invented. Their absence is expected for a static portfolio site.
+The shared EVOsystem skills (`writing-session-logs`, `sweeping-session-logs`, `writing-tests` and
+the rest) are installed at user level for both harnesses (`~/.claude/skills/`, `~/.agents/skills/`),
+so this repo keeps no stub or adapter for them. If one is not invocable, read
+`../infra/skills/<name>/SKILL.md`. A cloud task without the sibling `infra` checkout does not have
+them; the repo's own skills above are self-contained.
 
 ## Setup-validation command
 
-Dependency-free, standard-library-only Python validator:
-
 ```bash
-python3 scripts/validate_codex_setup.py
-# or, via the package script:
-pnpm validate:codex
+python3 scripts/validate_codex_setup.py   # or: pnpm validate:codex
 ```
 
-It verifies: root `AGENTS.md` exists; `.agents/skills/` exists; each wrapper has
-valid frontmatter with non-empty `name`/`description`; the name matches its
-directory; the wrapper references an existing canonical
-`.claude/skills/<name>/SKILL.md`; no duplicate skill names; wrappers are thin
-adapters (≤ 30 lines and < 25% of the canonical byte length, not identical to
-the canonical body); and that statically-checkable paths documented in
-`AGENTS.md` exist. It prints a per-skill summary, exits `0` on success and
-nonzero on failure, and needs no network access.
+Standard library only, no network. It checks that every entry under `.claude/skills/` and
+`.agents/skills/` is a relative symlink resolving to `skills/<same name>` (or the protected
+in-place index), that each target's frontmatter has a single-line `name` equal to the discovery
+name and a non-empty `description`, that every skill is linked for both harnesses, and that the
+statically checkable paths `AGENTS.md` documents exist. Exit 0 on success.
 
-## Confirming skills manually with `/skills`
+## Confirming skills in Codex
 
-The validator checks structure only — it **cannot** prove that Codex displayed a
-skill in `/skills`. Confirm that separately:
-
-1. Launch a fresh Codex session from `/home/evan/EVOsystem/portfolio_site`.
-2. Run `/skills`.
-3. Confirm both `adding-project-screenshots` and `rebuild-restart` appear.
-4. If a skill does not appear, restart Codex once and check again.
-
-`/skills` is TUI-only — there is no `codex exec` equivalent, so this listing step
-still requires an interactive session. **Status: not yet run.**
-
-### Non-interactive alternative (stronger, and scriptable)
-
-The activation test below can be run headlessly, which proves more than the
-listing does: discovery *and* activation *and* that the thin wrapper resolves to
-the canonical body. `-s read-only` makes writes impossible at the sandbox level:
+The validator checks structure only; it cannot prove Codex listed a skill. `/skills` is TUI-only,
+so the scriptable check is a read-only activation run:
 
 ```bash
 codex exec -s read-only -C /home/evan/EVOsystem/portfolio_site '<the test prompt below>'
 ```
-
-**Verified 2026-07-23** (codex-cli 0.144.6, ChatGPT auth): both skills activated
-and cited `.claude/skills/adding-project-screenshots/SKILL.md` and
-`.claude/skills/rebuild-restart/SKILL.md`; no files modified. Skills are native
-and stable in this CLI version — no feature flag gates them.
-
-## Read-only skill activation test
-
-Run this in a fresh Codex session to confirm a wrapper activates and loads its
-canonical body (no files are modified):
 
 ```
 Use $adding-project-screenshots and $rebuild-restart.
@@ -152,29 +63,13 @@ rebuild command $rebuild-restart specifies. For each, name the canonical file
 from which it was loaded.
 ```
 
-Expected: the answer cites `.claude/skills/adding-project-screenshots/SKILL.md`
-(two references: `index.html` card-swiper and `projects/<slug>.html`
-project-swiper) and `.claude/skills/rebuild-restart/SKILL.md`
+Expected: the answer cites `skills/adding-project-screenshots/SKILL.md` (the `index.html`
+card-swiper and the `projects/<slug>.html` project-swiper) and `skills/rebuild-restart/SKILL.md`
 (`docker compose build && docker compose up -d --force-recreate`).
 
-## Delivery: local commit vs. no-commit vs. cloud task
+## Delivery
 
-- **Local commit** — the checked-in pre-commit hook (`.githooks/pre-commit`,
-  enabled via `git config core.hooksPath .githooks`) runs Prettier `--check`
-  over staged `.html`/`.css`/`.js`. Run `pnpm format` first so the hook is a
-  formality. There is no test suite. Markdown/docs are out of scope by design.
-- **No-commit** — make and validate changes without committing (e.g. review-only
-  or when the tree is intentionally left dirty for the user). Still run
-  `python3 scripts/validate_codex_setup.py` and `pnpm format:check` to leave the
-  tree clean.
-- **Cloud task** — the sibling `infra` repo is not guaranteed to be present, so
-  do not rely on the session-log stubs' `../infra/...` chain. The Codex setup
-  here is self-contained within this repository.
-
-## Claude-specific instructions Codex wrappers intentionally ignore
-
-The canonical skills are written for Claude Code. Codex wrappers deliberately do
-**not** reproduce Claude-only invocation/session mechanics (invoking Claude's
-Skill tool, clearing a Claude session, the CLAUDE.md session-log mandate). Codex
-should apply the **domain/engineering** content of each canonical skill and skip
-those Claude-only mechanics.
+- **Local commit**: the pre-commit hook (`.githooks/pre-commit`, enabled with
+  `git config core.hooksPath .githooks`) runs Prettier `--check` over staged `.html`/`.css`/`.js`.
+  Run `pnpm format` first. Markdown is out of scope by design.
+- **No commit**: still run `python3 scripts/validate_codex_setup.py` and `pnpm format:check`.

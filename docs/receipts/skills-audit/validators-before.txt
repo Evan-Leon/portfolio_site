@@ -1,0 +1,7 @@
+Codex setup validation PASSED.
+  root AGENTS.md: present
+  wrappers validated: 3
+    - adding-project-screenshots  ->  .claude/skills/adding-project-screenshots/SKILL.md
+    - rebuild-restart  ->  .claude/skills/rebuild-restart/SKILL.md
+    - treating-art-sprites  ->  .claude/skills/treating-art-sprites/SKILL.md
+scripts/validate_codex_setup.py exit=0

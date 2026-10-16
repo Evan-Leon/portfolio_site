@@ -1,6 +1,6 @@
 ---
 name: adding-project-screenshots
-description: Use when adding, updating, or troubleshooting project screenshots in this portfolio site — covers images/<slug>/ files, the homepage card-swiper in index.html, and the project-swiper in projects/<slug>.html.
+description: "Keeps a project's screenshots in images/<slug>/ in sync with its two swipers: the homepage card in index.html and the detail page in projects/<slug>.html. Use when adding, updating or troubleshooting portfolio project screenshots, or a card shows a broken image or no autoplay."
 ---
 
 # Adding Project Screenshots

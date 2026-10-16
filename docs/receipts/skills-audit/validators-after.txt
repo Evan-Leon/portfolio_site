@@ -1,0 +1,9 @@
+Codex setup validation PASSED.
+  skills (4):
+    - adding-project-screenshots  ->  skills/adding-project-screenshots
+    - rebuild-restart  ->  skills/rebuild-restart
+    - treating-art-sprites  ->  skills/treating-art-sprites
+    - theater-rules-index  ->  theater/skills/rules-index
+  every discovery entry is a relative link to its skill, linked for both harnesses.
+  note: /skills discovery in Codex is a separate manual check.
+scripts/validate_codex_setup.py exit=0

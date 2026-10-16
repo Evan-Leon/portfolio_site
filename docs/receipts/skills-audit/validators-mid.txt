@@ -1,0 +1,20 @@
+Codex setup validation FAILED:
+  - [adding-project-screenshots] wrapper does not reference .claude/skills/adding-project-screenshots/SKILL.md
+  - [adding-project-screenshots] wrapper is identical to the canonical body
+  - [adding-project-screenshots] wrapper has 42 lines (> 30)
+  - [adding-project-screenshots] wrapper is 2613 B (>= 25% of canonical 2613 B = 653 B)
+  - [rebuild-restart] wrapper does not reference .claude/skills/rebuild-restart/SKILL.md
+  - [rebuild-restart] wrapper is identical to the canonical body
+  - [rebuild-restart] wrapper has 89 lines (> 30)
+  - [rebuild-restart] wrapper is 3948 B (>= 25% of canonical 3948 B = 987 B)
+  - [theater-rules-index] wrapper does not reference .claude/skills/theater-rules-index/SKILL.md
+  - [theater-rules-index] wrapper is identical to the canonical body
+  - [theater-rules-index] wrapper has 263 lines (> 30)
+  - [theater-rules-index] wrapper is 17104 B (>= 25% of canonical 17104 B = 4276 B)
+  - [treating-art-sprites] wrapper does not reference .claude/skills/treating-art-sprites/SKILL.md
+  - [treating-art-sprites] wrapper is identical to the canonical body
+  - [treating-art-sprites] wrapper has 174 lines (> 30)
+  - [treating-art-sprites] wrapper is 9187 B (>= 25% of canonical 9187 B = 2297 B)
+
+16 error(s); 4 wrapper(s) validated.
+scripts/validate_codex_setup.py exit=1

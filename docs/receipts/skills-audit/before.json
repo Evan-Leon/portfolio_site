@@ -1,0 +1,399 @@
+{
+ "slug": "portfolio_site",
+ "repo": "/home/evan/EVOsystem/portfolio_site",
+ "measured_at": "2026-10-16T12:12:19",
+ "claude_version": "2.1.301 (Claude Code)",
+ "codex_version": "codex-cli 0.162.1",
+ "git_head": "710474b91edf25d3b519d776e73b2e36ac4d7642",
+ "valid": true,
+ "errors": [],
+ "model": "claude-haiku-5-5",
+ "categories": {
+  "System prompt": 3300,
+  "System tools": 3200,
+  "MCP tools": 671,
+  "MCP server instructions": 717,
+  "MCP tools (deferred)": 1400,
+  "System tools (deferred)": 13300,
+  "Memory files": 2400,
+  "Skills": 7100,
+  "Messages": 1500,
+  "Free space": 948100,
+  "Autocompact buffer": 33000
+ },
+ "memory_files": [
+  {
+   "type": "User",
+   "path": "/home/evan/.claude/CLAUDE.md",
+   "tokens": 591
+  },
+  {
+   "type": "Project",
+   "path": "/home/evan/EVOsystem/portfolio_site/CLAUDE.md",
+   "tokens": 1200
+  },
+  {
+   "type": "AutoMem",
+   "path": "/home/evan/.claude/projects/-home-evan-EVOsystem-portfolio-site/memory/MEMORY.md",
+   "tokens": 613
+  }
+ ],
+ "skills": [
+  {
+   "skill": "brainstorming",
+   "source": "User",
+   "tokens": 110
+  },
+  {
+   "skill": "reviewing-with-chud",
+   "source": "User",
+   "tokens": 110
+  },
+  {
+   "skill": "reviewing-with-glm",
+   "source": "User",
+   "tokens": 100
+  },
+  {
+   "skill": "routing-reviews",
+   "source": "User",
+   "tokens": 100
+  },
+  {
+   "skill": "sweeping-roadmaps",
+   "source": "User",
+   "tokens": 90
+  },
+  {
+   "skill": "sweeping-rules",
+   "source": "User",
+   "tokens": 90
+  },
+  {
+   "skill": "sweeping-session-logs",
+   "source": "User",
+   "tokens": 80
+  },
+  {
+   "skill": "waiting-for-long-jobs",
+   "source": "User",
+   "tokens": 100
+  },
+  {
+   "skill": "writing-agent-guides",
+   "source": "User",
+   "tokens": 100
+  },
+  {
+   "skill": "writing-session-logs",
+   "source": "User",
+   "tokens": 80
+  },
+  {
+   "skill": "writing-tests",
+   "source": "User",
+   "tokens": 100
+  },
+  {
+   "skill": "adding-project-screenshots",
+   "source": "Project",
+   "tokens": 80
+  },
+  {
+   "skill": "rebuild-restart",
+   "source": "Project",
+   "tokens": 90
+  },
+  {
+   "skill": "treating-art-sprites",
+   "source": "Project",
+   "tokens": 150
+  },
+  {
+   "skill": "typesafe:typesafe-ai",
+   "source": "Plugin (typesafe)",
+   "tokens": 230
+  },
+  {
+   "skill": "dataviz",
+   "source": "Built-in",
+   "tokens": 480
+  },
+  {
+   "skill": "update-config",
+   "source": "Built-in",
+   "tokens": 240
+  },
+  {
+   "skill": "keybindings-help",
+   "source": "Built-in",
+   "tokens": 80
+  },
+  {
+   "skill": "code-review",
+   "source": "Built-in",
+   "tokens": 330
+  },
+  {
+   "skill": "simplify",
+   "source": "Built-in",
+   "tokens": 60
+  },
+  {
+   "skill": "fewer-permission-prompts",
+   "source": "Built-in",
+   "tokens": 60
+  },
+  {
+   "skill": "loop",
+   "source": "Built-in",
+   "tokens": 120
+  },
+  {
+   "skill": "schedule",
+   "source": "Built-in",
+   "tokens": 130
+  },
+  {
+   "skill": "claude-api",
+   "source": "Built-in",
+   "tokens": 360
+  },
+  {
+   "skill": "workflow-authoring",
+   "source": "Built-in",
+   "tokens": 80
+  },
+  {
+   "skill": "run",
+   "source": "Built-in",
+   "tokens": 120
+  },
+  {
+   "skill": "plugin-authoring",
+   "source": "Built-in",
+   "tokens": 90
+  },
+  {
+   "skill": "init",
+   "source": "Built-in",
+   "tokens": 20
+  },
+  {
+   "skill": "security-review",
+   "source": "Built-in",
+   "tokens": 30
+  },
+  {
+   "skill": "built-in-browser",
+   "source": "claude.ai sync",
+   "tokens": 290
+  },
+  {
+   "skill": "chrome-browser",
+   "source": "claude.ai sync",
+   "tokens": 260
+  },
+  {
+   "skill": "computer-use",
+   "source": "claude.ai sync",
+   "tokens": 320
+  },
+  {
+   "skill": "anthropic-skills:deep-research",
+   "source": "claude.ai sync",
+   "tokens": 200
+  },
+  {
+   "skill": "docs",
+   "source": "claude.ai sync",
+   "tokens": 340
+  },
+  {
+   "skill": "docx",
+   "source": "claude.ai sync",
+   "tokens": 320
+  },
+  {
+   "skill": "google-workspace",
+   "source": "claude.ai sync",
+   "tokens": 330
+  },
+  {
+   "skill": "import-memory",
+   "source": "claude.ai sync",
+   "tokens": 60
+  },
+  {
+   "skill": "morning",
+   "source": "claude.ai sync",
+   "tokens": 120
+  },
+  {
+   "skill": "pdf",
+   "source": "claude.ai sync",
+   "tokens": 150
+  },
+  {
+   "skill": "pptx",
+   "source": "claude.ai sync",
+   "tokens": 330
+  },
+  {
+   "skill": "setup-writing-style",
+   "source": "claude.ai sync",
+   "tokens": 170
+  },
+  {
+   "skill": "skill-creator",
+   "source": "claude.ai sync",
+   "tokens": 120
+  },
+  {
+   "skill": "xlsx",
+   "source": "claude.ai sync",
+   "tokens": 320
+  }
+ ],
+ "claude": {
+  "memory_files_tokens": 2400,
+  "skills_tokens": 7100,
+  "messages_tokens": 1500
+ },
+ "hooks": [
+  {
+   "command": "python3 /home/evan/EVOsystem/infra/scripts/unattended/session_start.py",
+   "exit": 0,
+   "stdout_bytes": 0,
+   "est_tokens": 0,
+   "first_line": ""
+  },
+  {
+   "command": "python3 /home/evan/EVOsystem/infra/scripts/rules/rules_hook.py session-start --harness claude",
+   "exit": 0,
+   "stdout_bytes": 3860,
+   "est_tokens": 965,
+   "first_line": "{\"hookSpecificOutput\": {\"hookEventName\": \"SessionStart\", \"additionalContext\": \"EVO core rules (portfolio_site): 30 shared, 0 local. Look up others with `python3 /home/evan/EVOsystem/infra/scripts/rule"
+  }
+ ],
+ "hook_payload_tokens": 965,
+ "session_log_tail": {
+  "files": [
+   "2026-09-14-19-30-claude-code-showcase-demo-data-cleanup.md",
+   "2026-09-10-16-47-claude-code-session-and-rules-sweep.md"
+  ],
+  "bytes": 21538,
+  "est_tokens": 5384
+ },
+ "continuity_bytes": null,
+ "codex_static_estimate": {
+  "label": "static authored-description estimate; not effective context",
+  "agents_chain": [
+   {
+    "scope": "global",
+    "path": "/home/evan/.codex/AGENTS.md",
+    "bytes": 379
+   },
+   {
+    "scope": "project",
+    "path": "/home/evan/EVOsystem/portfolio_site/AGENTS.md",
+    "bytes": 6199
+   }
+  ],
+  "agents_chain_bytes": 6578,
+  "agents_cap_bytes": 32768,
+  "over_cap": false,
+  "skills_by_root": {
+   "repo .agents/skills": [
+    {
+     "name": "adding-project-screenshots",
+     "description_chars": 176
+    },
+    {
+     "name": "rebuild-restart",
+     "description_chars": 212
+    },
+    {
+     "name": "treating-art-sprites",
+     "description_chars": 247
+    }
+   ],
+   "repo .codex/skills": [],
+   "~/.agents/skills": [
+    {
+     "name": "brainstorming",
+     "description_chars": 300
+    },
+    {
+     "name": "reviewing-with-chud",
+     "description_chars": 293
+    },
+    {
+     "name": "reviewing-with-glm",
+     "description_chars": 278
+    },
+    {
+     "name": "routing-reviews",
+     "description_chars": 288
+    },
+    {
+     "name": "sweeping-roadmaps",
+     "description_chars": 261
+    },
+    {
+     "name": "sweeping-rules",
+     "description_chars": 264
+    },
+    {
+     "name": "sweeping-session-logs",
+     "description_chars": 199
+    },
+    {
+     "name": "waiting-for-long-jobs",
+     "description_chars": 273
+    },
+    {
+     "name": "writing-agent-guides",
+     "description_chars": 272
+    },
+    {
+     "name": "writing-session-logs",
+     "description_chars": 224
+    },
+    {
+     "name": "writing-tests",
+     "description_chars": 270
+    }
+   ],
+   "~/.codex/skills (deprecated)": [],
+   "~/.codex/skills/.system": [
+    {
+     "name": "imagegen",
+     "description_chars": 570
+    },
+    {
+     "name": "openai-docs",
+     "description_chars": 459
+    },
+    {
+     "name": "review-agent",
+     "description_chars": 229
+    },
+    {
+     "name": "skill-creator",
+     "description_chars": 106
+    },
+    {
+     "name": "skill-installer",
+     "description_chars": 225
+    }
+   ],
+   "/etc/codex/skills": []
+  },
+  "description_chars_total": 5146,
+  "not_scanned": "plugin skill roots"
+ },
+ "nested_guides_not_measured": [],
+ "raw": "## Context Usage\n\n**Model:** claude-haiku-5-5  \n**Tokens:** 18.9k / 1m (2%)\n\n### Estimated usage by category\n\n| Category | Tokens | Percentage |\n|----------|--------|------------|\n| System prompt | 3.3k | 0.3% |\n| System tools | 3.2k | 0.3% |\n| MCP tools | 671 | 0.1% |\n| MCP server instructions | 717 | 0.1% |\n| MCP tools (deferred) | 1.4k | 0.1% |\n| System tools (deferred) | 13.3k | 1.3% |\n| Memory files | 2.4k | 0.2% |\n| Skills | 7.1k | 0.7% |\n| Messages | 1.5k | 0.1% |\n| Free space | 948.1k | 94.8% |\n| Autocompact buffer | 33k | 3.3% |\n\n### MCP Tools\n\n| Tool | Server | Tokens |\n|------|--------|--------|\n| mcp__claude_ai_Claude_Docs__batch | claude_ai_Claude_Docs | 165 |\n| mcp__claude_ai_Claude_Docs__create | claude_ai_Claude_Docs | 256 |\n| mcp__claude_ai_Claude_Docs__delete | claude_ai_Claude_Docs | 343 |\n| mcp__claude_ai_Claude_Docs__export | claude_ai_Claude_Docs | 324 |\n| mcp__claude_ai_Claude_Docs__guide | claude_ai_Claude_Docs | 208 |\n| mcp__claude_ai_Claude_Docs__query | claude_ai_Claude_Docs | 182 |\n| mcp__claude_ai_Claude_Docs__read | claude_ai_Claude_Docs | 324 |\n| mcp__claude_ai_Claude_Docs__update | claude_ai_Claude_Docs | 298 |\n\n### Memory Files\n\n| Type | Path | Tokens |\n|------|------|--------|\n| User | /home/evan/.claude/CLAUDE.md | 591 |\n| Project | /home/evan/EVOsystem/portfolio_site/CLAUDE.md | 1.2k |\n| AutoMem | /home/evan/.claude/projects/-home-evan-EVOsystem-portfolio-site/memory/MEMORY.md | 613 |\n\n### Skills\n\n| Skill | Source | Tokens |\n|-------|--------|--------|\n| brainstorming | User | ~110 |\n| reviewing-with-chud | User | ~110 |\n| reviewing-with-glm | User | ~100 |\n| routing-reviews | User | ~100 |\n| sweeping-roadmaps | User | ~90 |\n| sweeping-rules | User | ~90 |\n| sweeping-session-logs | User | ~80 |\n| waiting-for-long-jobs | User | ~100 |\n| writing-agent-guides | User | ~100 |\n| writing-session-logs | User | ~80 |\n| writing-tests | User | ~100 |\n| adding-project-screenshots | Project | ~80 |\n| rebuild-restart | Project | ~90 |\n| treating-art-sprites | Project | ~150 |\n| typesafe:typesafe-ai | Plugin (typesafe) | ~230 |\n| dataviz | Built-in | ~480 |\n| update-config | Built-in | ~240 |\n| keybindings-help | Built-in | ~80 |\n| code-review | Built-in | ~330 |\n| simplify | Built-in | ~60 |\n| fewer-permission-prompts | Built-in | ~60 |\n| loop | Built-in | ~120 |\n| schedule | Built-in | ~130 |\n| claude-api | Built-in | ~360 |\n| workflow-authoring | Built-in | ~80 |\n| run | Built-in | ~120 |\n| plugin-authoring | Built-in | ~90 |\n| init | Built-in | ~20 |\n| security-review | Built-in | ~30 |\n| built-in-browser | claude.ai sync | ~290 |\n| chrome-browser | claude.ai sync | ~260 |\n| computer-use | claude.ai sync | ~320 |\n| anthropic-skills:deep-research | claude.ai sync | ~200 |\n| docs | claude.ai sync | ~340 |\n| docx | claude.ai sync | ~320 |\n| google-workspace | claude.ai sync | ~330 |\n| import-memory | claude.ai sync | ~60 |\n| morning | claude.ai sync | ~120 |\n| pdf | claude.ai sync | ~150 |\n| pptx | claude.ai sync | ~330 |\n| setup-writing-style | claude.ai sync | ~170 |\n| skill-creator | claude.ai sync | ~120 |\n| xlsx | claude.ai sync | ~320 |\n\n",
+ "stderr": ""
+}
