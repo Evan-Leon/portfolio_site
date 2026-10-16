@@ -1,6 +1,6 @@
 ---
 name: refreshing-showcase-captures
-description: "Finds the showcase apps whose UI changed since their portfolio clip was captured, then re-records each one's demo clip and screenshots through the portfolio-showcase meta-prompt, one app at a time. Use when Evan asks to re-record, re-capture or refresh the portfolio's clips or screenshots after app UI work, or to check which captures are stale."
+description: "Finds the showcase apps whose UI changed since their portfolio clip was captured, then re-records each one's demo clip and screenshots through the portfolio-showcase meta-prompt (parallel capture agents, then one placement, rebuild and commit pass). Use when Evan asks to re-record, re-capture or refresh the portfolio's clips or screenshots after app UI work, or to check which captures are stale."
 ---
 
 # Refreshing showcase captures
