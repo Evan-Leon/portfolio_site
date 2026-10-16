@@ -55,6 +55,7 @@ import { mountScenes, type MountedScene } from "./mount";
 import { clamp01, quantiseProgress, sceneProgress } from "./progress";
 import { DEFAULT_MARGINS, sceneLifecycle, withPinVisibility } from "./scene";
 import type { ScrollSource } from "./scroll-source";
+import { wheelSmoother } from "./wheel-smoothing";
 
 /**
  * How much a scene's progress must change before `seek` is called again.
@@ -236,6 +237,9 @@ export function createEngine(options: EngineOptions): Engine {
 
   let states: SceneState[] | null = null;
   let smoothScroll: Lenis | null = null;
+  /* Stage one of the wheel's two-stage smoothing; see `wheel-smoothing.ts`. */
+  const wheel = wheelSmoother();
+  let lastFrameTime: number | null = null;
   let frameId: number | null = null;
   let resizeTimer: ReturnType<typeof setTimeout> | null = null;
   let destroyed = false;
@@ -271,7 +275,13 @@ export function createEngine(options: EngineOptions): Engine {
        * apply to this configuration, and a CSS import here would land in the
        * document rather than SD11's shadow root (`SDS-009`).
        */
-      if (useLenis) smoothScroll = new Lenis({ autoRaf: false });
+      if (useLenis) {
+        smoothScroll = new Lenis({
+          autoRaf: false,
+          virtualScroll: wheel.onVirtualScroll,
+        });
+        wheel.attach(smoothScroll);
+      }
 
       /*
        * The gate needs adapters before it can ask which of them are `eager`,
@@ -325,6 +335,10 @@ export function createEngine(options: EngineOptions): Engine {
 
     // Before the scroll read, not after: Lenis moves the page during this call,
     // and reading first would drive every scene from last frame's position.
+    // The wheel's first stage goes first again, so Lenis chases this frame's
+    // target rather than last frame's.
+    wheel.frame(lastFrameTime === null ? 0 : (time - lastFrameTime) / 1000);
+    lastFrameTime = time;
     smoothScroll?.raf(time);
 
     updateAll();
@@ -667,6 +681,8 @@ export function createEngine(options: EngineOptions): Engine {
     const { top, length } = state.scene.metrics;
     const target = top + clamp01(progress) * length;
 
+    /* A wheel glide still under way would steer the page straight back. */
+    wheel.cancel();
     if (smoothScroll) smoothScroll.scrollTo(target);
     else scrollTo({ top: target, behavior: "auto" });
 
