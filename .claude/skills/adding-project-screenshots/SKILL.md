@@ -11,6 +11,8 @@ Each project's screenshots live in `images/<slug>/01.png`, `02.png`, ... and are
 referenced in **two separate places** that must each match the files actually on
 disk. They don't auto-sync — drift between them is the recurring bug in this repo.
 
+Keep `images/<slug>/` files in sync with BOTH swiper references (homepage card in `index.html`, detail page in `projects/<slug>.html`).
+
 ## The two reference points
 
 | Location | Selector | Behavior on mismatch |
