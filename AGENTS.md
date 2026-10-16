@@ -31,9 +31,8 @@ engine was built under. Each exists because breaking it fails silently, or far f
 
 - Cite by ID (`SDS-004`) in commit messages, comments and review notes when a rule is load-bearing.
   Never restate rule text; the ID is the link.
-- Its frontmatter says "load first at every session start": read that as *before theater work*. A
-  session that only touches `index.html`, `projects/`, `docs/` or the Docker files is not bound by
-  it. A session that does not know which it is loads it.
+- A session that only touches `index.html`, `projects/`, `docs/` or the Docker files is not bound
+  by it. A session that does not know which it is loads it.
 - The `EVO-*` citations in the theater's comments belong to the system the engine was built in and
   do not resolve here. The comment beside each one states the mistake in full: read the comment.
 

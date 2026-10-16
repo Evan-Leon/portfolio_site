@@ -1,6 +1,6 @@
 ---
 name: theater-rules-index
-description: "Load first at every session start. This project's law — the SDS-* invariants every phase is held to, plus the deliberate departures from the conventions this repo was built under. Cite by ID when a rule is load-bearing."
+description: "Load before any work under theater/, or when unsure whether a session touches it. This project's law — the SDS-* invariants every phase is held to, plus the deliberate departures from the conventions this repo was built under. Cite by ID when a rule is load-bearing."
 ---
 
 # Portfolio Theater — Vendored Engine Rules Index
