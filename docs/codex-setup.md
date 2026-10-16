@@ -21,6 +21,7 @@ as `theater-rules-index` from both discovery directories.
 | Skill | Use it for |
 |---|---|
 | `adding-project-screenshots` | `images/<slug>/` files and their two swiper references |
+| `refreshing-showcase-captures` | finding stale showcase clips and re-recording them after app UI work |
 | `rebuild-restart` | rebuilding the nginx image and recreating the container so a change is served |
 | `treating-art-sprites` | creating, regenerating or editing a theater sprite in `theater/public/art/` |
 | `theater-rules-index` | the vendored engine's `SDS-*` law; load it before touching `theater/` |

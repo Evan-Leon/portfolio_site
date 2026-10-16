@@ -78,6 +78,8 @@ mounts and no test tools, so there is no container to exec into (EVO-TOOL-050 do
 - Serve a change: the `rebuild-restart` skill
   (`docker compose build && docker compose up -d --force-recreate`).
 - Screenshots for a project: the `adding-project-screenshots` skill.
+- Re-record showcase clips and screenshots after app UI work, or check which are stale: the
+  `refreshing-showcase-captures` skill (`scripts/showcase/stale_captures.py`).
 
 Dependency policy: pnpm is the package manager and the root lockfile covers the `theater/`
 workspace. Add no runtime dependency to the static site and no third-party package to the
