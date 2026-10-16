@@ -62,9 +62,14 @@ card and page markup stay untouched.
 
 ## 3. Re-record, one app at a time
 
-Runs are **sequential**. Every run rebuilds the same portfolio_site container
-and commits in the same tree. Start each run only when
-`git -C /home/evan/EVOsystem/portfolio_site status --short` is empty.
+**Capture runs in parallel; placement does not.** STEPs 0–3 only read the app
+and write to a scratch dir, so one Opus agent per app can run concurrently.
+On 2026-10-16, six ran at once, after six parallel Sonnet recons. Their briefs
+are in `briefs.md`, next to this file. STEPs 4–8 touch portfolio_site, so this
+session does them: copy each accepted set, one rebuild, one e2e run, then
+one commit per app.
+After the agents finish, check that every app repo's `git status` and HEAD are
+unchanged (EVO-UNI-111).
 
 For each app, fill the meta-prompt's Section A (slug, URL, auth and GitHub come
 from the Coverage row and the disk) with the agreed `{{DEMO_FLOW}}`, and add
@@ -74,7 +79,7 @@ this line above it:
 > explicit screenshot refresh. STEP 4 copies `0?.png` over the existing set at
 > the same count, as well as `demo.mp4`.
 
-Run it either way:
+Run the capture either way:
 - **A fresh session in the app repo**: the meta-prompt's default.
 - **An Opus sub-agent from portfolio_site**: this is how the 2026-09-09 remote runs were done. The agent does
   STEPs 0–3 (capture, contact sheet, teardown) and returns the media path and
