@@ -28,6 +28,7 @@ import { SCREEN_CLASS, SCREEN_INDEX_ATTRIBUTE } from "./lot/build-lot";
 import { screenProgress } from "./lot/geometry";
 import { createPageChrome } from "./page/chrome";
 import { installPeriod } from "./page/period";
+import { prewarmBeforeReveal } from "./page/prewarm";
 import { projects } from "./projects";
 import { scenes } from "./scenes/registry";
 
@@ -115,9 +116,16 @@ if (!location.hash) {
  * visible, instead of inside a component whose default would silently become
  * `getComputedStyle` returning `''` in a shadow root.
  */
-const loadingRing = createLoadingRing(mount, {
-  minVisibleMs: loaderMinVisibleMs(mount),
-});
+/*
+ * Wrapped so the lot is rasterised behind the ring before it lifts, rather
+ * than on the visitor's first scroll — see `page/prewarm.ts`.
+ */
+const loadingRing = prewarmBeforeReveal(
+  createLoadingRing(mount, {
+    minVisibleMs: loaderMinVisibleMs(mount),
+  }),
+  mount,
+);
 
 /*
  * The chrome is the `persistentLayer`, not a second scroll listener: the engine
