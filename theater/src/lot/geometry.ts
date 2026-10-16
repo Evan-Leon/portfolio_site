@@ -285,3 +285,45 @@ export const GROUND_SQUASH = 4;
  * against the lot growing, and not yet a guarantee about high-density displays.
  */
 export const GROUND_RASTER_MAX = 8000;
+
+/**
+ * How far ahead of the camera the lot is drawn, in world pixels.
+ *
+ * Past this, a screen or a tree is fully transparent; it fades in over the
+ * last {@link DRAW_FADE} before it, so the lot grows out of the horizon rather
+ * than popping in. Five spacings is where a screen is about a fifth of its size
+ * (`900 / (900 + 4000)` at the wide layout's perspective) — small enough that
+ * the fade reads as distance, near enough that the visitor always has four
+ * screens ahead of them.
+ *
+ * WHY, AND WHAT WAS MEASURED
+ * --------------------------
+ * Without it, every screen and every tree in the lot is in front of the camera
+ * at the gate, and the compositor pays for all of them every frame — each
+ * screen carries a `filter`, three glows, a drop-shadowed bulb row and a
+ * `<video>`. They drop out only as the camera passes them, so the drive was
+ * laggy from the gate until about the sixth screen (Evan, 2026-10-16) and
+ * smooth after it. Measured headed in WSLg Chromium (2026-10-16, 1440x900,
+ * `?period=afternoon`, mean ms/frame scrubbing at the gate, software GL):
+ * 57.1 and 57.2 as built, 33.2 with everything past this distance at
+ * `opacity: 0`. `opacity` rather than `visibility` because the trees' stylesheet
+ * already owns their `visibility` (the mask gate), and because a hidden screen
+ * link is a link the keyboard cannot reach.
+ */
+export const DRAW_DISTANCE = 5 * SPACING;
+
+/** How much of {@link DRAW_DISTANCE} the fade-in takes, in world pixels. */
+export const DRAW_FADE = SPACING;
+
+/**
+ * How opaque something `depth` world pixels into the lot is, with the camera
+ * driven `z` into it — 0 past the draw distance, 1 inside the fade, a ramp
+ * between.
+ *
+ * Anything at or behind the camera is 1: the drive only ever brings things
+ * closer, and fading what the visitor has passed would be a second effect
+ * nobody asked for. `depth` is positive — a placement's `z`, negated.
+ */
+export function drawAlpha(depth: number, z: number): number {
+  return clamp01((DRAW_DISTANCE - (depth - z)) / DRAW_FADE);
+}

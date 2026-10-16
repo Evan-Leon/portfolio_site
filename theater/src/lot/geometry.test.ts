@@ -22,6 +22,7 @@ import { describe, expect, it } from "vitest";
 import { projects } from "../projects";
 import {
   activeScreen,
+  drawAlpha,
   GROUND_LEAD,
   GROUND_LINE,
   GROUND_RASTER_MAX,
@@ -239,5 +240,25 @@ describe("screenProgress", () => {
     for (const i of [0, 1, 2, 3, 4, 5, 6, 7]) {
       expect(activeScreen(screenProgress(i, COUNT), COUNT)).toBe(i);
     }
+  });
+});
+
+describe("drawAlpha — the draw distance", () => {
+  it("draws the four nearest spacings fully and nothing past five", () => {
+    expect(drawAlpha(800, 0)).toBe(1);
+    expect(drawAlpha(3200, 0)).toBe(1);
+    expect(drawAlpha(3600, 0)).toBe(0.5);
+    expect(drawAlpha(4000, 0)).toBe(0);
+    expect(drawAlpha(16000, 0)).toBe(0);
+  });
+
+  it("measures from the camera, not from the gate", () => {
+    expect(drawAlpha(4800, 800)).toBe(0);
+    expect(drawAlpha(4800, 1200)).toBe(0.5);
+    expect(drawAlpha(4800, 1600)).toBe(1);
+  });
+
+  it("leaves what the camera has passed drawn", () => {
+    expect(drawAlpha(800, 2400)).toBe(1);
   });
 });

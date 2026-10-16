@@ -598,6 +598,9 @@ a {
      world's rule would be felt as eighty-eight new hit-test targets. */
   pointer-events: none;
   visibility: hidden;
+  /* The draw distance (`DRAW_DISTANCE` in `lot/geometry.ts`). Opacity, never
+     `visibility`: this rule's `visibility` is the mask gate above. */
+  opacity: var(--sds-draw, 1);
 }
 
 /* No `filter` and no `transform-style` on the rule above, deliberately: either
@@ -714,6 +717,11 @@ a {
     )
     rotateY(var(--sds-screen-yaw, 0deg));
   transform-style: preserve-3d;
+  /* The draw distance (`DRAW_DISTANCE` in `lot/geometry.ts`). Opacity rather
+     than `visibility`, so a screen beyond it is still a link the keyboard can
+     reach — focusing one drives it into view. Below 1 it flattens the
+     `preserve-3d` above, which nothing in a screen depends on. */
+  opacity: var(--sds-draw, 1);
 }
 
 .sds-screen__surface {

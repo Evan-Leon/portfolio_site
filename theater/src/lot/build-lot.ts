@@ -17,7 +17,7 @@
  * band is exactly `[i, i + 1)` on the timeline's clock, and every position
  * below is a band number.
  *
- * Three tweens make the whole scene:
+ * Four kinds of tween make the whole scene:
  *  - one on `.sds-lot__world`, translating Z from 0 to `lotZ(1, count)` across
  *    the entire timeline. That is the drive. Everything that looks like motion
  *    — screens growing, passing, receding — is perspective on this one tween.
@@ -26,6 +26,10 @@
  *    Faster than the ramp up, because a screen dims as it goes past the camera
  *    and a slow fade there reads as a screen that is still trying to be looked
  *    at.
+ *  - per screen and per tree, a draw-in ramp as the camera brings it inside
+ *    `DRAW_DISTANCE`, over `DRAW_FADE` (`geometry.ts` has the why and the
+ *    numbers). Placed in the drive's own units — a band is one `SPACING` of
+ *    world Z — so it is as absolute as the lighting (`SDS-001`).
  *
  * WHY `fromTo` AND NOT `to`
  * -------------------------
@@ -73,6 +77,9 @@ import type {
 } from "../adapters/gsap-timeline";
 import type { TheaterProject } from "../projects";
 import {
+  DRAW_DISTANCE,
+  DRAW_FADE,
+  drawAlpha,
   GROUND_LEAD,
   GROUND_LINE,
   GROUND_SQUASH,
@@ -80,6 +87,7 @@ import {
   lotZ,
   screenPlacement,
   screenProgress,
+  SPACING,
 } from "./geometry";
 import {
   PAVED_HALF_WIDTH,
@@ -191,6 +199,14 @@ export const SCREEN_INDEX_ATTRIBUTE = "data-screen-index";
  * nobody writes (`EVO-UNI-057`).
  */
 export const SCREEN_LIT_PROPERTY = "--sds-screen-lit";
+
+/**
+ * How much of a screen or tree is drawn, 0 to 1 — the draw distance's fade.
+ *
+ * The timeline writes it and the stylesheet turns it into `opacity`. Named here
+ * for the same reason {@link SCREEN_LIT_PROPERTY} is (`EVO-UNI-057`).
+ */
+export const DRAW_PROPERTY = "--sds-draw";
 
 /**
  * Where a screen stands, as the three custom properties `styles/global.css`
@@ -320,7 +336,9 @@ export function buildLot(
      * and a source order that matches the depth order is one less thing to
      * reason about when a screen looks occluded.
      */
-    world.append(...treePlacements(count).map(buildTree));
+    const placements = treePlacements(count);
+    const trees = placements.map(buildTree);
+    world.append(...trees);
 
     const screens = projects.map((project, i) => buildScreen(project, i));
     world.append(...screens);
@@ -423,8 +441,52 @@ export function buildLot(
       );
     });
 
+    /* Trees and screens alike: both are depth along the same drive. */
+    trees.forEach((tree, k) => {
+      drawIn(timeline, tree, -(placements[k]?.z ?? 0));
+    });
+    screens.forEach((screen, i) => {
+      drawIn(timeline, screen, -screenPlacement(i).z);
+    });
+
     return timeline;
   };
+}
+
+/**
+ * Fade `node` in as the camera brings it inside the draw distance.
+ *
+ * Nothing to tween for anything already inside the fade at the gate — its
+ * inline value is 1 from construction. Something partway into the fade at the
+ * gate starts from where it already is, so progress 0 is not a jump.
+ *
+ * Every ramp ends before the drive does, which is load-bearing rather than
+ * incidental: a tween past the world tween's end would lengthen the timeline,
+ * and the adapter scrubs by progress, so the whole drive would retime. The
+ * deepest thing in the lot is a tree one `SPACING` past the last screen, and
+ * its ramp ends `DRAW_DISTANCE - DRAW_FADE - SPACING` short of the end.
+ */
+function drawIn(
+  timeline: GsapTimeline,
+  node: HTMLElement,
+  depth: number,
+): void {
+  const end = depth - DRAW_DISTANCE + DRAW_FADE;
+  if (end <= 0) return;
+
+  const start = Math.max(0, depth - DRAW_DISTANCE);
+  /* A `fromTo` with its immediate render left on: the `from` is what an
+   * unreached thing should look like, as for the lit ramp up. */
+  timeline.fromTo(
+    node,
+    { [DRAW_PROPERTY]: drawAlpha(depth, start) },
+    {
+      [DRAW_PROPERTY]: 1,
+      duration: (end - start) / SPACING,
+      ease: "none",
+    },
+    start / SPACING,
+  );
 }
 
 /**
@@ -461,6 +523,8 @@ function buildTree(placement: TreePlacement): HTMLElement {
     TREE_TINT_PROPERTY,
     `${Number((placement.tint * 100).toFixed(4))}%`,
   );
+  /* What the gate shows, before the timeline has rendered anything. */
+  tree.style.setProperty(DRAW_PROPERTY, String(drawAlpha(-placement.z, 0)));
 
   return tree;
 }
@@ -480,6 +544,7 @@ function buildScreen(project: TheaterProject, i: number): HTMLAnchorElement {
   /* The tween's `from` value is stated on the element as well, so a screen that
    * has never been rendered is dark rather than unstyled. */
   screen.style.setProperty(SCREEN_LIT_PROPERTY, "0");
+  screen.style.setProperty(DRAW_PROPERTY, String(drawAlpha(-z, 0)));
 
   const surface = element("span", SCREEN_SURFACE_CLASS);
   surface.setAttribute(POSTER_STATE_ATTRIBUTE, "pending");

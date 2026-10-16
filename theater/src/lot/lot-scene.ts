@@ -48,6 +48,7 @@ import {
   CAR_SPRITE_CLASS,
   CAR_STATE_ATTRIBUTE,
   CLIP_STATE_ATTRIBUTE,
+  DRAW_PROPERTY,
   LOT_CAR_CLASS,
   LOT_WORLD_CLASS,
   MASK_STATE_ATTRIBUTE,
@@ -123,6 +124,14 @@ export interface LotSnapshot {
    * stays dark.
    */
   lit: number[];
+  /**
+   * Each screen's inline `--sds-draw`, in drive order, to 2 decimals — how much
+   * of it the draw distance lets through. Read back for the same reason as
+   * {@link lit}.
+   */
+  screenDraw: number[];
+  /** And each tree's, in DOM order — left side first, then right. */
+  treeDraw: number[];
   /**
    * How many tree planes are in the container right now.
    *
@@ -422,6 +431,9 @@ class LotScene implements LotAdapter {
     const screens = this.#container.querySelectorAll<HTMLElement>(
       `.${SCREEN_CLASS}`,
     );
+    const trees = this.#container.querySelectorAll<HTMLElement>(
+      `.${TREE_CLASS}`,
+    );
 
     return {
       progress: this.#progress,
@@ -434,7 +446,13 @@ class LotScene implements LotAdapter {
       lit: [...screens].map((screen) =>
         round2(screen.style.getPropertyValue(SCREEN_LIT_PROPERTY)),
       ),
-      trees: this.#container.querySelectorAll(`.${TREE_CLASS}`).length,
+      screenDraw: [...screens].map((screen) =>
+        round2(screen.style.getPropertyValue(DRAW_PROPERTY)),
+      ),
+      treeDraw: [...trees].map((tree) =>
+        round2(tree.style.getPropertyValue(DRAW_PROPERTY)),
+      ),
+      trees: trees.length,
       /* From the element while it exists; the remembered value once `destroy()`
        * has taken it away. See {@link LotSnapshot.car}. */
       car:

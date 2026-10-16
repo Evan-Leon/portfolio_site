@@ -515,6 +515,54 @@ describe("buildLot — the drive", () => {
     expect(adapter.snapshot()).toEqual(atTheGate);
   });
 
+  it("draws four screens ahead and fades the fifth in from the horizon", async () => {
+    await mountLot();
+    /* `count` screens, the first `drawn` of them fully drawn, then `edge`. */
+    const draws = (drawn: number, edge: number): number[] =>
+      Array.from({ length: COUNT }, (_, k) =>
+        k < drawn ? 1 : k === drawn ? edge : 0,
+      );
+
+    adapter.seek(0);
+    expect(adapter.snapshot().screenDraw).toEqual(draws(4, 0));
+
+    /* 400px in: screen 4 (at 4000px) is halfway through its fade. */
+    adapter.seek(400 / (SPACING * (COUNT + 1)));
+    expect(adapter.snapshot().screenDraw).toEqual(draws(4, 0.5));
+
+    adapter.seek(midBand(3));
+    /* 2800px in: screen 7 (at 6400px) is halfway. */
+    expect(adapter.snapshot().screenDraw).toEqual(draws(7, 0.5));
+
+    adapter.seek(1);
+    expect(adapter.snapshot().screenDraw).toEqual(draws(COUNT, 1));
+  });
+
+  it("draws the treeline only as far as the screens", async () => {
+    await mountLot();
+    adapter.seek(0);
+
+    const depths = [
+      ...container.querySelectorAll<HTMLElement>(`.${TREE_CLASS}`),
+    ].map(
+      (tree) =>
+        -Number.parseFloat(tree.style.getPropertyValue(TREE_Z_PROPERTY)),
+    );
+    const draw = adapter.snapshot().treeDraw;
+    const near = draw.filter((_, k) => (depths[k] ?? 0) <= 3200);
+    const far = draw.filter((_, k) => (depths[k] ?? 0) >= 4000);
+
+    expect(near.length).toBeGreaterThan(0);
+    expect(far.length).toBeGreaterThan(0);
+    expect(near.every((alpha) => alpha === 1)).toBe(true);
+    expect(far.every((alpha) => alpha === 0)).toBe(true);
+
+    adapter.seek(1);
+    expect(adapter.snapshot().treeDraw.every((alpha) => alpha === 1)).toBe(
+      true,
+    );
+  });
+
   it("reports each band change once, with the screen it came from", async () => {
     fake = createFakeImages({ autoSettle: () => POSTER_SIZE });
     vi.stubGlobal("Image", fake.Image);
