@@ -356,14 +356,15 @@ a {
  * ---------------------------------------------------------------
  * The dash period, the parking rows, the flower grids' pitch and the flowers'
  * own vertical radius are lengths in world Z, so they are written
- * `calc(140px / var(--sds-ground-squash))` and cancel against the `scaleY()`.
- * Divide one and forget the other and the road silently re-tiles at a different
- * pitch — which is exactly what happened the first time. Widths (14px, 420px,
- * the 4px edge lines, a flower's horizontal radius) are ACROSS the plane and are
- * not divided. A flower is the clearest case of why: it is a round patch on the
- * ground, so its two radii differ in the SOURCE by exactly the factor the
- * `scaleY()` will remove, and an undivided one paints as a four-times-too-tall
- * streak rather than a bloom.
+ * `calc(140px / var(--sds-ground-k))` — the squash times the density (below) —
+ * and cancel against the transform's `scale()`. Divide one and forget the other
+ * and the road silently re-tiles at a different pitch — which is exactly what
+ * happened the first time. Widths (14px, 420px, the 4px edge lines, a flower's
+ * horizontal radius) are ACROSS the plane and are divided by the density alone,
+ * as multiples of `--sds-ground-px`. A flower is the clearest case of why the
+ * two axes differ: it is a round patch on the ground, so its two radii differ
+ * in the SOURCE by exactly the factor the squash will remove, and an undivided
+ * one paints as a four-times-too-tall streak rather than a bloom.
  *
  * THE ROAD IS IN THIS BACKGROUND STACK AND NOT A PSEUDO-ELEMENT
  * ------------------------------------------------------------
@@ -398,43 +399,98 @@ a {
  * on each side, so no two of them ever line up twice in the same place and the
  * eye reads the result as a scatter. Each grid carries its dot at a different
  * offset inside its own tile, so the three do not stack into clumps. */
+/* THE GROUND'S DENSITY: ITS TEXTURE DOES NOT GROW WITH THE DISPLAY'S.
+
+   Chromium rasterises this plane at the device pixel ratio, so at 1.5x the
+   4000x5200 CSS-pixel plane is about 47 million texels — and on Evan's machine
+   (120Hz, 1.5x, hardware-accelerated Skia Graphite) that took the approach
+   from 120fps to about 15fps the moment the ground came into view, with a
+   240ms freeze on entry. Hiding the ground held 120fps throughout
+   (2026-10-16). That is the "if a high-density display is ever shown to be
+   affected" case `GROUND_SQUASH` in `lot/geometry.ts` left open.
+
+   So the plane is LAID OUT smaller by `--sds-ground-density` in both
+   directions and scaled back out by it, exactly as the squash already does
+   along the depth: the world geometry is identical at any density, and the
+   texture stays at the 1x budget. At 1x the density is 1 and nothing changes.
+   The cost is sharpness the grazing angle hides: at 1.5x the ground is drawn at
+   one texel per CSS pixel rather than per device pixel.
+
+   Stepped media queries rather than a value pushed from script, so browser
+   zoom (which changes the resolution) re-evaluates it with no listener. A
+   ratio between steps takes the step below — slightly more texture, never
+   less detail than 1x. */
 .sds-lot__ground {
+  --sds-ground-density: 1;
+}
+
+@media (min-resolution: 1.25dppx) {
+  .sds-lot__ground {
+    --sds-ground-density: 1.25;
+  }
+}
+
+@media (min-resolution: 1.5dppx) {
+  .sds-lot__ground {
+    --sds-ground-density: 1.5;
+  }
+}
+
+@media (min-resolution: 2dppx) {
+  .sds-lot__ground {
+    --sds-ground-density: 2;
+  }
+}
+
+@media (min-resolution: 3dppx) {
+  .sds-lot__ground {
+    --sds-ground-density: 3;
+  }
+}
+
+.sds-lot__ground {
+  /* Every length below is divided by the density as well as (along the depth)
+     by the squash, and the transform scales both back out. See the note above
+     this rule. */
+  --sds-ground-k: calc(var(--sds-ground-squash) * var(--sds-ground-density));
+  --sds-ground-px: calc(1px / var(--sds-ground-density));
+  --sds-ground-half: calc(var(--sds-paved-half) / var(--sds-ground-density));
   position: absolute;
   top: var(--sds-ground-line);
   left: 50%;
-  width: 4000px;
-  height: calc(var(--sds-ground-depth) / var(--sds-ground-squash));
-  margin-left: -2000px;
+  width: calc(4000 * var(--sds-ground-px));
+  height: calc(var(--sds-ground-depth) / var(--sds-ground-k));
+  margin-left: calc(-2000 * var(--sds-ground-px));
   background:
     /* the dashed centre line: 140px of paint every 320px of world Z */
     repeating-linear-gradient(
         180deg,
-        var(--sds-road-line) 0 calc(140px / var(--sds-ground-squash)),
-        transparent calc(140px / var(--sds-ground-squash))
-          calc(320px / var(--sds-ground-squash))
+        var(--sds-road-line) 0 calc(140px / var(--sds-ground-k)),
+        transparent calc(140px / var(--sds-ground-k))
+          calc(320px / var(--sds-ground-k))
       )
-      center top / 14px 100% no-repeat,
+      center top / calc(14 * var(--sds-ground-px)) 100% no-repeat,
     /* the two edge lines, 4px in from the lane's sides */
     linear-gradient(
         90deg,
-        var(--sds-road-edge) 0 4px,
-        transparent 4px calc(100% - 4px),
-        var(--sds-road-edge) calc(100% - 4px)
+        var(--sds-road-edge) 0 calc(4 * var(--sds-ground-px)),
+        transparent calc(4 * var(--sds-ground-px))
+          calc(100% - 4 * var(--sds-ground-px)),
+        var(--sds-road-edge) calc(100% - 4 * var(--sds-ground-px))
       )
-      center top / 420px 100% no-repeat,
+      center top / calc(420 * var(--sds-ground-px)) 100% no-repeat,
     /* the lane itself, darker than the apron either side of it */
     linear-gradient(var(--sds-road-surface), var(--sds-road-surface)) center
-      top / 420px 100% no-repeat,
+      top / calc(420 * var(--sds-ground-px)) 100% no-repeat,
     /* the parking rows — sized to the apron now, because past its edge there is
        nothing to park on */
     repeating-linear-gradient(
         180deg,
-        transparent 0 calc(780px / var(--sds-ground-squash)),
+        transparent 0 calc(780px / var(--sds-ground-k)),
         color-mix(in srgb, var(--sds-star) 5%, transparent)
-          calc(780px / var(--sds-ground-squash))
-          calc(784px / var(--sds-ground-squash))
+          calc(780px / var(--sds-ground-k)) calc(784px / var(--sds-ground-k))
       )
-      center top / calc(var(--sds-paved-half) * 2) 100% no-repeat,
+      center top / calc(var(--sds-ground-half) * 2) 100% no-repeat,
     /* WHERE THE PAVING ENDS: a worn strip straddling each edge, where the tar
        has crumbled into the grass. Drawn ACROSS the plane and centred on the
        boundary, so 4px of it lie on the asphalt and 4px on the verge — a seam
@@ -442,27 +498,33 @@ a {
        the lane already has two of. */
     linear-gradient(
         90deg,
-        transparent 0 calc(50% - var(--sds-paved-half) - 4px),
-        var(--sds-verge-seam) calc(50% - var(--sds-paved-half) - 4px)
-          calc(50% - var(--sds-paved-half) + 4px),
-        transparent calc(50% - var(--sds-paved-half) + 4px)
-          calc(50% + var(--sds-paved-half) - 4px),
-        var(--sds-verge-seam) calc(50% + var(--sds-paved-half) - 4px)
-          calc(50% + var(--sds-paved-half) + 4px),
-        transparent calc(50% + var(--sds-paved-half) + 4px)
+        transparent 0
+          calc(50% - var(--sds-ground-half) - 4 * var(--sds-ground-px)),
+        var(--sds-verge-seam)
+          calc(50% - var(--sds-ground-half) - 4 * var(--sds-ground-px))
+          calc(50% - var(--sds-ground-half) + 4 * var(--sds-ground-px)),
+        transparent
+          calc(50% - var(--sds-ground-half) + 4 * var(--sds-ground-px))
+          calc(50% + var(--sds-ground-half) - 4 * var(--sds-ground-px)),
+        var(--sds-verge-seam)
+          calc(50% + var(--sds-ground-half) - 4 * var(--sds-ground-px))
+          calc(50% + var(--sds-ground-half) + 4 * var(--sds-ground-px)),
+        transparent
+          calc(50% + var(--sds-ground-half) + 4 * var(--sds-ground-px))
       )
       center top / 100% 100% no-repeat,
     /* THE APRON. Opaque, and this is the layer that makes the verge a verge:
        everything below it in this list is painted across the whole plane and
        shows only where this does not reach. See the header. */
     linear-gradient(180deg, var(--sds-asphalt) 0%, var(--sds-asphalt-far) 70%)
-      center top / calc(var(--sds-paved-half) * 2) 100% no-repeat,
+      center top / calc(var(--sds-ground-half) * 2) 100% no-repeat,
     /* The wildflowers: three grids at pitches with no common factor. Each dot's
        vertical radius and its grid's vertical pitch are divided by the squash so
        it lands on the grass as a round bloom rather than a streak. `--sds-bloom`
        is how much light there is to see them by at this hour. */
     radial-gradient(
-        4px calc(4px / var(--sds-ground-squash)) at 34% 61%,
+        calc(4 * var(--sds-ground-px)) calc(4px / var(--sds-ground-k)) at 34%
+          61%,
         color-mix(
             in srgb,
             var(--sds-flower-white) var(--sds-bloom),
@@ -471,21 +533,26 @@ a {
           0 65%,
         transparent 100%
       )
-      left top / 113px calc(157px / var(--sds-ground-squash)) repeat,
+      left top / calc(113 * var(--sds-ground-px))
+      calc(157px / var(--sds-ground-k)) repeat,
     radial-gradient(
-        3.5px calc(3.5px / var(--sds-ground-squash)) at 72% 23%,
+        calc(3.5 * var(--sds-ground-px)) calc(3.5px / var(--sds-ground-k)) at
+          72% 23%,
         color-mix(in srgb, var(--sds-flower-warm) var(--sds-bloom), transparent)
           0 65%,
         transparent 100%
       )
-      left top / 149px calc(211px / var(--sds-ground-squash)) repeat,
+      left top / calc(149 * var(--sds-ground-px))
+      calc(211px / var(--sds-ground-k)) repeat,
     radial-gradient(
-        3.5px calc(3.5px / var(--sds-ground-squash)) at 18% 84%,
+        calc(3.5 * var(--sds-ground-px)) calc(3.5px / var(--sds-ground-k)) at
+          18% 84%,
         color-mix(in srgb, var(--sds-flower-rose) var(--sds-bloom), transparent)
           0 65%,
         transparent 100%
       )
-      left top / 181px calc(263px / var(--sds-ground-squash)) repeat,
+      left top / calc(181 * var(--sds-ground-px))
+      calc(263px / var(--sds-ground-k)) repeat,
     /* Turf. Bands ACROSS the plane, so they run along the depth axis and
        converge on the vanishing point the way mown stripes do — and, being
        parallel to the travel direction, they do not strobe as the drive moves
@@ -502,18 +569,22 @@ a {
        perspective the base gradient does, for free. */
     repeating-linear-gradient(
         90deg,
-        transparent 0 37px,
-        color-mix(in srgb, var(--sds-grass-far) 26%, transparent) 37px 71px,
-        transparent 71px 104px,
-        color-mix(in srgb, var(--sds-grass-far) 15%, transparent) 104px 127px,
-        transparent 127px 178px
+        transparent 0 calc(37 * var(--sds-ground-px)),
+        color-mix(in srgb, var(--sds-grass-far) 26%, transparent)
+          calc(37 * var(--sds-ground-px)) calc(71 * var(--sds-ground-px)),
+        transparent calc(71 * var(--sds-ground-px))
+          calc(104 * var(--sds-ground-px)),
+        color-mix(in srgb, var(--sds-grass-far) 15%, transparent)
+          calc(104 * var(--sds-ground-px)) calc(127 * var(--sds-ground-px)),
+        transparent calc(127 * var(--sds-ground-px))
+          calc(178 * var(--sds-ground-px))
       ),
     /* The verge itself, fading with depth exactly as the asphalt above it does
        — which is most of what sells the lot's distance now that the paving
        stops short of the treeline. */
     linear-gradient(180deg, var(--sds-grass) 0%, var(--sds-grass-far) 70%);
   transform: translateZ(var(--sds-ground-lead)) rotateX(-90deg)
-    scaleY(var(--sds-ground-squash));
+    scale(var(--sds-ground-density), var(--sds-ground-k));
   transform-origin: 50% 0;
 }
 
