@@ -1,6 +1,6 @@
 ---
 date: 2026-10-16
-headline: Theater lag cut: draw distance, pre-warmed approach, wheel glide
+headline: Theater lag cut; Evan's Chrome was on the Ryzen iGPU, not the RTX 5090
 agent: claude-code
 type: feature
 mode: attended
@@ -21,9 +21,16 @@ Investigated Evan's report that the theater lags from the gate until about chunk
 - Ruled out a "treadmill" ground: the depth-wise fades and the incommensurate flower pitches would visibly jump.
 - Evan then reported the approach as "shaky, not laggy": surging speed, on a notched mouse wheel (asked). Cause: Lenis smooths each wheel click once, so speed steps at every click. There is no motion blur anywhere in the theater, and scroll positions are whole pixels (checked at DPR 1/1.25/1.5).
 - Fix landed: `theater/src/engine/wheel-smoothing.ts`, a first smoothing stage in front of Lenis. Wheel events are claimed through Lenis's `virtualScroll` hook, and the smoothed target goes to Lenis's non-programmatic `scrollTo`, so Lenis's easing becomes stage two. Modelled: per-click swing ±12% → ±2–3%, settle ~940 → ~780ms. Lowering a single `lerp` was strictly worse (0.06 gives ±7% and a 1.7s settle).
+- The wheel smoothing was then reverted (`be9aefc`). Evan's recorder showed the "shaky" approach was frame rate: 120fps until the ground came into view, then a 242ms freeze and ~15fps. The extra smoothing stage had also slowed every scroll's start (10px in the first 50ms of a click, against 28px).
+- Ground density fix landed (`d72398e`): the ground plane is laid out smaller by a stepped `--sds-ground-density` (resolution media queries) and scaled back out, so its texture doesn't grow with display scaling. Pixel-identical at 1×. On Evan's machine the median frame went from 58ms to 33ms and the freeze disappeared.
+- Root cause of Evan's remaining lag: `chrome://gpu` showed Chrome running on the **Ryzen iGPU** (AMD 0x13C0, two compute units, Graphite/D3D11), not his RTX 5090. Full-frame composites cost ~20–40ms and drifted run to run, and no single element was to blame. Evan was told how to switch Chrome to the 5090 (Windows Graphics settings → High performance, or move the monitor cable to the 5090).
+- Ruled out on Evan's machine with hands-off console probes: scroll smoothing (native wheel lagged too), a static cost (120fps when parked at every approach position), the playing clip, the surface filter, glows, bulbs and crest glow, stale compositor state (rebuilding each part did nothing), and a separate 3D context for the ground (no change here).
 - Found, not fixed: during the drive the screens re-rasterise continuously (804 raster tasks per window with them, 102 without), presumably because their projected scale and lit values change every frame.
 
 ## Commits
+- portfolio_site `d72398e` perf(theater): draw the ground at a density that does not grow with the display
+- portfolio_site `be9aefc` Revert "perf(theater): two-stage wheel smoothing — a notched wheel glides, not surges"
+- portfolio_site `c32f7a4` docs(session-log): theater wheel smoothing (this log, fourth version)
 - portfolio_site `42433ee` perf(theater): two-stage wheel smoothing — a notched wheel glides, not surges
 - portfolio_site `3701e67` docs(session-log): theater approach pre-warm (this log, third version)
 - portfolio_site `5d25b71` perf(theater): pre-warm the lot behind the loading ring
@@ -44,6 +51,8 @@ None. The probe scripts live in the session scratchpad only.
 - Rebuilt the container. The served CSS contains `--sds-draw`, and in the served page screens 0–3 have computed opacity 1 and screens 4–19 have 0.
 - A/B while driving (`moving.mjs`): draw distance ~34ms flat; with `opacity:1 !important` forced, 60/60/50ms. A first gate re-measure ran while the e2e suite was using the CPU and was discarded.
 - The full-drive wheel probe's profile hardly changed after the fix. I don't trust it as a measure: it mixes in the pin approach and clip playback, and with software decode, clip playback alone is ~8ms/frame.
+- Ground density: `pnpm theater:test` 438/438 and `pnpm theater:e2e` 61/61 pass, as do format and the hook. At 1× the screenshots are pixel-identical to the previous build at three positions; at 1.5×, 0.17–0.36% of pixels differ by more than 8/255, with no visible change side by side. Raster at 1.5× in software went from ~630ms to ~440ms. Container rebuilt.
+- Evan-side probes (recorder, rendering trace, idle, parked-position, forced-redraw, screen-effect and rebuild probes): results above. The trace showed `CrGpuMain` busy 6.9s of 8.7s once the lot was in view, with raster at 17ms.
 - Wheel smoothing: typecheck and lint pass. `pnpm theater:test`: 448/448 pass. `pnpm theater:e2e`: 61/61 pass. Format check and hook: pass. Negative control: with stage one bypassed, three of the 10 smoother tests fail, including the steady-glide one; code restored.
 - Wheel A/B (`glide.mjs`, plain-Lenis bundle vs two-stage, served from the scratchpad, 3 alternating runs): steady max/min 2.96/2.48/2.57 vs 2.14/2.07/1.78; settle ~770 vs ~600ms; both travel exactly 3000px. Absolute ratios are inflated by irregular software frames.
 - Pre-warm: typecheck and lint pass. `pnpm theater:test`: 438/438 pass. `pnpm theater:e2e`: 61/61 pass. Format check and hook: pass. Negative control: with the hold's class add removed, the hold test fails; code restored.
@@ -62,12 +71,14 @@ None.
 - `global.css` has a comment saying masked trees "paint on the world's layer". They carry a 3D transform, so they may in fact be composited. Not verified, and not acted on.
 
 ## Rules-index candidates
-None.
+None. The "check which GPU is active first" lesson is user-specific and went to auto-memory (`evan-browser-gpu`), not to the rules index.
 
 ## Meta-prompt / skill / doc updates
+- APPLIED: Evan's Chrome GPU fact, and "check chrome://gpu before theater perf work" → auto-memory `evan-browser-gpu.md` (no commit: ~/.claude memory)
 - NO-CHANGE: theater-rules-index — checked `SDS-001`/`SDS-004`/`SDS-010` against the proposed cull; served as written
 
 ## Next steps
+- Evan: switch Chrome to the RTX 5090 and retest; expect a locked 120fps. Then decide whether to optimise further for weak-iGPU visitors (shorter draw distance, or flattening each screen to one layer). On the iGPU, a full-frame composite still costs ~20–40ms.
 - Evan: check the theater at evanleon.com once it is deployed (Cloudflare caches assets for 4h) or at portfolio-site.localhost (already rebuilt).
 
 ## Pointers
