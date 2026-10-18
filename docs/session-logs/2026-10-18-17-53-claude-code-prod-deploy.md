@@ -11,10 +11,13 @@ repos: [portfolio_site]
 ## Accomplished
 Pushed `main` to origin (f468b08..8afa652, 73 commits: theater perf work, DT9 showcase re-captures, skills/docs). Deployed 8afa652 to the droplet with `infra/deployment/prod/deploy-portfolio.sh`. I ran the script from a detached worktree at origin/main because the untracked `docs/planning/test-audit/pilot/export-files.txt`, left by the in-flight test-audit session, trips the script's dirty-tree guard. The worktree was removed after the deploy.
 
+Closed a webroot exposure. `skills/`, `.agents/`, `scripts/`, `archive/` (old session logs) and `images/.DS_Store` were all served publicly on evanleon.com, because `.dockerignore` left them in the image. They are now excluded, and 861063d is deployed.
+
 Turned off GitHub Pages for the repo (`gh api -X DELETE repos/Evan-Leon/portfolio_site/pages`). The legacy Jekyll `pages-build-deployment` build of `main` (cname evanleon.com) had failed on every push since 2026-09-09: Jekyll hit a Liquid error rendering a session log. The site has been served from the droplet since the 2026-09-09 cutover.
 
 ## Commits
 - 9025994 chore: drop CNAME — GitHub Pages is off, evanleon.com is served from the droplet
+- 861063d fix(docker): keep skills, scripts, archive, .agents and logs out of the public webroot
 - Session-log commits only otherwise (the push only moved existing commits).
 
 ## Uncommitted work left behind
@@ -31,7 +34,6 @@ None.
 ## Open flags
 - Re-captured clips and screenshots under `images/` have non-hashed URLs. The Cloudflare edge may serve the old ones for up to 4 h, and the script only checks `styles.css` for freshness. Evan can purge in the dashboard if the new captures need to be live sooner.
 - `deploy-portfolio.sh` treats untracked files as dirty, so any in-flight docs scratch file blocks a deploy. The workaround is `PORTFOLIO_REPO=<clean worktree>`.
-- The image's webroot also holds `archive/`, `logs/`, `scripts/` and `skills/`, which `.dockerignore` doesn't exclude, so they are publicly served: `https://evanleon.com/skills/rebuild-restart/SKILL.md` returned 200 on 2026-10-18. Not changed this session.
 
 ## Rules-index candidates
 None.
