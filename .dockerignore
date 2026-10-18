@@ -7,7 +7,7 @@
 .superpowers
 .worktrees
 docs
-.DS_Store
+**/.DS_Store
 *.md
 .env
 .env.example
@@ -24,3 +24,11 @@ theater/playwright-report
 .githooks
 .prettierignore
 .prettierrc*
+
+# Agent and repo tooling: skills, their .agents links, scripts, the archive and local logs.
+# None of it is site content, and anything in the webroot is public on evanleon.com.
+.agents
+archive
+logs
+scripts
+skills
