@@ -1,0 +1,21 @@
+R=/home/evan/EVOsystem/portfolio_site
+P=$R/docs/planning/test-audit
+L=/home/evan/.local/state/test-audit/portfolio_site
+S=/home/evan/EVOsystem/chud/docs/planning/test-audit
+# Frontend-only repo: no pytest suite. Backend values are placeholders (never empty).
+HAS_BE=0
+BE_REL=backend-absent
+BE=$R/$BE_REL
+REPO_PYTEST=/nonexistent/no-backend/pytest
+REPO_PY=/usr/bin/python3
+VENV_MODE=repo
+PYTEST=$REPO_PYTEST
+PY=/usr/bin/python3
+REF_COLLECT=
+export PYTEST_ADDOPTS=""
+HAS_FE=1
+FE=$R/theater
+LINT_BE="true"
+LINT_FE="$R/theater/node_modules/.bin/tsc -p tsconfig.json --noEmit && $R/theater/node_modules/.bin/eslint ."
+PM=pnpm
+export LEDGER_PYTEST=$PYTEST

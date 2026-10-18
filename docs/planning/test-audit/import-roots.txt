@@ -1,0 +1,10 @@
+base:.
+base:backend-absent
+base:backend-absent/src
+base:scripts
+base:scripts/src
+base:src
+npm:portfolio-art-tools
+npm:portfolio-site
+npm:portfolio-theater
+py:validate_codex_setup

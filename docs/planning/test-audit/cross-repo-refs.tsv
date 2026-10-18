@@ -1,0 +1,2 @@
+module	referencing file	how
+Dockerfile (whole repo: theater/ built by `pnpm -C theater build`, static site copied)	/home/evan/EVOsystem/infra/deployment/prod/deploy-portfolio.sh	builds and ships ghcr.io/evan-leon/portfolio-site from portfolio_site main (REPO=$HOME/EVOsystem/portfolio_site)
