@@ -31,7 +31,7 @@ None.
 ## Open flags
 - Re-captured clips and screenshots under `images/` have non-hashed URLs. The Cloudflare edge may serve the old ones for up to 4 h, and the script only checks `styles.css` for freshness. Evan can purge in the dashboard if the new captures need to be live sooner.
 - `deploy-portfolio.sh` treats untracked files as dirty, so any in-flight docs scratch file blocks a deploy. The workaround is `PORTFOLIO_REPO=<clean worktree>`.
-- The image's webroot also holds `archive/`, `logs/`, `scripts/` and `skills/`, which `.dockerignore` doesn't exclude, so they are likely publicly served on evanleon.com. Not checked or changed this session.
+- The image's webroot also holds `archive/`, `logs/`, `scripts/` and `skills/`, which `.dockerignore` doesn't exclude, so they are publicly served: `https://evanleon.com/skills/rebuild-restart/SKILL.md` returned 200 on 2026-10-18. Not changed this session.
 
 ## Rules-index candidates
 None.
