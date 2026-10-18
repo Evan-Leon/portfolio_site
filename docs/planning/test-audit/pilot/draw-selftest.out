@@ -1,0 +1,31 @@
+== suite under 200 (all eligible): exit=0 items=60 sampled=57 controls=3 requested=38+19 -> ok
+function counts: {'A': 20, 'B': 12, 'C': 8, 'FE': 20}
+eligible: {'A': 19, 'B': 12, 'C': 7, 'FE': 19}
+allocation: {'A': 19, 'B': 12, 'C': 7, 'FE': 19}
+items: 60 (57 sampled + 3 controls)
+== skewed domain (3 functions, one control, floor 8): exit=0 items=61 sampled=60 controls=1 requested=60+0 -> ok
+function counts: {'BIG': 100, 'MID': 30, 'SMALL': 3}
+eligible: {'BIG': 100, 'MID': 30, 'SMALL': 2, 'FE': 0}
+allocation: {'BIG': 44, 'MID': 14, 'SMALL': 2, 'FE': 0}
+items: 61 (60 sampled + 1 controls)
+== backend-only suite: exit=0 items=40 sampled=39 controls=1 requested=39+0 -> ok
+function counts: {'A': 20, 'B': 12, 'C': 8}
+eligible: {'A': 20, 'B': 11, 'C': 8, 'FE': 0}
+allocation: {'A': 20, 'B': 11, 'C': 8, 'FE': 0}
+items: 40 (39 sampled + 1 controls)
+== frontend-only suite: exit=0 items=25 sampled=24 controls=1 requested=0+24 -> ok
+function counts: {'FE': 25}
+eligible: {'FE': 24}
+allocation: {'FE': 24}
+items: 25 (24 sampled + 1 controls)
+== holdout setup: round 1: exit=0 items=71 sampled=70 controls=1 requested=50+20 -> ok
+function counts: {'A': 60, 'B': 40, 'FE': 40}
+eligible: {'A': 59, 'B': 40, 'FE': 40}
+allocation: {'A': 30, 'B': 20, 'FE': 20}
+items: 71 (70 sampled + 1 controls)
+== 30-item holdout, round 1 excluded: exit=0 items=35 sampled=30 controls=5 requested=21+9 -> ok
+function counts: {'A': 60, 'B': 40, 'FE': 40}
+eligible: {'A': 29, 'B': 20, 'FE': 15}
+allocation: {'A': 12, 'B': 9, 'FE': 9}
+items: 35 (30 sampled + 5 controls)
+draw-selftest: all cases ok
