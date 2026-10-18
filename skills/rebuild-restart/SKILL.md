@@ -85,5 +85,5 @@ git checkout index.html && docker compose build && docker compose up -d --force-
 - The container has no `image:` pull on the droplet path here — locally you always
   `build`. The `image:` field in compose is for the (future, not-yet-cutover) droplet,
   where `docker compose pull` would use the ghcr.io image instead of building.
-- `.dockerignore` keeps repo cruft (`.git`, `docs/`, `CNAME`, `*.md`, `.env`) out of the
+- `.dockerignore` keeps repo cruft (`.git`, `docs/`, `*.md`, `.env`) out of the
   nginx webroot. If you add a new top-level asset dir, make sure it isn't ignored.

@@ -7,7 +7,6 @@
 .superpowers
 .worktrees
 docs
-CNAME
 .DS_Store
 *.md
 .env

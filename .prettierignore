@@ -14,4 +14,3 @@ theater/node_modules/
 
 # OS / repo cruft (not html/css/js, but keep Prettier from ever touching them).
 .git/
-CNAME

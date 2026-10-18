@@ -12,7 +12,7 @@ RUN pnpm -C theater build
 FROM nginx:alpine
 
 # Copy the static portfolio files into nginx's webroot. .dockerignore keeps repo
-# cruft (.git, docs, CNAME, *.md, etc.) out.
+# cruft (.git, docs, *.md, etc.) out.
 COPY . /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Build inputs are part of the context (needed by the stage above) so they also
