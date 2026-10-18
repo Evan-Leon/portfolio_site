@@ -14,7 +14,8 @@ Pushed `main` to origin (f468b08..8afa652, 73 commits: theater perf work, DT9 sh
 Turned off GitHub Pages for the repo (`gh api -X DELETE repos/Evan-Leon/portfolio_site/pages`). The legacy Jekyll `pages-build-deployment` build of `main` (cname evanleon.com) had failed on every push since 2026-09-09: Jekyll hit a Liquid error rendering a session log. The site has been served from the droplet since the 2026-09-09 cutover.
 
 ## Commits
-None besides this log (the push only moved existing commits).
+- 9025994 chore: drop CNAME — GitHub Pages is off, evanleon.com is served from the droplet
+- Session-log commits only otherwise (the push only moved existing commits).
 
 ## Uncommitted work left behind
 `docs/planning/test-audit/pilot/export-files.txt` is untracked and belongs to the test-audit pilot session. I did not touch it.
@@ -30,7 +31,7 @@ None.
 ## Open flags
 - Re-captured clips and screenshots under `images/` have non-hashed URLs. The Cloudflare edge may serve the old ones for up to 4 h, and the script only checks `styles.css` for freshness. Evan can purge in the dashboard if the new captures need to be live sooner.
 - `deploy-portfolio.sh` treats untracked files as dirty, so any in-flight docs scratch file blocks a deploy. The workaround is `PORTFOLIO_REPO=<clean worktree>`.
-- The root `CNAME` file (`evanleon.com`) is a leftover from GitHub Pages and is now dead weight, but nginx still serves it. I left it in place.
+- The image's webroot also holds `archive/`, `logs/`, `scripts/` and `skills/`, which `.dockerignore` doesn't exclude, so they are likely publicly served on evanleon.com. Not checked or changed this session.
 
 ## Rules-index candidates
 None.
